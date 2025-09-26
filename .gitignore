@@ -1,0 +1,66 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+build/
+dist/
+out/
+temp/
+tmp/
+
+# Environment files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+config/.env
+config/.env.local
+config/.env.development.local
+config/.env.test.local
+config/.env.production.local
+
+# Database files
+*.sqlite
+*.db
+
+# Logs
+*.log
+logs/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files (these contain API keys - DO NOT COMMIT)
+test-*.js
+test-*.html
+server/test-*.js
+**/test-*.js
+
+# AI/Claude files
+.claude/
+
+# Package files
+*.tgz
+vitreum-*.tgz
+
+# Coverage
+coverage/
+
+# Storage
+storage/
+
+# Other
+todo.md
+startDB.bat
+startMViewer.bat

@@ -1,0 +1,180 @@
+{
+  "dnd5e_writing_style_rules": {
+    "version": "1.0",
+    "source_materials": [
+      "The Wild Beyond the Witchlight",
+      "Baldur's Gate 3 Dialog Trees"
+    ],
+    "narrative_voice": {
+      "tone_patterns": {
+        "whimsical_feywild": {
+          "description": "Fairy-tale like wonder with underlying mystery",
+          "techniques": [
+            "Use sensory-rich descriptions that evoke childlike wonder",
+            "Balance lighthearted elements with subtle darkness",
+            "Employ musical or rhythmic language patterns",
+            "Include fantastical elements as matter-of-fact details"
+          ],
+          "sentence_rhythm": "Mix short wonder-filled statements with longer flowing descriptions"
+        },
+        "adventure_neutral": {
+          "description": "Clear, engaging narration for general D&D content",
+          "techniques": [
+            "Start with immediate sensory details",
+            "Use active voice for dynamic scenes",
+            "Employ present tense for immediate engagement",
+            "Balance description with actionable information"
+          ],
+          "sentence_rhythm": "Varied length - short for impact, medium for flow, long for atmosphere"
+        }
+      },
+      "perspective_rules": {
+        "narrator_voice": "Third person omniscient, but focused on player experience",
+        "player_address": "Use 'you' sparingly, prefer immersive description",
+        "npc_voice": "Distinct personality through speech patterns and word choice"
+      }
+    },
+    "structural_patterns": {
+      "location_descriptions": {
+        "opening_technique": "Lead with the most striking visual or sensory element",
+        "layering_method": "Move from general impression to specific details",
+        "interaction_focus": "Always include actionable elements players can engage with",
+        "atmosphere_building": "Use environmental details to convey mood and tone"
+      },
+      "npc_introductions": {
+        "physical_first": "Brief but memorable physical trait or mannerism",
+        "personality_reveal": "Show character through speech and actions, not exposition",
+        "motivation_hints": "Subtle clues to deeper motivations and conflicts",
+        "dialogue_style": "Each NPC has distinct speech patterns and vocabulary"
+      },
+      "encounter_setup": {
+        "tension_building": "Gradual escalation from normal to threatening",
+        "player_agency": "Always provide multiple approach options",
+        "stakes_clarity": "Make consequences of actions clear but not heavy-handed",
+        "environmental_integration": "Use location features as tactical elements"
+      }
+    },
+    "descriptive_techniques": {
+      "sensory_hierarchy": {
+        "primary": "Visual details that create immediate scene recognition",
+        "secondary": "Sounds and smells that enhance atmosphere",
+        "tertiary": "Tactile and emotional responses that deepen immersion"
+      },
+      "detail_selection": {
+        "relevance_rule": "Every described element should serve narrative or mechanical purpose",
+        "specificity_balance": "Mix concrete details with evocative but flexible elements",
+        "player_focus": "Emphasize details that affect player decisions or emotions"
+      },
+      "metaphor_usage": {
+        "restraint_principle": "Use metaphors sparingly but memorably",
+        "consistency_rule": "Maintain thematic coherence with setting and tone",
+        "accessibility_focus": "Ensure metaphors enhance rather than obscure meaning"
+      }
+    },
+    "dialogue_construction": {
+      "character_voice_rules": {
+        "vocabulary_consistency": "Each character maintains appropriate education/background level",
+        "speech_patterns": "Consistent use of formal/informal language, regional dialects",
+        "emotional_expression": "Show personality through how characters express feelings",
+        "subtext_layers": "Include underlying motivations in surface conversations"
+      },
+      "conversation_flow": {
+        "natural_rhythm": "Mix short responses with longer explanations",
+        "interruption_patterns": "Use incomplete thoughts and overlapping speech for realism",
+        "information_pacing": "Reveal important details gradually through multiple exchanges",
+        "player_response_variety": "Provide meaningful choices that reflect different approaches"
+      },
+      "branching_structure": {
+        "meaningful_choices": "Each dialogue option leads to genuinely different outcomes",
+        "personality_reflection": "Response options should reflect different character approaches",
+        "consequence_awareness": "Players understand potential results of their dialogue choices",
+        "narrative_integration": "Dialogue choices affect story progression and character relationships"
+      }
+    },
+    "mechanical_integration": {
+      "stat_block_presentation": {
+        "context_embedding": "Introduce mechanical elements through narrative description",
+        "readability_focus": "Present complex mechanics in digestible chunks",
+        "visual_separation": "Use formatting to distinguish mechanics from narrative"
+      },
+      "treasure_description": {
+        "history_hints": "Suggest item backstory through appearance and craftsmanship",
+        "utility_clarity": "Make mechanical benefits clear through descriptive language",
+        "value_communication": "Convey worth through materials and artistry descriptions"
+      },
+      "skill_check_integration": {
+        "natural_triggers": "Embed skill opportunities in environmental descriptions",
+        "failure_interest": "Make failed checks advance story in different directions",
+        "success_satisfaction": "Reward successful checks with meaningful advantages or information"
+      }
+    },
+    "pacing_guidelines": {
+      "scene_transitions": {
+        "momentum_maintenance": "Use connecting elements to maintain story flow",
+        "rest_opportunities": "Build in natural pauses for player planning and roleplay",
+        "tension_curves": "Alternate high-intensity encounters with character development moments"
+      },
+      "information_delivery": {
+        "revelation_timing": "Space out major plot reveals for maximum impact",
+        "clue_distribution": "Scatter evidence across multiple sources and encounters",
+        "player_discovery": "Allow players to piece together information rather than exposition dumps"
+      },
+      "combat_narrative": {
+        "dynamic_description": "Keep action descriptions varied and cinematically engaging",
+        "environmental_changes": "Show how battle affects the surrounding area",
+        "character_moments": "Highlight individual player actions and their consequences"
+      }
+    },
+    "emotional_resonance": {
+      "mood_consistency": {
+        "tonal_coherence": "Maintain appropriate emotional register for each scene type",
+        "contrast_usage": "Use tonal shifts purposefully to enhance dramatic impact",
+        "player_investment": "Connect emotional beats to character motivations and goals"
+      },
+      "empathy_building": {
+        "npc_relatability": "Give NPCs recognizable human motivations and flaws",
+        "consequence_weight": "Make player choices feel meaningful and impactful",
+        "moral_complexity": "Present ethical dilemmas without clear right/wrong answers"
+      },
+      "memorable_moments": {
+        "unique_details": "Include distinctive elements that players will remember and reference",
+        "emotional_peaks": "Build to climactic moments that feel earned and satisfying",
+        "callback_opportunities": "Plant seeds for future story developments and references"
+      }
+    },
+    "adaptation_guidelines": {
+      "content_scalability": {
+        "party_size_flexibility": "Describe encounters that can accommodate different group sizes",
+        "level_adjustability": "Focus on narrative elements that work across character power levels",
+        "time_constraints": "Provide condensed versions for shorter sessions"
+      },
+      "player_agency_preservation": {
+        "multiple_solutions": "Present challenges with various valid approaches",
+        "consequence_variety": "Ensure different choices lead to meaningfully different outcomes",
+        "creative_encouragement": "Leave room for unexpected player solutions and interpretations"
+      },
+      "dm_usability": {
+        "improvisation_support": "Provide frameworks flexible enough for on-the-fly modifications",
+        "reference_accessibility": "Structure information for quick lookup during gameplay",
+        "expansion_hooks": "Include elements that can be developed further based on player interest"
+      }
+    },
+    "quality_standards": {
+      "clarity_requirements": {
+        "ambiguity_avoidance": "Ensure mechanical and narrative elements are unambiguous",
+        "accessibility_focus": "Use language that welcomes both new and experienced players",
+        "cultural_sensitivity": "Avoid harmful stereotypes while maintaining fantasy genre conventions"
+      },
+      "engagement_metrics": {
+        "player_interaction": "Every scene should provide opportunities for meaningful player engagement",
+        "story_advancement": "Each encounter should move the narrative forward in some way",
+        "character_development": "Include moments for both mechanical and roleplaying character growth"
+      },
+      "authenticity_markers": {
+        "genre_consistency": "Maintain fantasy adventure genre conventions while adding unique elements",
+        "world_coherence": "Ensure all elements fit logically within the established setting",
+        "narrative_integrity": "Maintain internal logic and cause-effect relationships throughout"
+      }
+    }
+  }
+}
