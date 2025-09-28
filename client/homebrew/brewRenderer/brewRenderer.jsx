@@ -15,78 +15,6 @@ const NotificationPopup = require('./notificationPopup/notificationPopup.jsx');
 const Frame = require('react-frame-component').default;
 const dedent = require('dedent-tabs').default;
 const { printCurrentBrew } = require('../../../shared/helpers.js');
-// Temporarily disable custom block renderer to fix immediate issues
-// const { extendHomebreweryRenderer, getCustomBlockCSS } = require('./customBlockRenderer.js');
-const extendHomebreweryRenderer = (markdown) => {
-	// Enhanced JSON formatting for encounters and tables
-	let processed = markdown;
-	
-	console.log('🔍 Processing markdown content:', processed.substring(0, 500));
-	
-	// Handle the specific pattern from the user's screenshot
-	// Pattern: "result": 1, "description": "Some text",
-	processed = processed.replace(/"result":\s*(\d+),\s*"description":\s*"([^"]*(?:\\.[^"]*)*)"/g, (match, result, description) => {
-		// Clean up description - remove escape characters
-		let cleanDescription = description
-			.replace(/\\"/g, '"')   // Fix escaped quotes  
-			.replace(/\\\\/g, '\\') // Fix escaped backslashes
-			.replace(/\\n/g, ' ')   // Convert escaped newlines to spaces
-			.trim();
-		
-		console.log(`📝 Converting: ${result} -> ${cleanDescription}`);
-		return `\n\n**${result}.** ${cleanDescription}`;
-	});
-	
-	// Clean up JSON artifacts and structural elements
-	processed = processed.replace(/"random_encounters":\s*\[/gi, '\n');
-	processed = processed.replace(/\],?\s*"[^"]*":\s*\{/g, '\n');
-	processed = processed.replace(/^\s*\{|\}\s*$/gm, '');
-	processed = processed.replace(/,\s*$/gm, '');
-	processed = processed.replace(/\s*,\s*(?="result")/g, ''); // Remove commas before result entries
-	
-	console.log('✅ Processed content:', processed.substring(0, 500));
-	return processed;
-};
-
-const formatJSONContent = (jsonContent) => {
-	try {
-		const parsed = JSON.parse(jsonContent);
-		
-		if (parsed.random_encounters && Array.isArray(parsed.random_encounters)) {
-			// Format encounter tables as clean D&D entries
-			let formatted = '\n<div class="brewBlock encounter-table">\n';
-			
-			parsed.random_encounters.forEach(encounter => {
-				if (encounter.result && encounter.description) {
-					// Clean up description - remove quotes and escape characters
-					let cleanDescription = encounter.description
-						.replace(/^"|"$/g, '') // Remove outer quotes
-						.replace(/\\"/g, '"')   // Fix escaped quotes
-						.replace(/\\\\/g, '\\') // Fix escaped backslashes
-						.trim();
-					
-					formatted += `<p><strong>${encounter.result}.</strong> ${cleanDescription}</p>\n`;
-				}
-			});
-			
-			formatted += '</div>\n';
-			return formatted;
-		}
-		
-		// For other JSON objects, format cleanly
-		if (typeof parsed === 'object') {
-			return `\n<div class="brewBlock">\n<pre>${JSON.stringify(parsed, null, 2)}</pre>\n</div>\n`;
-		}
-		
-		// For other JSON, format it cleanly
-		return `\n<div class="brewBlock">\n<pre>${JSON.stringify(parsed, null, 2)}</pre>\n</div>\n`;
-		
-	} catch (e) {
-		// If not valid JSON, return as formatted code block
-		return `\n<div class="brewBlock">\n<pre>${jsonContent}</pre>\n</div>\n`;
-	}
-}; // Pass-through for now
-const getCustomBlockCSS = () => ''; // No custom CSS for now
 
 import HeaderNav from './headerNav/headerNav.jsx';
 import { safeHTML } from './safeHTML.js';
@@ -113,7 +41,7 @@ const BrewPage = (props)=>{
 		index    : 0,
 		...props
 	};
-	const pageRef = useRef(null);
+	const pageRef   = useRef(null);
 	const cleanText = safeHTML(props.contents);
 
 	useEffect(()=>{
@@ -248,27 +176,8 @@ const BrewRenderer = (props)=>{
 	};
 
 	const renderStyle = ()=>{
-		// Use the correct theme fallback based on the current theme
-		const fallbackTheme = props.theme || '5ePHB';
-		const fallbackRenderer = props.renderer || 'V3';
-		
-		// Try to use theme bundle first, then fall back to direct CSS import
-		let themeStyles;
-		if (props.themeBundle?.joinedStyles) {
-			themeStyles = props.themeBundle.joinedStyles;
-		} else {
-			// Fallback to direct CSS import with proper path
-			themeStyles = `<style>@import url("/themes/${fallbackRenderer}/${fallbackTheme}/style.css");</style>`;
-		}
-		
-		// Add custom block CSS
-		const customBlockCSS = getCustomBlockCSS({
-			theme: props.theme || 'default',
-			printOptimized: props.printOptimized || false,
-			accessibility: true
-		});
-		
-		const cleanStyle = safeHTML(`${themeStyles} \n\n <style> ${props.style} \n\n ${customBlockCSS} </style>`);
+		const themeStyles = props.themeBundle?.joinedStyles ?? '<style>@import url("/themes/V3/Blank/style.css");</style>';
+		const cleanStyle = safeHTML(`${themeStyles} \n\n <style> ${props.style} </style>`);
 		return <div style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: cleanStyle }} />;
 	};
 
@@ -283,15 +192,7 @@ const BrewRenderer = (props)=>{
 
 		if(props.renderer == 'legacy') {
 			pageText.replace(COLUMNBREAK_REGEX_LEGACY, '```\n````\n'); // Allow Legacy brews to use `\column(break)`
-			
-			// Process custom blocks for legacy renderer too
-			const enhancedPageText = extendHomebreweryRenderer(pageText, {
-				renderer: 'legacy',
-				context: props.context || {},
-				debug: props.debug || false
-			});
-			
-			const html = MarkdownLegacy.render(enhancedPageText);
+			const html = MarkdownLegacy.render(pageText);
 
 			return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
 		} else {
@@ -307,16 +208,10 @@ const BrewRenderer = (props)=>{
 				pageText = pageText.includes('\n') ? pageText.substring(pageText.indexOf('\n') + 1) : ''; // Remove the \page line
 			}
 
-			// Process custom blocks before rendering
-			const enhancedPageText = extendHomebreweryRenderer(pageText, {
-				renderer: 'v3',
-				context: props.context || {},
-				debug: props.debug || false,
-				metadata: { pageIndex: index }
-			});
+			// DO NOT REMOVE!!! REQUIRED FOR BACKWARDS COMPATIBILITY WITH NON-UPGRADABLE VERSIONS OF CHROME.
+			pageText += `\n\n&nbsp;\n\\column\n&nbsp;`; //Artificial column break at page end to emulate column-fill:auto (until `wide` is used, when column-fill:balance will reappear)
 
-			// Render the page text as-is without artificial column breaks
-			const html = Markdown.render(enhancedPageText, index);
+			const html = Markdown.render(pageText, index);
 
 			return <BrewPage className={classes} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 		}
@@ -444,8 +339,7 @@ const BrewRenderer = (props)=>{
 					{state.isMounted
 						&&
 						<>
-							{/* Only inject custom user styles, not theme styles (themes loaded via initial content) */}
-							<div style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: safeHTML(`<style>${props.style || ''}</style>`) }} />
+							{renderedStyle}
 							<div className={`pages ${displayOptions.startOnRight ? 'recto' : 'verso'}	${displayOptions.spread}`} lang={`${props.lang || 'en'}`} style={pagesStyle} ref={pagesRef}>
 								{renderedPages}
 							</div>
