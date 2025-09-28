@@ -9,6 +9,8 @@ import yaml                          from 'js-yaml';
 import asyncHandler                  from 'express-async-handler';
 import { nanoid }                    from 'nanoid';
 import {makePatches, applyPatches, stringifyPatches, parsePatch} from '@sanity/diff-match-patch';
+import fs                            from 'fs';
+import { join }                      from 'path';
 import { md5 }                       from 'hash-wasm';
 import { splitTextStyleAndMetadata, 
 		 brewSnippetsToJSON, debugTextMismatch }        from '../shared/helpers.js';
@@ -16,6 +18,11 @@ import checkClientVersion            from './middleware/check-client-version.js'
 import KnowledgeGraph                from './services/story-ide/knowledge-graph.js';
 
 const router = express.Router();
+
+// Add theme bundle route
+router.get('/api/theme/:renderer/:id', asyncHandler(async (req, res) => {
+	return api.getThemeBundle(req, res);
+}));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -132,37 +139,48 @@ const api = {
 		 *	and returns them as a single CSS string. This allows themes
 		 *	to extend other themes and only load what's needed.
 		 */
-		const { themeName, renderer } = req.params;
-		const theme = Themes[themeName];
+		const { renderer, id: themeName } = req.params;
+		console.log(`🎨 getThemeBundle: Requesting ${renderer}/${themeName}`);
 		
-		if (!theme) {
+		if (!Themes || !Themes[renderer] || !Themes[renderer][themeName]) {
+			console.log(`❌ getThemeBundle: Theme not found ${renderer}/${themeName}`);
 			return res.status(404).json({ error: 'Theme not found' });
 		}
 
+		const themeConfig = Themes[renderer][themeName];
 		const bundle = {
 			name: themeName,
+			renderer: renderer,
 			styles: []
 		};
 
-		// Add theme styles
-		if (theme.styles) {
-			bundle.styles.push(...theme.styles);
-		}
-
-		// Add parent theme styles
-		if (theme.parent) {
-			const parentTheme = Themes[theme.parent];
-			if (parentTheme && parentTheme.styles) {
-				bundle.styles.unshift(...parentTheme.styles);
+		try {
+			// Read the compiled CSS file
+			const cssPath = join(process.cwd(), 'build', 'themes', renderer, themeName, 'style.css');
+			if (fs.existsSync(cssPath)) {
+				const css = fs.readFileSync(cssPath, 'utf8');
+				bundle.styles.push(css);
+				console.log(`✅ getThemeBundle: Loaded CSS from ${cssPath} (${css.length} chars)`);
+			} else {
+				console.log(`❌ getThemeBundle: CSS file not found: ${cssPath}`);
 			}
-		}
 
-		// Add renderer styles
-		if (renderer && theme.renderers && theme.renderers[renderer]) {
-			bundle.styles.push(...theme.renderers[renderer]);
-		}
+			// Load base theme if specified
+			if (themeConfig.baseTheme && themeConfig.baseTheme !== false) {
+				const baseThemePath = join(process.cwd(), 'build', 'themes', renderer, themeConfig.baseTheme, 'style.css');
+				if (fs.existsSync(baseThemePath)) {
+					const baseCss = fs.readFileSync(baseThemePath, 'utf8');
+					bundle.styles.unshift(baseCss); // Add base theme first
+					console.log(`✅ getThemeBundle: Loaded base theme from ${baseThemePath} (${baseCss.length} chars)`);
+				}
+			}
 
-		res.json(bundle);
+			console.log(`✅ getThemeBundle: Bundle complete with ${bundle.styles.length} style(s)`);
+			res.json(bundle);
+		} catch (error) {
+			console.error('❌ getThemeBundle: Error loading theme:', error);
+			res.status(500).json({ error: 'Failed to load theme bundle' });
+		}
 	},
 
 	// Get user projects
