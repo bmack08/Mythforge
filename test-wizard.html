@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Mythwright Wizard</title>
+</head>
+<body>
+    <h1>Test the Mythwright Campaign Generation API</h1>
+    
+    <button onclick="testCampaignGeneration()">🎲 Generate Test Campaign</button>
+    
+    <div id="results"></div>
+    
+    <script>
+    async function testCampaignGeneration() {
+        const resultsDiv = document.getElementById('results');
+        resultsDiv.innerHTML = '<p>🎲 Generating campaign...</p>';
+        
+        try {
+            const response = await fetch('/api/mythwright/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    title: 'Test Campaign',
+                    adventureType: 'dungeon',
+                    theme: 'classic-fantasy',
+                    level: 'low',
+                    partySize: 4,
+                    sessionCount: 3,
+                    complexity: 'moderate'
+                })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                resultsDiv.innerHTML = `
+                    <h2>✅ Campaign Generated Successfully!</h2>
+                    <p><strong>Title:</strong> ${result.title}</p>
+                    <p><strong>Edit ID:</strong> ${result.editId}</p>
+                    <p><strong>Estimated Play Time:</strong> ${result.metadata.estimatedPlayTime} hours</p>
+                    <p><strong>Difficulty:</strong> ${result.metadata.difficulty}</p>
+                    <p><strong>XP Budget:</strong> ${result.metadata.xpBudget.totalXPBudget} total XP</p>
+                    
+                    <h3>Generated Homebrewery Content:</h3>
+                    <textarea readonly style="width: 100%; height: 400px;">${result.homebreweryText}</textarea>
+                    
+                    <h3>Full Campaign Data:</h3>
+                    <pre style="background: #f5f5f5; padding: 10px; overflow: auto; max-height: 300px;">${JSON.stringify(result, null, 2)}</pre>
+                `;
+            } else {
+                resultsDiv.innerHTML = `<p>❌ Error: ${result.error}</p>`;
+            }
+        } catch (error) {
+            resultsDiv.innerHTML = `<p>❌ Network error: ${error.message}</p>`;
+        }
+    }
+    </script>
+</body>
+</html>

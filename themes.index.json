@@ -1,0 +1,162 @@
+{
+  "tokens": [],
+  "sections": [
+    {
+      "file": "codeMirror\\customEditorStyles.less",
+      "type": "css-classes",
+      "classes": [
+        ".CodeMirror",
+        ".columnSplit",
+        ".pageLine",
+        ".cm-s-yeti"
+      ]
+    },
+    {
+      "file": "codeMirror\\customThemes\\darkbrewery.css",
+      "type": "css-classes",
+      "classes": [
+        ".snippetBar",
+        ".editors",
+        ".CodeMirror",
+        ".CodeMirror-lines",
+        ".CodeMirror-cursor"
+      ]
+    },
+    {
+      "file": "codeMirror\\customThemes\\darkvision.css",
+      "type": "css-classes",
+      "classes": [
+        ".CodeMirror",
+        ".brewRenderer",
+        ".cm-s-darkvision",
+        ".CodeMirror-selected",
+        ".CodeMirror-gutter-elt"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\diceFont.less",
+      "type": "css-classes",
+      "classes": [
+        ".df"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\elderberryInn.less",
+      "type": "css-classes",
+      "classes": [
+        ".ei"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\fontawesome-brands.less",
+      "type": "css-classes",
+      "classes": [
+        ".fa-brands",
+        ".fa-monero",
+        ".fa-hooli",
+        ".fa-yelp",
+        ".fa-cc-visa"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\fontawesome-free.less",
+      "type": "css-classes",
+      "classes": [
+        ".fa",
+        ".fa",
+        ".fa-regular",
+        ".fab",
+        ".fa-1x"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\fontawesome-regular.less",
+      "type": "css-classes",
+      "classes": [
+        ".fa-regular"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\fontawesome-solid.less",
+      "type": "css-classes",
+      "classes": [
+        ".fa-solid"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\fontAwesome.less",
+      "type": "css-classes",
+      "classes": [
+        ".fab"
+      ]
+    },
+    {
+      "file": "fonts\\iconFonts\\gameIcons.less",
+      "type": "css-classes",
+      "classes": [
+        ".gi"
+      ]
+    },
+    {
+      "file": "Legacy\\5ePHB\\style.less",
+      "type": "css-classes",
+      "classes": [
+        ".page",
+        ".phb",
+        ".pageNumber",
+        ".footnote",
+        ".pageNumber"
+      ]
+    },
+    {
+      "file": "phb.depricated.less",
+      "type": "css-classes",
+      "classes": [
+        ".phb"
+      ]
+    },
+    {
+      "file": "V3\\5eDMG\\style.less",
+      "type": "css-classes",
+      "classes": [
+        ".page",
+        ".footnote",
+        ".partCover"
+      ]
+    },
+    {
+      "file": "V3\\5ePHB\\style.less",
+      "type": "css-classes",
+      "classes": [
+        ".page",
+        ".page",
+        ".quote",
+        ".attribution",
+        ".attribution"
+      ]
+    },
+    {
+      "file": "V3\\Blank\\style.less",
+      "type": "css-classes",
+      "classes": [
+        ".page",
+        ".inline-block",
+        ".columnWrapper",
+        ".page",
+        ".page"
+      ]
+    },
+    {
+      "file": "V3\\Journal\\style.less",
+      "type": "css-classes",
+      "classes": [
+        ".page",
+        ".columnWrapper",
+        ".page",
+        ".note",
+        ".descriptive"
+      ]
+    }
+  ],
+  "lastUpdated": "2025-09-27T02:54:21.971Z"
+}
