@@ -19,6 +19,7 @@ const app = express();
 import api, { homebrewApi, getBrew, getUsersBrewThemes, getCSS } from './homebrew.api.js';
 import adminApi                    from './admin.api.simple.js';
 import vaultApi                    from './vault.api.simple.js';
+import aiRoutes                    from './routes/ai-routes.js';
 import GoogleActions               from './googleActions.js';
 import serveCompressedStaticAssets from './static-assets.mv.js';
 import sanitizeFilename            from 'sanitize-filename';
@@ -110,10 +111,62 @@ app.use((req, res, next)=>{
 app.use(homebrewApi);
 app.use(adminApi);
 app.use(vaultApi);
+// app.use(aiRoutes); // Temporarily disabled
 
 // Story IDE API routes
 app.get('/api/story-ide/graph/:brewId', api.getProjectGraph);
 app.post('/api/story-ide/search/:brewId', api.searchProject);
+app.post('/api/story-assistant', api.storyAssistant);
+
+// PDF reading route
+app.post('/api/pdf-search', asyncHandler(async (req, res) => {
+	try {
+		console.log('[PDF Search] Processing request...');
+		
+		const { query } = req.body;
+		
+		if (!query) {
+			return res.status(400).json({
+				success: false,
+				error: 'Query is required'
+			});
+		}
+		
+		const PDFProcessor = (await import('./services/story-ide/pdf-processor.js')).PDFProcessor;
+		const pdfProcessor = new PDFProcessor();
+		
+		console.log(`[PDF Search] Searching for: "${query}"`);
+		const results = await pdfProcessor.searchPDFContent(query, 5);
+		
+		if (results.length === 0) {
+			return res.json({
+				success: true,
+				message: `No results found for "${query}" in the available D&D sourcebook PDFs. Try a different search term.`,
+				results: []
+			});
+		}
+		
+		let response = `Found information about "${query}" in D&D sourcebooks:\n\n`;
+		results.forEach((result, index) => {
+			response += `**From ${result.source}:**\n${result.content}\n\n`;
+		});
+		
+		res.json({
+			success: true,
+			message: response,
+			results: results,
+			hasMore: results.length >= 5
+		});
+		
+	} catch (error) {
+		console.error('[PDF Search] Error:', error);
+		res.status(500).json({
+			success: false,
+			error: 'PDF search failed',
+			details: error.message
+		});
+	}
+}));
 
 // Projects API routes
 app.get('/api/projects', api.getProjects);

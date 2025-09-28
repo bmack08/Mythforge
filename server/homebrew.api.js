@@ -232,10 +232,9 @@ const api = {
 		}
 	},
 
-	// Story IDE endpoint - Simple and working version
+	// Story IDE endpoint - Patch-based system with PDF reading
 		storyAssistant : async (req, res)=>{
 		try {
-			// Debug: Check environment variables
 			console.log(`[Story Assistant] OPENAI_API_KEY loaded: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
 			if (process.env.OPENAI_API_KEY) {
 				console.log(`[Story Assistant] API Key starts with: ${process.env.OPENAI_API_KEY.substring(0, 20)}...`);
@@ -258,13 +257,90 @@ const api = {
 			}
 
 			const requestText = message.trim();
-			const logPreview = requestText.substring(0, 100) + (requestText.length > 100 ? '...' : '');
-			console.log('[Story IDE] Request: "' + logPreview + '"');
+			console.log('[Story IDE] Request: "' + requestText.substring(0, 100) + '"');
 
-			// Use direct OpenAI instead of AIService
 			if (!process.env.OPENAI_API_KEY) {
 				console.error("❌ OPENAI_API_KEY not found in environment");
 				return res.status(500).json({ error: "OpenAI API key not configured" });
+			}
+
+			// Check if this is a PDF-related request
+			const isPDFRequest = requestText.toLowerCase().includes('pdf') || 
+								requestText.toLowerCase().includes('file') ||
+								requestText.toLowerCase().includes('upload');
+
+			let pdfContext = '';
+			if (references && references.length > 0) {
+				try {
+					console.log(`[Story IDE] Processing ${references.length} uploaded files...`);
+					
+					const PDFProcessor = (await import('./services/story-ide/pdf-processor.js')).PDFProcessor;
+					const pdfProcessor = new PDFProcessor();
+					
+					// Process uploaded PDF files from references
+					const pdfFiles = references.filter(ref => 
+						ref.mimeType === 'application/pdf' || 
+						ref.name.toLowerCase().endsWith('.pdf')
+					);
+					
+					if (pdfFiles.length > 0) {
+						console.log(`[Story IDE] Found ${pdfFiles.length} PDF files to process`);
+						pdfContext = '\n[PDF CONTENT FOUND]\n';
+						
+						for (const pdfFile of pdfFiles) {
+							try {
+								console.log(`[Story IDE] Processing ${pdfFile.name}...`);
+								
+								// Convert base64 to buffer for PDF processing
+								let pdfBuffer;
+								if (pdfFile.encoding === 'base64') {
+									pdfBuffer = Buffer.from(pdfFile.content, 'base64');
+								} else {
+									console.warn(`[Story IDE] Unsupported encoding: ${pdfFile.encoding} for ${pdfFile.name}`);
+									continue;
+								}
+								
+								// Extract text from the PDF
+								const extractedText = await pdfProcessor.extractPDFText(pdfBuffer);
+								
+								if (extractedText && extractedText.trim()) {
+									console.log(`[Story IDE] Extracted ${extractedText.length} characters from ${pdfFile.name}`);
+									pdfContext += `From ${pdfFile.name}:\n${extractedText.substring(0, 3000)}\n\n`;
+								} else {
+									console.warn(`[Story IDE] No text extracted from ${pdfFile.name}`);
+								}
+								
+							} catch (fileError) {
+								console.error(`[Story IDE] Error processing ${pdfFile.name}:`, fileError.message);
+								pdfContext += `Error processing ${pdfFile.name}: ${fileError.message}\n\n`;
+							}
+						}
+					}
+					
+					// Also search any local PDF content if this is a PDF-related request
+					const isPDFRequest = requestText.toLowerCase().includes('pdf') || 
+										requestText.toLowerCase().includes('file') ||
+										requestText.toLowerCase().includes('upload');
+					
+					if (isPDFRequest) {
+						const searchTerms = api.extractSearchTerms(requestText);
+						console.log(`[Story IDE] Also searching local PDFs for: ${searchTerms.join(', ')}`);
+						
+						const localResults = await pdfProcessor.searchPDFContent(searchTerms.join(' '), 10);
+						
+						if (localResults.length > 0) {
+							pdfContext += '\n[LOCAL PDF CONTENT FOUND]\n';
+							localResults.forEach(result => {
+								pdfContext += `From ${result.source}: ${result.content}\n`;
+							});
+							pdfContext += '\n';
+						}
+					}
+					
+				} catch (error) {
+					console.warn('[Story IDE] PDF processing failed:', error.message);
+					pdfContext += `\n[PDF PROCESSING ERROR: ${error.message}]\n`;
+				}
 			}
 			
 			const { OpenAI } = await import('openai');
@@ -272,50 +348,44 @@ const api = {
 				apiKey: process.env.OPENAI_API_KEY,
 			});
 
-			// Simple system prompt for action-based responses
-			const systemPrompt = `You are a Story IDE assistant for D&D campaign creation. 
-You help users modify and enhance their story documents.
+			// Updated system prompt for patch-based responses with PDF awareness
+			const systemPrompt = `You are TaleForge Story IDE, an in-editor assistant for D&D sourcebooks.
 
-INSTRUCTIONS:
-1. Understand what the user wants to change
-2. Analyze the current document structure
-3. Generate appropriate modifications
-4. Return ONLY valid JSON with this schema:
+CRITICAL: When user asks about PDF content, use ONLY the information provided in the [PDF CONTENT FOUND] section. Do not make up fictional content.
 
-{
-  "action": "modify | create | delete",
-  "target": "title | content | section | npc | location | item",
-  "changes": {
-    "title": "new title if changing title",
-    "content": "new content if changing content", 
-    "section": "section name if targeting specific section"
-  },
-  "reasoning": "brief explanation of what you're doing",
-  "metadata": {
-    "tone": "mood or style applied",
-    "tags": ["relevant", "tags"],
-    "confidence": 0.8
-  }
-}
+OBJECTIVES:
+- Read the user's draft and any provided PDF content
+- Answer questions deeply using actual source material  
+- When asked to create or edit content, propose a patch (unified diff)
+- Use ONLY real information from PDFs when available
 
-EXAMPLES:
-- "change title to something mature and spooky" → action: "modify", target: "title", changes: {title: "The Shadow's Embrace"}
-- "add a new villain" → action: "create", target: "npc", changes: {content: "villain description"}
-- "make this section more dramatic" → action: "modify", target: "content", changes: {content: "enhanced dramatic text"}
+OUTPUT MODES:
+1) chat: Short explanation using actual PDF content
+2) patch: Unified diff for content changes
 
-Always return valid JSON only. No explanations outside the JSON.`;
+RESPONSE FORMAT:
+For chat: [MODE: chat] followed by explanation
+For patches: [MODE: patch] followed by explanation, then diff block
 
-			// Build context
+RULES:
+- If PDF content is available, use ONLY that information
+- Never invent fictional content when real PDF data exists
+- If no PDF content found, clearly state this
+- Make patches idempotent using @@ context hunks
+			`;
+
+			// Build context with document and PDF content
 			const docContext = documentText ? documentText.substring(0, 2000) + (documentText.length > 2000 ? '...' : '') : 'No document content';
 			const metaInfo = `Title: ${metadata?.title || 'Untitled'}\nURL: ${metadata?.url || ''}\nEditId: ${metadata?.editId || ''}`;
 			
-			const userPrompt = `CURRENT DOCUMENT CONTEXT:
+			const userPrompt = `[DOCUMENT METADATA]
 ${metaInfo}
 
-DOCUMENT CONTENT:
+[CURRENT DOCUMENT]
 ${docContext}
-
-USER REQUEST: ${requestText}`;
+${pdfContext}
+[USER REQUEST]
+${requestText}`;
 
 			console.log(`[Story Assistant] Making OpenAI API call...`);
 			
@@ -325,36 +395,42 @@ USER REQUEST: ${requestText}`;
 					{ role: "system", content: systemPrompt },
 					{ role: "user", content: userPrompt },
 				],
-				temperature: 0.7,
+				temperature: 0.6,
+				max_tokens: 1500,
 			});
 
 			console.log(`[Story Assistant] OpenAI response received`);
 			
 			const responseContent = completion.choices[0].message.content.trim();
-			console.log(`[Story Assistant] Raw AI response: ${responseContent.substring(0, 200)}...`);
+			console.log(`[Story Assistant] Raw response: ${responseContent.substring(0, 200)}...`);
 
-			// Parse the JSON response
-			let parsed;
-			try {
-				parsed = JSON.parse(responseContent);
-				console.log(`[Story Assistant] Parsed action: ${parsed.action} on ${parsed.target}`);
-			} catch (err) {
-				console.error("❌ Failed to parse AI response:", responseContent);
-				return res.status(500).json({ error: "Invalid JSON from AI" });
+			// Parse response for mode (patch vs chat)
+			const { mode, patch, explanation } = api.parseStoryIDEResponse(responseContent);
+
+			if (mode === 'patch' && patch) {
+				return res.status(200).json({
+					success: true,
+					mode: 'patch',
+					patch: patch,
+					explanation: explanation,
+					hasMore: false,
+					raw: responseContent
+				});
+			} else {
+				// Extract actual response content, removing [MODE: chat] if present
+				let messageContent = explanation || responseContent;
+				if (messageContent.startsWith('[MODE: chat]')) {
+					messageContent = messageContent.substring('[MODE: chat]'.length).trim();
+				}
+				
+				return res.status(200).json({
+					success: true,
+					mode: 'chat',
+					message: messageContent,
+					hasMore: false,
+					raw: responseContent
+				});
 			}
-
-			// Return the structured response
-			return res.status(200).json({
-				success: true,
-				mode: 'structured',
-				message: `Processed ${parsed.action} operation on ${parsed.target}`,
-				summary: `Action: ${parsed.action}, Target: ${parsed.target}, Reasoning: ${parsed.reasoning || 'No reasoning provided'}`,
-				structuredData: parsed,
-				hasMore: false,
-				referencesUsed: [],
-				referenceDiagnostics: [],
-				raw: responseContent
-			});
 
 		} catch (error) {
 			console.error('Story IDE error:', error);
@@ -363,6 +439,67 @@ USER REQUEST: ${requestText}`;
 				error: 'Story IDE request failed',
 				details: error.message
 			});
+		}
+	},
+
+	// Extract search terms from natural language request
+	extractSearchTerms: (requestText) => {
+		// Remove common words and extract key terms
+		const stopWords = ['the', 'in', 'pdf', 'file', 'what', 'are', 'main', 'tell', 'me', 'about', 'can', 'you'];
+		const words = requestText.toLowerCase()
+			.split(/\s+/)
+			.filter(word => word.length > 2 && !stopWords.includes(word));
+		
+		return words.slice(0, 5); // Return top 5 key terms
+	},
+
+	// Parse Story IDE response for mode detection
+	parseStoryIDEResponse: (responseContent) => {
+		const lines = responseContent.split('\n');
+		const firstLine = lines[0].trim();
+		
+		if (firstLine.startsWith('[MODE: patch]')) {
+			// Extract explanation and patch
+			let explanation = '';
+			let diffStartIndex = -1;
+			
+			for (let i = 1; i < lines.length; i++) {
+				if (lines[i].trim().startsWith('```diff')) {
+					diffStartIndex = i;
+					break;
+				} else if (lines[i].trim() && !lines[i].startsWith('```')) {
+					explanation += lines[i] + '\n';
+				}
+			}
+			
+			let patch = '';
+			if (diffStartIndex !== -1) {
+				let diffEndIndex = lines.length;
+				for (let i = diffStartIndex + 1; i < lines.length; i++) {
+					if (lines[i].trim() === '```') {
+						diffEndIndex = i;
+						break;
+					}
+				}
+				patch = lines.slice(diffStartIndex + 1, diffEndIndex).join('\n');
+			}
+			
+			return {
+				mode: 'patch',
+				patch: patch,
+				explanation: explanation.trim()
+			};
+		} else if (firstLine.startsWith('[MODE: chat]')) {
+			return {
+				mode: 'chat',
+				explanation: lines.slice(1).join('\n').trim()
+			};
+		} else {
+			// Default to chat mode
+			return {
+				mode: 'chat',
+				explanation: responseContent
+			};
 		}
 	},
 

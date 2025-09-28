@@ -28,10 +28,12 @@ const PAGEBREAK_REGEX_LEGACY = /\\page(?:break)?/m;
 const COLUMNBREAK_REGEX_LEGACY = /\\column(:?break)?/m;
 const PAGE_HEIGHT = 1056;
 
-const INITIAL_CONTENT = dedent`
+// Dynamic initial content will be set in the component
+const getInitialContent = (renderer = 'V3', theme = '5ePHB') => dedent`
 	<!DOCTYPE html><html><head>
 	<link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,600,700" rel="stylesheet" type="text/css" />
 	<link href='/homebrew/bundle.css' type="text/css" rel='stylesheet' />
+	<link href='/themes/${renderer}/${theme}/style.css' type="text/css" rel='stylesheet' />
 	<base target=_blank>
 	</head><body style='overflow: hidden'><div></div></body></html>`;
 
@@ -178,7 +180,18 @@ const BrewRenderer = (props)=>{
 	};
 
 	const renderStyle = ()=>{
-		const themeStyles = props.themeBundle?.joinedStyles ?? '<style>@import url("/themes/V3/Blank/style.css");</style>';
+		// Use the correct theme fallback based on the current theme
+		const fallbackTheme = props.theme || '5ePHB';
+		const fallbackRenderer = props.renderer || 'V3';
+		
+		// Try to use theme bundle first, then fall back to direct CSS import
+		let themeStyles;
+		if (props.themeBundle?.joinedStyles) {
+			themeStyles = props.themeBundle.joinedStyles;
+		} else {
+			// Fallback to direct CSS import with proper path
+			themeStyles = `<style>@import url("/themes/${fallbackRenderer}/${fallbackTheme}/style.css");</style>`;
+		}
 		
 		// Add custom block CSS
 		const customBlockCSS = getCustomBlockCSS({
@@ -350,7 +363,7 @@ const BrewRenderer = (props)=>{
 			<ToolBar displayOptions={displayOptions} onDisplayOptionsChange={handleDisplayOptionsChange} visiblePages={state.visiblePages.length > 0 ? state.visiblePages : [state.centerPage]} totalPages={rawPages.length} headerState={headerState} setHeaderState={setHeaderState}/>
 
 			{/*render in iFrame so broken code doesn't crash the site.*/}
-			<Frame id='BrewRenderer' initialContent={INITIAL_CONTENT}
+			<Frame id='BrewRenderer' initialContent={getInitialContent(props.renderer, props.theme)}
 				style={{ width: '100%', height: '100%', visibility: state.visibility }}
 				contentDidMount={frameDidMount}
 				onClick={()=>{emitClick();}}
