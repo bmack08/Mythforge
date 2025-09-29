@@ -45,6 +45,10 @@ router.get('/api/graph/:brewId',    asyncHandler((req, res) => api.getProjectGra
 router.post('/api/story/version/:brewId', asyncHandler((req, res) => api.createStoryVersion(req, res)));
 router.post('/api/story/undo/:brewId',    asyncHandler((req, res) => api.undoStoryVersion(req, res)));
 router.post('/api/story/redo/:brewId',    asyncHandler((req, res) => api.redoStoryVersion(req, res)));
+router.get('/api/story/version/:brewId/active', asyncHandler((req, res) => api.getActiveStoryVersionEndpoint(req, res)));
+// Phase 2: Index and Retrieval
+router.post('/api/story/index/:brewId', asyncHandler((req, res) => api.indexStoryChunks(req, res)));
+router.post('/api/story/retrieve/:brewId', asyncHandler((req, res) => api.retrieveStoryChunks(req, res)));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -54,6 +58,24 @@ const isStaticTheme = (renderer, themeName)=>{
 };
 
 const api = {
+	// --- Shared helpers for version/text reconstruction ---
+	getCurrentBrewText: async (brewId)=>{
+		const { Homebrew } = await getModels();
+		// brewId may be editId or pk id. Try editId first.
+		let brew = await Homebrew.findOne({ where: { editId: brewId } });
+		if (!brew) brew = await Homebrew.findByPk(brewId);
+		return brew?.text || '';
+	},
+
+	reconstructCurrentText: async (brewId)=>{
+		// Prefer active StoryVersion snapshot; fallback to Homebrew text
+		try {
+			const active = await api.getActiveStoryVersion(brewId);
+			if (active?.fullText) return active.fullText;
+		} catch(_) {}
+		return await api.getCurrentBrewText(brewId);
+	},
+
 	// --- Phase 1: Versioning helpers ---
 	createStoryVersion : async (req, res)=>{
 		try {
@@ -92,6 +114,18 @@ const api = {
 		return await StoryVersion.findOne({ where: { brewId, isActive: true }, order: [['createdAt', 'DESC']] });
 	},
 
+	getActiveStoryVersionEndpoint : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const version = await api.getActiveStoryVersion(brewId);
+			if (!version) return res.status(404).json({ success: false, error: 'No active version' });
+			return res.json({ success: true, version });
+		} catch (error) {
+			console.error('getActiveStoryVersionEndpoint error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to get active version' });
+		}
+	},
+
 	undoStoryVersion : async (req, res)=>{
 		try {
 			const { brewId } = req.params;
@@ -127,6 +161,8 @@ const api = {
 			return res.status(500).json({ success: false, error: 'Failed to redo' });
 		}
 	},
+
+	// Create new brew
 	// Create new brew
 	newBrew : async (req, res)=>{
 		try {
@@ -228,14 +264,22 @@ const api = {
 		}
 	},
 
-	// Get theme bundle
+	// Get theme bundle (normalized + snippet identifiers)
 	getThemeBundle : async (req, res)=>{
 		/*	getThemeBundle: Collects the theme and all parent themes
 		 *	and returns them as a single CSS string. This allows themes
 		 *	to extend other themes and only load what's needed.
+		 *	Also includes snippet identifiers for the client SnippetBar.
 		 */
-		const { renderer, id: themeName } = req.params;
-		console.log(`🎨 getThemeBundle: Requesting ${renderer}/${themeName}`);
+		const { renderer: rendererParam, id: themeName } = req.params;
+		const normalizeRenderer = (r)=>{
+			const rl = String(r || '').toLowerCase();
+			if(rl === 'legacy' || rl === 'phb') return 'Legacy';
+			if(rl === 'v3') return 'V3';
+			return r;
+		};
+		const renderer = normalizeRenderer(rendererParam);
+		console.log(`🎨 getThemeBundle: Requesting ${renderer}/${themeName} (raw: ${rendererParam}/${themeName})`);
 		
 		if (!Themes || !Themes[renderer] || !Themes[renderer][themeName]) {
 			console.log(`❌ getThemeBundle: Theme not found ${renderer}/${themeName}`);
@@ -244,13 +288,13 @@ const api = {
 
 		const themeConfig = Themes[renderer][themeName];
 		const bundle = {
-			name: themeName,
-			renderer: renderer,
-			styles: []
+			name     : themeName,
+			renderer : renderer,
+			styles   : [],
+			snippets : []
 		};
 
 		try {
-			// Read the compiled CSS file
 			const cssPath = join(process.cwd(), 'build', 'themes', renderer, themeName, 'style.css');
 			if (fs.existsSync(cssPath)) {
 				const css = fs.readFileSync(cssPath, 'utf8');
@@ -260,17 +304,28 @@ const api = {
 				console.log(`❌ getThemeBundle: CSS file not found: ${cssPath}`);
 			}
 
-			// Load base theme if specified
 			if (themeConfig.baseTheme && themeConfig.baseTheme !== false) {
 				const baseThemePath = join(process.cwd(), 'build', 'themes', renderer, themeConfig.baseTheme, 'style.css');
 				if (fs.existsSync(baseThemePath)) {
 					const baseCss = fs.readFileSync(baseThemePath, 'utf8');
-					bundle.styles.unshift(baseCss); // Add base theme first
+					bundle.styles.unshift(baseCss);
 					console.log(`✅ getThemeBundle: Loaded base theme from ${baseThemePath} (${baseCss.length} chars)`);
 				}
 			}
 
-			console.log(`✅ getThemeBundle: Bundle complete with ${bundle.styles.length} style(s)`);
+			const rendererPrefix = `${renderer}_`;
+			const snippetIds = [];
+			if (renderer === 'Legacy') {
+				snippetIds.push(`${rendererPrefix}${themeName}`);
+			} else if (renderer === 'V3') {
+				if (themeConfig.baseSnippets && themeConfig.baseSnippets !== false) {
+					snippetIds.push(`${rendererPrefix}${themeConfig.baseSnippets}`);
+				}
+				snippetIds.push(`${rendererPrefix}${themeName}`);
+			}
+			bundle.snippets = snippetIds;
+
+			console.log(`✅ getThemeBundle: Bundle complete with ${bundle.styles.length} style(s), ${bundle.snippets.length} snippet source(s)`);
 			res.json(bundle);
 		} catch (error) {
 			console.error('❌ getThemeBundle: Error loading theme:', error);
@@ -506,7 +561,26 @@ ${docContext}`;
 			if (hasPdfContext) {
 				contextBlock += `\n${pdfContext}`;
 			}
-			const userPrompt = `${contextBlock}
+
+			// Optional: RAG retrieval for additional grounded context
+			let ragBlock = '';
+			try {
+				if (process.env.STORY_IDE_USE_RAG === '1') {
+					const brewId = metadata?.editId || null;
+					if (brewId) {
+						const rag = await api.retrieveContextForRequest(brewId, requestText, 8);
+						if (rag && rag.length) {
+							const joined = rag.map(r => `- ${r.section ? r.section + ': ' : ''}${r.text}`).join('\n');
+							const clipped = joined.slice(0, 2000);
+							ragBlock = `\n[RETRIEVED CONTEXT]\n${clipped}\n`;
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('[RAG] Skipping retrieval:', e.message);
+			}
+
+			const userPrompt = `${contextBlock}${ragBlock}
 [USER REQUEST]
 ${requestText}`;
 
@@ -602,6 +676,121 @@ ${requestText}`;
 				error: 'Story IDE request failed',
 				details: error.message
 			});
+		}
+	},
+
+	// === Phase 2: Index & Retrieval ===
+	chunkDocument: (fullText)=>{
+		const text = (fullText || '').replace(/\r/g, '\n');
+		// Split by top-level headings, keep simple grouping
+		const parts = text.split(/\n(?=# )/g).filter(Boolean);
+		const chunks = [];
+		for (let i = 0; i < parts.length; i++) {
+			const block = parts[i];
+			const lines = block.split('\n');
+			const titleLine = /^#\s+(.+)$/.exec(lines[0] || '');
+			let section = titleLine ? titleLine[1].trim() : `Section ${i+1}`;
+			let buf = [];
+			let wordCount = 0;
+			const emit = ()=>{
+				if (!buf.length) return;
+				chunks.push({ section, text: buf.join('\n') });
+				buf = []; wordCount = 0;
+			};
+			for (let j=0;j<lines.length;j++){
+				const line = lines[j];
+				buf.push(line);
+				wordCount += (line.trim().split(/\s+/).filter(Boolean).length);
+				if (wordCount >= 900) emit();
+			}
+			emit();
+		}
+		// Fallback if nothing
+		if (!chunks.length && text.trim()) chunks.push({ section: 'Document', text });
+		return chunks;
+	},
+
+	embedTexts: async (inputs)=>{
+		if (!process.env.OPENAI_API_KEY) throw new Error('Embedding model not configured');
+		const openai = getOpenAI();
+		const model = process.env.EMBED_MODEL || 'text-embedding-3-large';
+		const { data } = await openai.embeddings.create({ model, input: inputs });
+		return data.map(d => d.embedding);
+	},
+
+	indexStoryChunks : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			let { fullText } = req.body || {};
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId is required' });
+			if (!fullText || !fullText.trim()) {
+				fullText = await api.reconstructCurrentText(brewId);
+				if (!fullText || !fullText.trim()) return res.status(400).json({ success: false, error: 'No text available to index' });
+			}
+			const chunks = api.chunkDocument(fullText);
+			const texts = chunks.map(c => c.text);
+			const embeddings = await api.embedTexts(texts);
+			const { StoryChunk } = await getModels();
+			// Replace existing rows for this brewId
+			await StoryChunk.destroy({ where: { brewId } });
+			const rows = chunks.map((c, idx) => ({
+				brewId,
+				chunkId : `${brewId}_${idx}`,
+				section : c.section,
+				text    : c.text,
+				embedding: embeddings[idx]
+			}));
+			await StoryChunk.bulkCreate(rows);
+			return res.json({ success: true, count: rows.length });
+		} catch (error) {
+			console.error('indexStoryChunks error:', error);
+			return res.status(500).json({ success: false, error: error.message });
+		}
+	},
+
+	cosineSim: (a, b)=>{
+		let dot=0, na=0, nb=0;
+		const n = Math.min(a?.length||0, b?.length||0);
+		for (let i=0;i<n;i++){ const x=a[i], y=b[i]; dot+=x*y; na+=x*x; nb+=y*y; }
+		return dot / (Math.sqrt(na||1e-9) * Math.sqrt(nb||1e-9));
+	},
+
+	retrieveStoryChunks : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { query, k = 8 } = req.body || {};
+			if (!brewId || !query) return res.status(400).json({ success: false, error: 'brewId and query are required' });
+			const queryEmb = (await api.embedTexts([query]))[0];
+			const { StoryChunk } = await getModels();
+			const rows = await StoryChunk.findAll({ where: { brewId } });
+			const scored = rows.map(r => ({
+				section: r.section,
+				text: r.text,
+				score: api.cosineSim(queryEmb, r.embedding)
+			})).sort((a,b)=> b.score - a.score).slice(0, Math.max(1, Math.min(50, Number(k)||8)));
+			return res.json({ success: true, results: scored });
+		} catch (error) {
+			console.error('retrieveStoryChunks error:', error);
+			return res.status(500).json({ success: false, error: error.message });
+		}
+	},
+
+	retrieveContextForRequest : async (brewId, query, k=8)=>{
+		try {
+			const { results } = await (async ()=>{
+				// Reuse the same logic without HTTP
+				const queryEmb = (await api.embedTexts([query]))[0];
+				const { StoryChunk } = await getModels();
+				const rows = await StoryChunk.findAll({ where: { brewId } });
+				const scored = rows.map(r => ({ section: r.section, text: r.text, score: api.cosineSim(queryEmb, r.embedding) }))
+					.sort((a,b)=> b.score - a.score)
+					.slice(0, Math.max(1, Math.min(50, Number(k)||8)));
+				return { results: scored };
+			})();
+			return results;
+		} catch (e) {
+			console.warn('[RAG] retrieveContextForRequest failed:', e.message);
+			return [];
 		}
 	},
 

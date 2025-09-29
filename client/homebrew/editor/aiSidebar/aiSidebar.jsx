@@ -24,7 +24,9 @@ const AiSidebar = createClass({
 			storyChunks         : [],
 			error               : null,
 			// Persist user preference for auto-applying patches
-			autoApplyPatches    : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_APPLY_PATCHES') === '1') : false
+			autoApplyPatches    : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_APPLY_PATCHES') === '1') : false,
+			// New: auto-index on save (RAG)
+			autoIndexRetrieval  : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_INDEX_RETRIEVAL') === '1') : false
 		};
 	},
 
@@ -38,6 +40,43 @@ const AiSidebar = createClass({
 	setAutoApplyPatches : function(enabled) {
 		this.setState({ autoApplyPatches: !!enabled });
 		try { window.localStorage.setItem('MF_AUTO_APPLY_PATCHES', enabled ? '1' : '0'); } catch(_) {}
+	},
+
+	setAutoIndexRetrieval : function(enabled) {
+		this.setState({ autoIndexRetrieval: !!enabled });
+		try { window.localStorage.setItem('MF_AUTO_INDEX_RETRIEVAL', enabled ? '1' : '0'); } catch(_) {}
+	},
+
+	// Debounced indexing scheduler
+	scheduleRetrievalIndex : function(brewId, fullText) {
+		if (!brewId || !fullText) return;
+		// simple debounce using a timer on the instance
+		if (this._indexTimer) clearTimeout(this._indexTimer);
+		this._indexTimer = setTimeout(()=>{
+			this.postRetrievalIndex(brewId, fullText).catch((err)=>{
+				console.warn('Auto-index failed:', err?.message || err);
+				this.appendSystemMessage('Auto-index failed. You can retry from Assistant actions.', 'error');
+			});
+		}, 1200);
+	},
+
+	postRetrievalIndex : async function(brewId, fullText) {
+		try {
+			this.setState({ statusMessage: 'Indexing latest changes for retrieval…' });
+			const resp = await fetch(`/api/story/index/${brewId}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ fullText })
+			});
+			if (!resp.ok) throw new Error(`Index request failed: ${resp.status}`);
+			const data = await resp.json();
+			if (!data?.success) throw new Error(data?.error || 'Indexing failed');
+			this.setState({ statusMessage: `Indexed ${data.count || 0} chunk(s) for retrieval.` });
+			setTimeout(()=> this.setState({ statusMessage: null }), 2000);
+		} catch (e) {
+			this.setState({ statusMessage: null });
+			throw e;
+		}
 	},
 
 	saveChunkToServer : async function(chunk) {
@@ -862,6 +901,10 @@ const AiSidebar = createClass({
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ fullText, patch, author, summary })
 			});
+			// After successful version save, optionally trigger retrieval indexing
+			if (this.state.autoIndexRetrieval) {
+				this.scheduleRetrievalIndex(brewId, fullText);
+			}
 		} catch(_) {}
 	},
 
@@ -873,8 +916,10 @@ const AiSidebar = createClass({
 			// Normalize line breaks; some responses arrive as a single line
 			const normalized = diffText.replace(/\r/g, '\n').replace(/@@/g, '\n@@\n').replace(/(\-\#|\+\#|^# )/gm, m => m);
 
-			// 1) Try to extract a "+# Title" line from a proper diff
+			// Extract possible additions from the diff
 			let newTitle = null;
+			let newSubtitle = null; // lines starting with ##
+			let newBlurb = null;    // italic single line like *...*
 			const plusTitleMatch = normalized.match(/^\+\#\s+(.+)$/m);
 			if (plusTitleMatch) newTitle = plusTitleMatch[1].trim();
 
@@ -889,6 +934,23 @@ const AiSidebar = createClass({
 				}
 			}
 
+			// Extract subtitle from +## line or -##/+## pair
+			const plusSubtitleMatch = normalized.match(/^\+\#\#\s+(.+)$/m);
+			if (plusSubtitleMatch) newSubtitle = plusSubtitleMatch[1].trim();
+			if (!newSubtitle) {
+				const lines = normalized.split('\n');
+				for(let i=0;i<lines.length-1;i++){
+					if(/^\-\#\#\s+/.test(lines[i]) && /^\+\#\#\s+/.test(lines[i+1])){
+						newSubtitle = lines[i+1].replace(/^\+\#\#\s+/, '').trim();
+						break;
+					}
+				}
+			}
+
+			// Extract blurb from added italic line
+			const plusItalicMatch = normalized.match(/^\+\*([^\n]*?)\*\s*$/m);
+			if (plusItalicMatch) newBlurb = `*${plusItalicMatch[1].trim()}*`;
+
 			// 3) Fall back to quoted title in explanation text: replace “with "New Title"” or “to "New Title"”
 			if (!newTitle) {
 				const quoted = normalized.match(/\b(?:to|with)\s+"([^"]{1,200})"/i);
@@ -901,25 +963,91 @@ const AiSidebar = createClass({
 				if (h1) newTitle = h1[1].trim();
 			}
 
-			if(!newTitle) return { applied: false };
+			// Proceed if any of title/subtitle/blurb found
+			if(!newTitle && !newSubtitle && !newBlurb) return { applied: false };
 
 			// Replace the first H1 (# ...) in the document; if missing, insert after frontCover
 			const orig = originalText.replace(/\r/g, '\n');
 			const lines = orig.split('\n');
-			let idx = lines.findIndex(l => /^\#\s+.+$/.test(l));
-			if(idx >= 0) {
-				lines[idx] = `# ${newTitle}`;
-				return { applied: true, text: lines.join('\n'), note: `Title updated by fallback (first H1 replaced => "${newTitle}").` };
+			let changed = false;
+			let noteParts = [];
+
+			// Title
+			if (newTitle) {
+				let h1Idx = lines.findIndex(l => /^\#\s+.+$/.test(l));
+				if(h1Idx >= 0) {
+					lines[h1Idx] = `# ${newTitle}`;
+					changed = true;
+					noteParts.push(`Title → "${newTitle}"`);
+				} else {
+					const fcIdx = lines.findIndex(l => /\{\{\s*frontCover\s*\}\}/i.test(l));
+					if(fcIdx >= 0) {
+						const insertAt = Math.min(fcIdx + 1, lines.length);
+						lines.splice(insertAt, 0, '', `# ${newTitle}`, '');
+					} else {
+						lines.unshift(`# ${newTitle}`, '');
+					}
+					changed = true;
+					noteParts.push(`Inserted title "${newTitle}"`);
+				}
 			}
-			// If no H1 found, try after frontCover marker
-			const fcIdx = lines.findIndex(l => /\{\{\s*frontCover\s*\}\}/i.test(l));
-			if(fcIdx >= 0) {
-				const insertAt = Math.min(fcIdx + 1, lines.length);
-				lines.splice(insertAt, 0, '', `# ${newTitle}`, '');
-				return { applied: true, text: lines.join('\n'), note: `Title inserted after {{frontCover}} by fallback ("${newTitle}").` };
+
+			// Subtitle (first H2)
+			if (newSubtitle) {
+				let h2Idx = lines.findIndex(l => /^\#\#\s+.+$/.test(l));
+				if(h2Idx >= 0) {
+					lines[h2Idx] = `## ${newSubtitle}`;
+					changed = true;
+					noteParts.push('Subtitle updated');
+				} else {
+					// Insert below H1 if exists
+					let h1Idx = lines.findIndex(l => /^\#\s+.+$/.test(l));
+					if (h1Idx >= 0) {
+						const insertAt = Math.min(h1Idx + 1, lines.length);
+						// ensure a blank line after H1
+						if (lines[insertAt] !== '') {
+							lines.splice(insertAt, 0, '');
+						}
+						lines.splice(insertAt + 1, 0, `## ${newSubtitle}`);
+					} else {
+						lines.unshift(`## ${newSubtitle}`);
+					}
+					changed = true;
+					noteParts.push('Subtitle inserted');
+				}
 			}
-			// Otherwise, insert at top
-			return { applied: true, text: [`# ${newTitle}`, '', ...lines].join('\n'), note: `Title inserted at top by fallback ("${newTitle}").` };
+
+			// Blurb (first italic line after H2 preferred)
+			if (newBlurb) {
+				// find H2 region
+				let startIdx = lines.findIndex(l => /^\#\#\s+.+$/.test(l));
+				if (startIdx < 0) startIdx = 0;
+				// find first italic single line between startIdx and next blank separator
+				let italicIdx = -1;
+				for (let i = startIdx; i < lines.length; i++) {
+					if (/^\*[^\n]*\*$/.test(lines[i])) { italicIdx = i; break; }
+					// stop early if hit a thematic break or next header
+					if (/^\s*---\s*$/.test(lines[i]) || /^\#\s+/.test(lines[i]) || /^\#\#\s+/.test(lines[i])) break;
+				}
+				if (italicIdx >= 0) {
+					lines[italicIdx] = newBlurb;
+					changed = true;
+					noteParts.push('Blurb updated');
+				} else {
+					// Insert below subtitle or title
+					let anchorIdx = lines.findIndex(l => /^\#\#\s+.+$/.test(l));
+					if (anchorIdx < 0) anchorIdx = lines.findIndex(l => /^\#\s+.+$/.test(l));
+					if (anchorIdx < 0) anchorIdx = 0;
+					const insertAt = Math.min(anchorIdx + 1, lines.length);
+					if (lines[insertAt] !== '') lines.splice(insertAt, 0, '');
+					lines.splice(insertAt + 1, 0, newBlurb);
+					changed = true;
+					noteParts.push('Blurb inserted');
+				}
+			}
+
+			if (!changed) return { applied: false };
+			return { applied: true, text: lines.join('\n'), note: noteParts.join('; ') };
 		} catch(err) {
 			return { applied: false };
 		}
@@ -1092,6 +1220,10 @@ const AiSidebar = createClass({
 							<label className='auto-apply-toggle' title='Automatically apply AI patches to your document'>
 								<input type='checkbox' checked={this.state.autoApplyPatches} onChange={(e)=>this.setAutoApplyPatches(e.target.checked)} />
 								<span>Auto-apply patches</span>
+							</label>
+							<label className='auto-index-toggle' title='Automatically re-index the document for retrieval after changes'>
+								<input type='checkbox' checked={this.state.autoIndexRetrieval} onChange={(e)=>this.setAutoIndexRetrieval(e.target.checked)} />
+								<span>Auto-index for retrieval</span>
 							</label>
 							<button className='close-btn' onClick={this.toggleExpanded}>
 								<i className='fas fa-times' />
