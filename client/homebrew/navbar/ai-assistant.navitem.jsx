@@ -113,7 +113,7 @@ const AIAssistantNavItem = createClass({
   },
 
   callStoryAssistantAPI: function(message, documentText, metadata) {
-    return fetch('/api/story-assistant', {
+    return fetch('/api/story-ide', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

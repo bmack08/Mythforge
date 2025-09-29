@@ -2,6 +2,7 @@
 require('./editor.less');
 const React = require('react');
 const createClass = require('create-react-class');
+const AiSidebar = require('./aiSidebar/aiSidebar.jsx');
 const _ = require('lodash');
 const dedent = require('dedent-tabs').default;
 import Markdown from '../../../shared/naturalcrit/markdown.js';
@@ -9,7 +10,6 @@ import Markdown from '../../../shared/naturalcrit/markdown.js';
 const CodeEditor = require('naturalcrit/codeEditor/codeEditor.jsx');
 const SnippetBar = require('./snippetbar/snippetbar.jsx');
 const MetadataEditor = require('./metadataEditor/metadataEditor.jsx');
-const AiSidebar = require('./aiSidebar/aiSidebar.jsx');
 // const GraphPanel = require('./graphPanel/graphPanel.jsx');
 // const InlineEditor = require('./inlineEditor/inlineEditor.jsx');
 
@@ -546,9 +546,21 @@ const Editor = createClass({
 		return this.codeEditor.current?.unfoldAllCode();
 	},
 
+	onAiContentGenerate: function(newText) {
+		try {
+			if (this.props.onTextChange) {
+				this.props.onTextChange(newText);
+			} else if (window.editor && window.editor.setValue) {
+				window.editor.setValue(newText);
+			}
+		} catch (e) {
+			console.error('AI content generate failed:', e);
+		}
+	},
+
 	render : function(){
 		return (
-			<div className='editor' ref={this.editor}>
+			<div className='editor'>
 				<SnippetBar
 					brew={this.props.brew}
 					view={this.state.view}
@@ -572,6 +584,7 @@ const Editor = createClass({
 				<AiSidebar
 					brew={this.props.brew}
 					onContentGenerate={this.handleAiContentGenerate}
+					onMetaChange={this.props.onMetaChange}
 				/>
 
 				{/* Temporarily disabled for debugging

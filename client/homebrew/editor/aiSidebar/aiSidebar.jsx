@@ -22,8 +22,22 @@ const AiSidebar = createClass({
 			pendingContinuation : false,
 			lastRequest         : null,
 			storyChunks         : [],
-			error               : null
+			error               : null,
+			// Persist user preference for auto-applying patches
+			autoApplyPatches    : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_APPLY_PATCHES') === '1') : false
 		};
+	},
+
+	// Helper: extract the first H1 title ("# Title") from a markdown string
+	extractFirstH1 : function(text) {
+		if(!text) return null;
+		const m = (text.replace(/\r/g, '\n') || '').match(/^#\s+(.+)$/m);
+		return m ? m[1].trim() : null;
+	},
+
+	setAutoApplyPatches : function(enabled) {
+		this.setState({ autoApplyPatches: !!enabled });
+		try { window.localStorage.setItem('MF_AUTO_APPLY_PATCHES', enabled ? '1' : '0'); } catch(_) {}
 	},
 
 	saveChunkToServer : async function(chunk) {
@@ -250,6 +264,10 @@ const AiSidebar = createClass({
 					const currentText = this.getCurrentDocumentText();
 					const newText = currentText.replace(/^#\s+.*$/m, `# ${aiResponse.changes.title}`);
 					this.setDocumentText(newText);
+					// Sync navbar/meta title if handler provided
+					if (this.props.onMetaChange) {
+						try { this.props.onMetaChange({ title: aiResponse.changes.title }, 'title'); } catch(_) {}
+					}
 					
 					// Update page title
 					document.title = aiResponse.changes.title;
@@ -366,6 +384,11 @@ const AiSidebar = createClass({
 		}
 
 		if(assistantMessage.mode === 'patch' && assistantMessage.patch) {
+			// If user enabled auto-apply, apply immediately
+			if (this.state.autoApplyPatches) {
+				const msgIdx = nextMessages.length - 1;
+				setTimeout(()=> this.applyPatch(msgIdx, assistantMessage.patch), 0);
+			}
 			return;
 		}
 
@@ -409,7 +432,7 @@ const AiSidebar = createClass({
 			}));
 	},
 	callStoryAssistantAPI : function(payload) {
-		return fetch('/api/story-assistant', {
+		return fetch('/api/story-ide', {
 			method  : 'POST',
 			headers : {
 				'Content-Type' : 'application/json'
@@ -765,10 +788,50 @@ const AiSidebar = createClass({
 		const currentText = this.getCurrentDocumentText();
 		const result = this.applyUnifiedDiff(currentText, patchText || '');
 		if(!result.success) {
+			// Try a smart fallback for common patches (e.g., title changes)
+			const smart = this.trySmartApplyFallback(currentText, patchText || '');
+			if(smart && smart.applied && typeof smart.text === 'string') {
+				this.setDocumentText(smart.text);
+				// If H1 changed, sync meta title
+				try {
+					const oldTitle = this.extractFirstH1(currentText);
+					const newTitle = this.extractFirstH1(smart.text);
+					if (newTitle && newTitle !== oldTitle && this.props.onMetaChange) {
+						this.props.onMetaChange({ title: newTitle }, 'title');
+					}
+				} catch(_) {}
+				this.setState((prev)=>{
+					const messages = prev.chatMessages.map((msg, idx)=>{
+						if(idx !== messageIndex) return msg;
+						return { ...msg, patchApplied: true };
+					});
+					return {
+						chatMessages : [...messages, {
+							type      : 'system',
+							content   : smart.note || 'Changes applied using a smart fallback.',
+							timestamp : new Date()
+						}],
+						statusMessage : null,
+						lastFullStory : smart.text
+					};
+				});
+				// Save version snapshot (Phase 1)
+				this.saveVersionSnapshot(smart.text, patchText, 'ai', smart.note).catch(()=>{});
+				return;
+			}
+
 			this.appendSystemMessage(result.error || 'Unable to apply the proposed changes.', 'error');
 			return;
 		}
 		this.setDocumentText(result.text);
+		// If H1 changed through a clean diff, sync meta title
+		try {
+			const oldTitle = this.extractFirstH1(currentText);
+			const newTitle = this.extractFirstH1(result.text);
+			if (newTitle && newTitle !== oldTitle && this.props.onMetaChange) {
+				this.props.onMetaChange({ title: newTitle }, 'title');
+			}
+		} catch(_) {}
 		this.setState((prev)=>{
 			const messages = prev.chatMessages.map((msg, idx)=>{
 				if(idx !== messageIndex) return msg;
@@ -784,6 +847,82 @@ const AiSidebar = createClass({
 				lastFullStory : result.text
 			};
 		});
+		// Save version snapshot (Phase 1)
+		this.saveVersionSnapshot(result.text, patchText, 'ai', 'Assistant patch applied').catch(()=>{});
+	},
+
+	// Phase 1: Save version snapshot to server (simple)
+	saveVersionSnapshot : async function(fullText, patch, author='ai', summary=null) {
+		try {
+			const meta = this.getCurrentDocumentMetadata();
+			const brewId = meta.editId;
+			if(!brewId) return;
+			await fetch(`/api/story/version/${brewId}`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ fullText, patch, author, summary })
+			});
+		} catch(_) {}
+	},
+
+	// Heuristic fallback when unified diff fails: handle common title-change patches
+	trySmartApplyFallback : function(originalText, diffText) {
+		try {
+			if(!diffText) return { applied: false };
+
+			// Normalize line breaks; some responses arrive as a single line
+			const normalized = diffText.replace(/\r/g, '\n').replace(/@@/g, '\n@@\n').replace(/(\-\#|\+\#|^# )/gm, m => m);
+
+			// 1) Try to extract a "+# Title" line from a proper diff
+			let newTitle = null;
+			const plusTitleMatch = normalized.match(/^\+\#\s+(.+)$/m);
+			if (plusTitleMatch) newTitle = plusTitleMatch[1].trim();
+
+			// 2) Try old/new pair: "-# Old" followed by "+# New"
+			if (!newTitle) {
+				const lines = normalized.split('\n');
+				for(let i=0;i<lines.length-1;i++){
+					if(/^\-\#\s+/.test(lines[i]) && /^\+\#\s+/.test(lines[i+1])){
+						newTitle = lines[i+1].replace(/^\+\#\s+/, '').trim();
+						break;
+					}
+				}
+			}
+
+			// 3) Fall back to quoted title in explanation text: replace “with "New Title"” or “to "New Title"”
+			if (!newTitle) {
+				const quoted = normalized.match(/\b(?:to|with)\s+"([^"]{1,200})"/i);
+				if (quoted) newTitle = quoted[1].trim();
+			}
+
+			// 4) Very last resort: look for a single starting H1 in the diff “# Title”`
+			if (!newTitle) {
+				const h1 = normalized.match(/^\#\s+(.+)$/m);
+				if (h1) newTitle = h1[1].trim();
+			}
+
+			if(!newTitle) return { applied: false };
+
+			// Replace the first H1 (# ...) in the document; if missing, insert after frontCover
+			const orig = originalText.replace(/\r/g, '\n');
+			const lines = orig.split('\n');
+			let idx = lines.findIndex(l => /^\#\s+.+$/.test(l));
+			if(idx >= 0) {
+				lines[idx] = `# ${newTitle}`;
+				return { applied: true, text: lines.join('\n'), note: `Title updated by fallback (first H1 replaced => "${newTitle}").` };
+			}
+			// If no H1 found, try after frontCover marker
+			const fcIdx = lines.findIndex(l => /\{\{\s*frontCover\s*\}\}/i.test(l));
+			if(fcIdx >= 0) {
+				const insertAt = Math.min(fcIdx + 1, lines.length);
+				lines.splice(insertAt, 0, '', `# ${newTitle}`, '');
+				return { applied: true, text: lines.join('\n'), note: `Title inserted after {{frontCover}} by fallback ("${newTitle}").` };
+			}
+			// Otherwise, insert at top
+			return { applied: true, text: [`# ${newTitle}`, '', ...lines].join('\n'), note: `Title inserted at top by fallback ("${newTitle}").` };
+		} catch(err) {
+			return { applied: false };
+		}
 	},
 	rejectPatch : function(messageIndex) {
 		this.setState((prev)=>{
@@ -799,44 +938,59 @@ const AiSidebar = createClass({
 	},
 	applyUnifiedDiff : function(originalText, diffText) {
 		try {
-				const originalLines = originalText.replace(/\r/g, '\n').split('\n');
+			const normalizeLine = (s)=> (s ?? '').replace(/\r/g, '').replace(/[ \t]+$/g, '');
+			const originalLines = originalText.replace(/\r/g, '\n').split('\n');
 			const outputLines = [];
-				const diffLines = diffText.replace(/\r/g, '\n').split('\n');
+			const diffLines = diffText.replace(/\r/g, '\n').split('\n');
+
 			let linePtr = 0;
 			let index = 0;
+
+			// Skip headers
 			while (index < diffLines.length && (diffLines[index].startsWith('---') || diffLines[index].startsWith('+++'))) {
 				index++;
 			}
+
 			while (index < diffLines.length) {
+				// Find next hunk
+				while (index < diffLines.length && !diffLines[index].startsWith('@@')) index++;
+				if (index >= diffLines.length) break;
+
 				const header = diffLines[index++];
-				if(!header || !header.startsWith('@@')) continue;
 				const match = /@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/.exec(header);
 				if(!match) return { success: false, error: 'Invalid diff hunk header.' };
+
 				const startOriginal = parseInt(match[1], 10);
 				const targetIndex = Math.max(startOriginal - 1, 0);
+
+				// Copy unchanged region before hunk
 				while (linePtr < targetIndex && linePtr < originalLines.length) {
 					outputLines.push(originalLines[linePtr]);
 					linePtr++;
 				}
+
+				// Apply hunk
 				while (index < diffLines.length && !diffLines[index].startsWith('@@')) {
-					const line = diffLines[index++];
-					if(!line.length) {
+					const raw = diffLines[index++];
+					if(raw === '') {
 						outputLines.push('');
 						if(linePtr < originalLines.length) linePtr++;
 						continue;
 					}
-					const indicator = line[0];
-					const content = line.slice(1);
+					const indicator = raw[0];
+					const content = raw.slice(1);
 					if(indicator === ' ') {
-						const expected = originalLines[linePtr] ?? '';
-						if(expected !== content) {
+						const expected = normalizeLine(originalLines[linePtr]);
+						const want = normalizeLine(content);
+						if(expected !== want) {
 							return { success: false, error: 'Patch does not match the current document context.' };
 						}
-						outputLines.push(content);
+						outputLines.push(originalLines[linePtr]);
 						linePtr++;
 					} else if(indicator === '-') {
-						const expected = originalLines[linePtr] ?? '';
-						if(expected !== content) {
+						const expected = normalizeLine(originalLines[linePtr]);
+						const want = normalizeLine(content);
+						if(expected !== want) {
 							return { success: false, error: 'Patch removal did not match the current document.' };
 						}
 						linePtr++;
@@ -849,14 +1003,13 @@ const AiSidebar = createClass({
 					}
 				}
 			}
+
 			while (linePtr < originalLines.length) {
 				outputLines.push(originalLines[linePtr]);
 				linePtr++;
 			}
-			return {
-			success : true,
-			text    : outputLines.join('\n')
-			};
+
+			return { success: true, text: outputLines.join('\n') };
 		} catch (error) {
 			return { success: false, error: error.message || 'Failed to apply diff.' };
 		}
@@ -935,9 +1088,15 @@ const AiSidebar = createClass({
 						<i className='fas fa-dragon' />
 						Story Assistant
 					</h3>
-					<button className='close-btn' onClick={this.toggleExpanded}>
-						<i className='fas fa-times' />
-					</button>
+						<div className='ai-header-controls'>
+							<label className='auto-apply-toggle' title='Automatically apply AI patches to your document'>
+								<input type='checkbox' checked={this.state.autoApplyPatches} onChange={(e)=>this.setAutoApplyPatches(e.target.checked)} />
+								<span>Auto-apply patches</span>
+							</label>
+							<button className='close-btn' onClick={this.toggleExpanded}>
+								<i className='fas fa-times' />
+							</button>
+						</div>
 				</div>
 				<div className='ai-content'>
 					<div className='chat-container'>

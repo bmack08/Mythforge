@@ -41,6 +41,10 @@ router.put('/api/brews/:brewId',    asyncHandler((req, res) => api.updateBrew(re
 router.delete('/api/brews/:brewId', asyncHandler((req, res) => api.deleteBrew(req, res)));
 router.post('/api/search/:brewId',  asyncHandler((req, res) => api.searchProject(req, res)));
 router.get('/api/graph/:brewId',    asyncHandler((req, res) => api.getProjectGraph(req, res)));
+// Versioning (Phase 1)
+router.post('/api/story/version/:brewId', asyncHandler((req, res) => api.createStoryVersion(req, res)));
+router.post('/api/story/undo/:brewId',    asyncHandler((req, res) => api.undoStoryVersion(req, res)));
+router.post('/api/story/redo/:brewId',    asyncHandler((req, res) => api.redoStoryVersion(req, res)));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -50,6 +54,79 @@ const isStaticTheme = (renderer, themeName)=>{
 };
 
 const api = {
+	// --- Phase 1: Versioning helpers ---
+	createStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { patch, fullText, author = 'ai', summary } = req.body || {};
+			if (!brewId || !fullText) {
+				return res.status(400).json({ success: false, error: 'brewId and fullText are required' });
+			}
+			const { StoryVersion } = await getModels();
+			// Find current active version to set parent and deactivate it
+			const current = await StoryVersion.findOne({ where: { brewId, isActive: true }, order: [['createdAt', 'DESC']] });
+			const crypto = await import('crypto');
+			const fullTextHash = crypto.createHash('sha256').update(fullText).digest('hex');
+			const version = await StoryVersion.create({
+				brewId,
+				parentId: current?.id || null,
+				author,
+				patch: patch || null,
+				fullText,
+				fullTextHash,
+				isActive: true,
+				summary: summary || null
+			});
+			if (current) {
+				await current.update({ isActive: false });
+			}
+			return res.json({ success: true, version });
+		} catch (error) {
+			console.error('createStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to create version' });
+		}
+	},
+
+	getActiveStoryVersion : async (brewId)=>{
+		const { StoryVersion } = await getModels();
+		return await StoryVersion.findOne({ where: { brewId, isActive: true }, order: [['createdAt', 'DESC']] });
+	},
+
+	undoStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { StoryVersion } = await getModels();
+			const current = await api.getActiveStoryVersion(brewId);
+			if (!current) return res.status(404).json({ success: false, error: 'No current version' });
+			if (!current.parentId) return res.status(400).json({ success: false, error: 'No parent to undo to' });
+			const parent = await StoryVersion.findByPk(current.parentId);
+			if (!parent) return res.status(404).json({ success: false, error: 'Parent version not found' });
+			await current.update({ isActive: false });
+			await parent.update({ isActive: true });
+			return res.json({ success: true, version: parent });
+		} catch (error) {
+			console.error('undoStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to undo' });
+		}
+	},
+
+	redoStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { StoryVersion } = await getModels();
+			// Find a child of the current inactive-parent chain newer than active
+			const active = await api.getActiveStoryVersion(brewId);
+			if (!active) return res.status(404).json({ success: false, error: 'No active version to base redo on' });
+			const child = await StoryVersion.findOne({ where: { parentId: active.id }, order: [['createdAt','ASC']] });
+			if (!child) return res.status(400).json({ success: false, error: 'No redo available' });
+			await active.update({ isActive: false });
+			await child.update({ isActive: true });
+			return res.json({ success: true, version: child });
+		} catch (error) {
+			console.error('redoStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to redo' });
+		}
+	},
 	// Create new brew
 	newBrew : async (req, res)=>{
 		try {
@@ -377,33 +454,43 @@ const api = {
 			
             // Use top-level OpenAI client (configured at import time)
 
-			// Updated system prompt for patch-based responses with PDF awareness
-			const systemPrompt = `You are TaleForge Story IDE, an in-editor assistant for D&D sourcebooks.
-
-CRITICAL: When user asks about PDF content, use ONLY the information provided in the [PDF CONTENT FOUND] section. Do not make up fictional content.
+			// Build system prompt: general guidance first, optionally add PDF-specific guidance only when relevant
+			const hasPdfContext = !!(pdfContext && pdfContext.trim().length);
+			const baseSystemPrompt = `You are TaleForge Story IDE, an in-editor assistant for D&D sourcebooks.
 
 OBJECTIVES:
-- Read the user's draft and any provided PDF content
-- Answer questions deeply using actual source material  
+- Read the user's draft and any provided reference material
 - When asked to create or edit content, propose a patch (unified diff)
-- Use ONLY real information from PDFs when available
+- Answer questions with grounded, concise explanations when not editing
 
 OUTPUT MODES:
-1) chat: Short explanation using actual PDF content
+1) chat: Short explanation
 2) patch: Unified diff for content changes
 
 RESPONSE FORMAT:
 For chat: [MODE: chat] followed by explanation
-For patches: [MODE: patch] followed by explanation, then diff block
+For patches: [MODE: patch] followed by explanation, then a single fenced diff block
 
 RULES:
-- If PDF content is available, use ONLY that information
-- Never invent fictional content when real PDF data exists
-- If no PDF content found, clearly state this
 - Make patches idempotent using @@ context hunks
-			`;
+- Do not invent content outside of the provided context
+`;
 
-			// Build context with document and PDF content - use full document for patch accuracy
+			let pdfGuidance = '';
+			if (hasPdfContext) {
+				pdfGuidance = `PDF GUIDANCE:
+- When PDF content is included in the context, ground any citations or factual claims in that content.
+- Do not invent facts that aren't present in the PDFs.
+- Do not mention that PDFs were used unless the user asked about PDFs.`;
+			} else if (isPDFRequest) {
+				pdfGuidance = `PDF GUIDANCE:
+- The user asked about PDFs, but no readable PDF content is provided in the context.
+- Say once: "No PDF content was provided." Then proceed using the current document and conversation context without blocking.`;
+			}
+
+			const systemPrompt = [baseSystemPrompt, pdfGuidance].filter(Boolean).join('\n\n');
+
+			// Build context with document (always) and PDF content (only when present) - use full document for patch accuracy
 			const docContext = documentText || 'No document content';
 			const metaInfo = `Title: ${metadata?.title || 'Untitled'}\nURL: ${metadata?.url || ''}\nEditId: ${metadata?.editId || ''}`;
 			
@@ -411,12 +498,15 @@ RULES:
 			console.log(`[Story IDE] Sent context (first 200 chars): ${docContext.substring(0, 200)}`);
 			console.log(`[Story IDE] Metadata:`, metaInfo);
 			
-			const userPrompt = `[DOCUMENT METADATA]
+			let contextBlock = `[DOCUMENT METADATA]
 ${metaInfo}
 
 [CURRENT DOCUMENT]
-${docContext}
-${pdfContext}
+${docContext}`;
+			if (hasPdfContext) {
+				contextBlock += `\n${pdfContext}`;
+			}
+			const userPrompt = `${contextBlock}
 [USER REQUEST]
 ${requestText}`;
 
@@ -473,6 +563,14 @@ ${requestText}`;
 			const { mode, patch, explanation } = api.parseStoryIDEResponse(responseContent);
 
 			if (mode === 'patch' && patch) {
+				// Optional: immediately persist a StoryVersion snapshot for undo/redo if enabled
+				try {
+					if (process.env.STORY_IDE_AUTOVERSION === '1') {
+						const current = documentText || '';
+						// We don’t apply the patch on the server here; client applies then can POST fullText. This stores a pending record with patch only.
+						// To keep Phase 1 simple, we skip auto-create and let client call /api/story/version after apply with the new text.
+					}
+				} catch(err) { console.warn('Autoversion skipped:', err.message); }
 				return res.status(200).json({
 					success: true,
 					mode: 'patch',

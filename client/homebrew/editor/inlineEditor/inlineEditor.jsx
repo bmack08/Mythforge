@@ -80,7 +80,7 @@ const InlineEditor = createClass({
 		const brewId = this.props.brew?.editId || this.props.brew?.shareId;
 		const documentText = this.props.getText ? this.props.getText() : '';
 
-		// Call Story IDE API with inline edit type
+		// Call legacy Story Assistant endpoint for inline edits (keeps existing suggestion shape)
 		fetch('/api/story-assistant', {
 			method: 'POST',
 			headers: {
@@ -293,7 +293,7 @@ const InlineEditor = createClass({
 					<div className="inline-toolbar">
 						<div className="selected-text-info">
 							<i className="fas fa-i-cursor"></i>
-							<span>"{this.state.selectedText.substring(0, 30)}{this.state.selectedText.length > 30 ? '...' : ''"}"</span>
+							<span>"{this.state.selectedText.substring(0, 30)}{this.state.selectedText.length > 30 ? '...' : ''}"</span>
 						</div>
 						
 						{this.state.isLoading ? (
