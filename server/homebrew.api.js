@@ -12,6 +12,7 @@ import {makePatches, applyPatches, stringifyPatches, parsePatch} from '@sanity/d
 import fs                            from 'fs';
 import { join }                      from 'path';
 import { md5 }                       from 'hash-wasm';
+import OpenAI                        from 'openai';
 import { splitTextStyleAndMetadata, 
 		 brewSnippetsToJSON, debugTextMismatch }        from '../shared/helpers.js';
 import checkClientVersion            from './middleware/check-client-version.js';
@@ -19,10 +20,27 @@ import KnowledgeGraph                from './services/story-ide/knowledge-graph.
 
 const router = express.Router();
 
+// Lazy singleton OpenAI client to avoid import-time failures in dev
+let __openaiClient = null;
+export const getOpenAI = () => {
+	const key = (process.env.OPENAI_API_KEY || '').trim();
+	if (!key) return null; // Avoid crashing during dev import; handler will respond gracefully
+	if (__openaiClient) return __openaiClient;
+	__openaiClient = new OpenAI({ apiKey: key });
+	return __openaiClient;
+};
+
 // Add theme bundle route
-router.get('/api/theme/:renderer/:id', asyncHandler(async (req, res) => {
-	return api.getThemeBundle(req, res);
-}));
+// --- ROUTES ---
+router.get('/api/theme/:renderer/:id', asyncHandler((req, res) => api.getThemeBundle(req, res)));
+// Story IDE (main assistant endpoint)
+router.post('/api/story-ide', asyncHandler((req, res) => api.storyAssistant(req, res)));
+// (Optional) wire up other endpoints already implemented
+router.post('/api/brews',           asyncHandler((req, res) => api.newBrew(req, res)));
+router.put('/api/brews/:brewId',    asyncHandler((req, res) => api.updateBrew(req, res)));
+router.delete('/api/brews/:brewId', asyncHandler((req, res) => api.deleteBrew(req, res)));
+router.post('/api/search/:brewId',  asyncHandler((req, res) => api.searchProject(req, res)));
+router.get('/api/graph/:brewId',    asyncHandler((req, res) => api.getProjectGraph(req, res)));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -279,13 +297,11 @@ const api = {
 
 			if (!process.env.OPENAI_API_KEY) {
 				console.error("❌ OPENAI_API_KEY not found in environment");
-				return res.status(500).json({ error: "OpenAI API key not configured" });
+				return res.status(500).json({ success: false, error: "OpenAI API key not configured" });
 			}
 
 			// Check if this is a PDF-related request
-			const isPDFRequest = requestText.toLowerCase().includes('pdf') || 
-								requestText.toLowerCase().includes('file') ||
-								requestText.toLowerCase().includes('upload');
+			const isPDFRequest = /(?:\bpdf\b|\bfile\b|\bupload\b)/i.test(requestText);
 
 			let pdfContext = '';
 			if (references && references.length > 0) {
@@ -336,9 +352,7 @@ const api = {
 					}
 					
 					// Also search any local PDF content if this is a PDF-related request
-					const isPDFRequest = requestText.toLowerCase().includes('pdf') || 
-										requestText.toLowerCase().includes('file') ||
-										requestText.toLowerCase().includes('upload');
+					// (do not redeclare isPDFRequest)
 					
 					if (isPDFRequest) {
 						const searchTerms = api.extractSearchTerms(requestText);
@@ -361,10 +375,7 @@ const api = {
 				}
 			}
 			
-			const { OpenAI } = await import('openai');
-			const openai = new OpenAI({
-				apiKey: process.env.OPENAI_API_KEY,
-			});
+            // Use top-level OpenAI client (configured at import time)
 
 			// Updated system prompt for patch-based responses with PDF awareness
 			const systemPrompt = `You are TaleForge Story IDE, an in-editor assistant for D&D sourcebooks.
@@ -411,15 +422,47 @@ ${requestText}`;
 
 			console.log(`[Story Assistant] Making OpenAI API call...`);
 			
-			const completion = await openai.chat.completions.create({
-				model: "gpt-4o-mini",
+			// Acquire OpenAI client lazily
+			let openai;
+			try {
+				openai = getOpenAI();
+			} catch (clientErr) {
+				console.error('❌ OpenAI client initialization failed:', clientErr.message);
+				return res.status(500).json({ success: false, error: clientErr.message });
+			}
+
+			const model = process.env.STORY_IDE_MODEL || "gpt-5-mini";
+			// Determine correct token parameter and sampling support based on model family
+			const usesMaxCompletion = (() => {
+				const m = (model || '').toLowerCase();
+				return m.startsWith('gpt-5') || m.startsWith('gpt-4.1') || m.startsWith('gpt-4o') || m.startsWith('o');
+			})();
+			const defaultSamplingOnly = usesMaxCompletion; // these families often lock sampling params
+			console.log(`[Story Assistant] Model: ${model} | Token param: ${usesMaxCompletion ? 'max_completion_tokens' : 'max_tokens'} | Sampling params: ${defaultSamplingOnly ? 'default-only' : 'custom'}`);
+
+			const basePayload = {
+				model,
 				messages: [
 					{ role: "system", content: systemPrompt },
 					{ role: "user", content: userPrompt },
-				],
-				temperature: 0.6,
-				max_tokens: 1500,
-			});
+				]
+			};
+			// Only include sampling params if model supports them
+			if (!defaultSamplingOnly) {
+				const temp = process.env.STORY_IDE_TEMPERATURE ? Number(process.env.STORY_IDE_TEMPERATURE) : 0.2;
+				const topP = process.env.STORY_IDE_TOP_P ? Number(process.env.STORY_IDE_TOP_P) : 0.9;
+				// Guard NaN
+				if (!Number.isNaN(temp)) basePayload.temperature = temp;
+				if (!Number.isNaN(topP)) basePayload.top_p = topP;
+			}
+			// Use the correct token limit parameter based on model family
+			if (usesMaxCompletion) {
+				basePayload.max_completion_tokens = 1800;
+			} else {
+				basePayload.max_tokens = 1800;
+			}
+			// Note: Some newer models ignore or reject presence/frequency penalties; we intentionally omit them here.
+			const completion = await openai.chat.completions.create(basePayload);
 
 			console.log(`[Story Assistant] OpenAI response received`);
 			
