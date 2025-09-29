@@ -337,12 +337,12 @@ const AiSidebar = createClass({
 		const assistantMessage = {
 			type           : 'assistant',
 			mode           : response.mode || 'chat',
-			content        : response.summary || response.message || 'No response provided.',
-			summary        : response.summary || null,
+			content        : response.summary || response.explanation || response.message || 'No response provided.',
+			summary        : response.summary || response.explanation || null,
 			patch          : response.patch || null,
 			story          : response.story || null,
 			rawResponse    : response.raw || null,
-			historyContent : response.summary || response.message || '',
+			historyContent : response.summary || response.explanation || response.message || '',
 			timestamp      : new Date(),
 			patchApplied   : false,
 			patchDismissed : false
@@ -970,35 +970,6 @@ const AiSidebar = createClass({
 							)}
 						</div>
 						{this.renderReferenceManager()}
-						
-						{/* New AI Request Section */}
-						<div className='ai-request-section'>
-							<h4>AI Assistant</h4>
-							<button
-								className='ai-request-btn'
-								disabled={this.state.isProcessing}
-								onClick={() => this.handleAiRequest("change title to something mature and spooky")}
-							>
-								{this.state.isProcessing ? "Thinking..." : "Test: Change Title"}
-							</button>
-							
-							{this.state.error && (
-								<div className='error-message'>
-									<i className='fas fa-exclamation-triangle' /> {this.state.error}
-								</div>
-							)}
-							
-							{this.state.storyChunks.length > 0 && (
-								<div className='story-chunks'>
-									<h5>Story Chunks:</h5>
-									{this.state.storyChunks.map((chunk) => (
-										<div key={chunk.id} className='chunk-item'>
-											<pre>{JSON.stringify(chunk, null, 2)}</pre>
-										</div>
-									))}
-								</div>
-							)}
-						</div>
 						
 						<div className='chat-input-container'>
 							<div className='chat-input'>

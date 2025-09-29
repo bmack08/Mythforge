@@ -392,9 +392,13 @@ RULES:
 - Make patches idempotent using @@ context hunks
 			`;
 
-			// Build context with document and PDF content
-			const docContext = documentText ? documentText.substring(0, 2000) + (documentText.length > 2000 ? '...' : '') : 'No document content';
+			// Build context with document and PDF content - use full document for patch accuracy
+			const docContext = documentText || 'No document content';
 			const metaInfo = `Title: ${metadata?.title || 'Untitled'}\nURL: ${metadata?.url || ''}\nEditId: ${metadata?.editId || ''}`;
+			
+			console.log(`[Story IDE] Document context length: ${documentText?.length || 0} chars`);
+			console.log(`[Story IDE] Sent context (first 200 chars): ${docContext.substring(0, 200)}`);
+			console.log(`[Story IDE] Metadata:`, metaInfo);
 			
 			const userPrompt = `[DOCUMENT METADATA]
 ${metaInfo}
