@@ -73,7 +73,50 @@
 				}
 			}
 
-			.close-btn {
+			.ai-header-controls {
+				display: flex;
+				align-items: center;
+				gap: 10px;
+
+				label.auto-apply-toggle,
+				label.auto-index-toggle {
+					display: inline-flex;
+					align-items: center;
+					gap: 6px;
+					background: rgba(255,255,255,0.15);
+					padding: 6px 8px;
+					border-radius: 6px;
+					font-size: 12px;
+					font-weight: 600;
+				}
+
+				.version-controls {
+					display: inline-flex;
+					gap: 6px;
+
+					button {
+						border: none;
+						border-radius: 6px;
+						padding: 6px 10px;
+						font-size: 12px;
+						font-weight: 700;
+						cursor: pointer;
+						color: #1f2937;
+						background: #f9fafb;
+						transition: background 0.2s ease, transform 0.15s ease;
+
+						i { margin-right: 6px; }
+
+						&:hover { background: #eef2ff; transform: translateY(-1px); }
+					}
+
+					.undo-btn { background: #fee2e2; color: #991b1b; }
+					.undo-btn:hover { background: #fecaca; }
+					.redo-btn { background: #dcfce7; color: #065f46; }
+					.redo-btn:hover { background: #bbf7d0; }
+				}
+
+				.close-btn {
 				background: none;
 				border: none;
 				color: white;
