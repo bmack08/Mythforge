@@ -23,6 +23,7 @@ const AiSidebar = createClass({
 			lastRequest         : null,
 			storyChunks         : [],
 			error               : null,
+			recentEdits         : [],
 			// Persist user preference for auto-applying patches
 			autoApplyPatches    : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_APPLY_PATCHES') === '1') : false,
 			// New: auto-index on save (RAG)
@@ -128,6 +129,57 @@ const AiSidebar = createClass({
 			this.setState({ statusMessage: null });
 			throw e;
 		}
+	},
+
+	// --- Recent edits & highlighting ---
+	addRecentEdit : function(entry) {
+		const item = {
+			id: Date.now(),
+			summary: entry.summary || 'Edited content',
+			fromLine: entry.fromLine ?? null,
+			toLine: entry.toLine ?? null,
+			timestamp: new Date()
+		};
+		this.setState((prev)=>({ recentEdits: [item, ...prev.recentEdits].slice(0, 10) }));
+	},
+
+	computeChangedRegion : function(oldText, newText) {
+		try {
+			const oldLines = (oldText || '').replace(/\r/g, '\n').split('\n');
+			const newLines = (newText || '').replace(/\r/g, '\n').split('\n');
+			let prefix = 0;
+			while (prefix < oldLines.length && prefix < newLines.length && oldLines[prefix] === newLines[prefix]) prefix++;
+			let suffix = 0;
+			while (
+				suffix < (oldLines.length - prefix) &&
+				suffix < (newLines.length - prefix) &&
+				oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
+			) suffix++;
+			const fromLine = prefix;
+			const toLine = Math.max(prefix, newLines.length - suffix - 1);
+			const snippet = newLines.slice(fromLine, Math.min(toLine + 1, fromLine + 3)).join(' ').trim();
+			return { fromLine, toLine, summary: snippet ? `Updated lines ${fromLine+1}-${toLine+1}: ${snippet.slice(0, 120)}…` : `Updated lines ${fromLine+1}-${toLine+1}` };
+		} catch(_) {
+			return null;
+		}
+	},
+
+	highlightEditorLines : function(fromLine, toLine) {
+		try {
+			if (!window || !window.editor || typeof window.editor.getDoc !== 'function') return;
+			const doc = window.editor.getDoc ? window.editor.getDoc() : null;
+			if (!doc || typeof doc.markText !== 'function') return;
+			const from = { line: Math.max(0, fromLine||0), ch: 0 };
+			const lastLine = typeof toLine === 'number' ? toLine : from.line;
+			const lineLen = (n)=>{ try { return (doc.getLine(n)||'').length; } catch(_) { return 0; } };
+			const to = { line: Math.max(from.line, lastLine), ch: lineLen(Math.max(from.line, lastLine)) };
+			this._editMarkers = this._editMarkers || [];
+			const marker = doc.markText(from, to, { className: 'ai-edit-highlight' });
+			this._editMarkers.push(marker);
+			setTimeout(()=>{
+				try { marker.clear(); } catch(_) {}
+			}, 2500);
+		} catch(_) { /* noop */ }
 	},
 
 	saveChunkToServer : async function(chunk) {
@@ -913,7 +965,7 @@ const AiSidebar = createClass({
 			this.appendSystemMessage(result.error || 'Unable to apply the proposed changes.', 'error');
 			return;
 		}
-		this.setDocumentText(result.text);
+			this.setDocumentText(result.text);
 		// If H1 changed through a clean diff, sync meta title
 		try {
 			const oldTitle = this.extractFirstH1(currentText);
@@ -927,6 +979,11 @@ const AiSidebar = createClass({
 				if(idx !== messageIndex) return msg;
 				return { ...msg, patchApplied: true };
 			});
+			const region = this.computeChangedRegion(currentText, result.text);
+			if (region) {
+				this.highlightEditorLines(region.fromLine, region.toLine);
+				this.addRecentEdit(region);
+			}
 			return {
 				chatMessages : [...messages, {
 					type      : 'system',
@@ -1316,6 +1373,23 @@ const AiSidebar = createClass({
 									<div className='message-content'>
 										<i className='fas fa-spinner fa-spin' /> Thinking through your request...
 									</div>
+								</div>
+							)}
+							{this.state.recentEdits.length > 0 && (
+								<div className='recent-edits'>
+									<div className='recent-edits-header'>
+										<strong>Recent Edits</strong>
+										<span>{this.state.recentEdits.length}</span>
+									</div>
+									<ul className='recent-edits-list'>
+										{this.state.recentEdits.map((e)=> (
+											<li key={e.id}>
+												<span className='range'>L{(e.fromLine||0)+1}-{(e.toLine||e.fromLine||0)+1}</span>
+												<span className='summary'>{e.summary}</span>
+												<span className='time'>{e.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+											</li>
+										))}
+									</ul>
 								</div>
 							)}
 						</div>
