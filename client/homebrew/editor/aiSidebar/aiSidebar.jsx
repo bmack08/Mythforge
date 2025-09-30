@@ -47,6 +47,57 @@ const AiSidebar = createClass({
 		try { window.localStorage.setItem('MF_AUTO_INDEX_RETRIEVAL', enabled ? '1' : '0'); } catch(_) {}
 	},
 
+	// Apply a fullText snapshot from a version action (undo/redo)
+	applyVersionFullText : function(fullText, note) {
+		if (!fullText && fullText !== '') return;
+		const prev = this.getCurrentDocumentText();
+		this.setDocumentText(fullText);
+		try {
+			const oldTitle = this.extractFirstH1(prev);
+			const newTitle = this.extractFirstH1(fullText);
+			if (newTitle && newTitle !== oldTitle && this.props.onMetaChange) {
+				this.props.onMetaChange({ title: newTitle }, 'title');
+				if (typeof document !== 'undefined') document.title = newTitle;
+			}
+		} catch(_) {}
+		this.setState({ lastFullStory: fullText });
+		if (note) this.appendSystemMessage(note, 'system');
+	},
+
+	performVersionAction : async function(action) {
+		try {
+			const meta = this.getCurrentDocumentMetadata();
+			const brewId = meta.editId;
+			if (!brewId) {
+				this.appendSystemMessage('No document ID available for version actions.', 'error');
+				return;
+			}
+			this.setState({ statusMessage: action === 'undo' ? 'Reverting to previous version…' : 'Advancing to next version…' });
+			const resp = await fetch(`/api/story/${action}/${brewId}`, { method: 'POST' });
+			if (!resp.ok) throw new Error(`${action.toUpperCase()} failed (${resp.status}).`);
+			const data = await resp.json();
+			if (!data?.success || !data?.version) throw new Error(data?.error || `${action} failed.`);
+			const fullText = data.version.fullText;
+			this.applyVersionFullText(fullText, action === 'undo' ? 'Undid to previous version.' : 'Redid to next version.');
+			// Optional re-index
+			if (this.state.autoIndexRetrieval) {
+				this.scheduleRetrievalIndex(brewId, fullText);
+			}
+		} catch (e) {
+			this.appendSystemMessage(e.message || 'Version action failed.', 'error');
+		} finally {
+			this.setState({ statusMessage: null });
+		}
+	},
+
+	handleUndoClick : function() {
+		this.performVersionAction('undo');
+	},
+
+	handleRedoClick : function() {
+		this.performVersionAction('redo');
+	},
+
 	// Debounced indexing scheduler
 	scheduleRetrievalIndex : function(brewId, fullText) {
 		if (!brewId || !fullText) return;
@@ -1225,6 +1276,14 @@ const AiSidebar = createClass({
 								<input type='checkbox' checked={this.state.autoIndexRetrieval} onChange={(e)=>this.setAutoIndexRetrieval(e.target.checked)} />
 								<span>Auto-index for retrieval</span>
 							</label>
+							<div className='version-controls'>
+								<button className='undo-btn' onClick={this.handleUndoClick} title='Undo to previous version'>
+									<i className='fas fa-undo' /> Undo
+								</button>
+								<button className='redo-btn' onClick={this.handleRedoClick} title='Redo to next version'>
+									<i className='fas fa-redo' /> Redo
+								</button>
+							</div>
 							<button className='close-btn' onClick={this.toggleExpanded}>
 								<i className='fas fa-times' />
 							</button>
