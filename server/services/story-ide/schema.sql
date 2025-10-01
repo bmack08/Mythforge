@@ -87,5 +87,6 @@ CREATE TABLE IF NOT EXISTS story_edits (
 CREATE INDEX IF NOT EXISTS idx_entities_project_type ON story_entities(project_id, type);
 CREATE INDEX IF NOT EXISTS idx_entities_name ON story_entities(name);
 CREATE INDEX IF NOT EXISTS idx_relationships_entities ON story_relationships(entity1_id, entity2_id);
-CREATE INDEX IF NOT EXISTS idx_chunks_project ON story_chunks(project_id);
+-- Chunks are keyed by story_id
+CREATE INDEX IF NOT EXISTS idx_chunks_story ON chunks(story_id);
 CREATE INDEX IF NOT EXISTS idx_terminology_project ON story_terminology(project_id, term);

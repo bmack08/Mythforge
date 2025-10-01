@@ -44,6 +44,19 @@ export class KnowledgeGraph {
   }
 
   /**
+   * Ensure DB schema exists (idempotent) and return true when ready
+   */
+  async ensureReady() {
+    try {
+      await this.createTables();
+      return true;
+    } catch (e) {
+      console.error("❌ KnowledgeGraph ensureReady failed:", e);
+      return false;
+    }
+  }
+
+  /**
    * Insert or update a story chunk.
    * Detects conflicts if content changed since last save.
    */
@@ -132,6 +145,16 @@ export class KnowledgeGraph {
     });
   }
 
+  /**
+   * Get or create a project row for a brew id.
+   */
+  async getOrCreateProject(brewId, title = 'Untitled', description = '') {
+    const existing = await this.getProjectByBrewId(brewId);
+    if (existing) return existing;
+    await this.createProject(brewId, title, description);
+    return await this.getProjectByBrewId(brewId);
+  }
+
   // Process document and extract entities/relationships
   async processDocument(projectId, documentText) {
     console.log(`📊 Processing document for project ${projectId}...`);
@@ -164,6 +187,17 @@ export class KnowledgeGraph {
       relationships: parsed.relationships.length,
       chunks: parsed.chunks.length
     };
+  }
+
+  /**
+   * Convenience to process by brewId directly
+   */
+  async processBrewDocument(brewId, title, documentText) {
+    const ready = await this.ensureReady();
+    if (!ready) throw new Error('KnowledgeGraph not ready');
+    const project = await this.getOrCreateProject(brewId, title || 'Untitled');
+    const res = await this.processDocument(project.id, documentText || '');
+    return { projectId: project.id, ...res };
   }
 
   async clearProjectData(projectId) {
@@ -286,6 +320,56 @@ export class KnowledgeGraph {
         else resolve(rows || []);
       });
     });
+  }
+
+  // === Canon Guard checks ===
+  /**
+   * Check for simple continuity issues:
+   * - Name case inconsistencies (e.g., "Eldarion" vs "EldArion")
+   * - Orphan entities (no relationships)
+   */
+  async runCanonChecks(projectId) {
+    const warnings = [];
+    const entities = await this.getProjectEntities(projectId);
+    const rels = await this.getProjectRelationships(projectId);
+
+    // Name casing consistency
+    const byLower = new Map();
+    for (const e of entities) {
+      const key = String(e.name || '').toLowerCase();
+      const arr = byLower.get(key) || [];
+      arr.push(e.name);
+      byLower.set(key, arr);
+    }
+    for (const [key, names] of byLower.entries()) {
+      const uniq = Array.from(new Set(names));
+      if (uniq.length > 1) {
+        warnings.push({
+          type: 'name_casing_inconsistency',
+          message: `Inconsistent casing for entity "${uniq[0]}" variants: ${uniq.join(', ')}`,
+          entities: uniq
+        });
+      }
+    }
+
+    // Orphan entities (no edges)
+    const connected = new Set();
+    for (const r of rels) {
+      connected.add(r.entity1_id);
+      connected.add(r.entity2_id);
+    }
+    for (const e of entities) {
+      if (!connected.has(e.id)) {
+        warnings.push({
+          type: 'orphan_entity',
+          message: `Entity "${e.name}" has no relationships. Consider adding context or links.`,
+          entityId: e.id,
+          entityName: e.name
+        });
+      }
+    }
+
+    return { warnings };
   }
 
   // Context-aware search for GPT

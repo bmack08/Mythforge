@@ -49,6 +49,15 @@ router.get('/api/story/version/:brewId/active', asyncHandler((req, res) => api.g
 // Phase 2: Index and Retrieval
 router.post('/api/story/index/:brewId', asyncHandler((req, res) => api.indexStoryChunks(req, res)));
 router.post('/api/story/retrieve/:brewId', asyncHandler((req, res) => api.retrieveStoryChunks(req, res)));
+// Phase 5–7: env-gated feature endpoints
+router.post('/api/phase5/budget/compute', asyncHandler((req, res) => api.computeBudget(req, res)));
+router.post('/api/phase6/encounter/build', asyncHandler((req, res) => api.buildEncounter(req, res)));
+router.post('/api/phase6/npc/generate', asyncHandler((req, res) => api.generateNpc(req, res)));
+router.post('/api/phase7/validate/content', asyncHandler((req, res) => api.validateContent(req, res)));
+// Phase 3: Knowledge Graph processing and canon checks
+router.post('/api/story/graph/process/:brewId', asyncHandler((req, res) => api.processKnowledgeGraph(req, res)));
+router.get('/api/story/graph/:brewId', asyncHandler((req, res) => api.getKnowledgeGraph(req, res)));
+router.get('/api/story/graph/:brewId/canon', asyncHandler((req, res) => api.getCanonChecks(req, res)));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -65,6 +74,84 @@ const api = {
 		let brew = await Homebrew.findOne({ where: { editId: brewId } });
 		if (!brew) brew = await Homebrew.findByPk(brewId);
 		return brew?.text || '';
+	},
+
+	// === Phases 5–7 minimal endpoints (env-gated) ===
+	computeBudget: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE5_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 5 disabled' });
+			const { partySize=4, partyLevel=5, difficulty='medium', restFrequency='standard', combatWeight=0.4, explorationWeight=0.3, socialWeight=0.3 } = req.body || {};
+			const { default: xpCalc } = await import('./services/budget/encounter-xp-calculator.ts');
+			const { default: treasure } = await import('./services/budget/treasure-allocation-system.ts');
+			const { default: pacing } = await import('./services/budget/pacing-engine.ts');
+			const { default: attrition } = await import('./services/budget/resource-attrition-calculator.ts');
+			const xpBudget = xpCalc.computeEncounterBudget({ partySize, partyLevel, difficulty });
+			const treasurePlan = treasure.planTreasure({ partyLevel, partySize });
+			const pacingPlan = pacing.planPacing({ partyLevel, restFrequency, weights: { combat: combatWeight, exploration: explorationWeight, social: socialWeight } });
+			const attritionPlan = attrition.compute({ partySize, partyLevel, restFrequency });
+			return res.json({ success: true, budget: { xpBudget, treasurePlan, pacingPlan, attritionPlan } });
+		} catch (e) {
+			console.error('computeBudget error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	buildEncounter: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE6_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 6 disabled' });
+			const { spec } = req.body || {};
+			const { default: builder } = await import('./services/encounter/comprehensive-encounter-builder.ts');
+			const result = await builder.build(spec || {});
+			return res.json({ success: true, encounter: result });
+		} catch (e) {
+			console.error('buildEncounter error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	generateNpc: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE6_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 6 disabled' });
+			const { prompt } = req.body || {};
+			const { default: npcMgr } = await import('./services/npc/comprehensive-npc-manager.ts');
+			const npc = await npcMgr.generate(prompt || '');
+			return res.json({ success: true, npc });
+		} catch (e) {
+			console.error('generateNpc error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	validateContent: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE7_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 7 disabled' });
+			const { content, checks } = req.body || {};
+			const { default: qa } = await import('./services/validation/content-quality-assurance.ts');
+			const result = await qa.validate(content || '', checks || {});
+			return res.json({ success: true, result });
+		} catch (e) {
+			console.error('validateContent error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	// === Phase 4: Tool registry execution ===
+	executeStoryTools: async (tools, ctx)=>{
+		const results = [];
+		for (const t of tools) {
+			const name = t?.name; const args = t?.args || {};
+			if (name === 'create_section') {
+				const title = String(args.title || 'New Section').trim();
+				const content = String(args.content || '').trim();
+				const patch = `@@\n+\n# ${title}\n\n${content}\n`;
+				results.push({ tool: name, ok: true, patch });
+			} else if (name === 'apply_patch') {
+				results.push({ tool: name, ok: true, note: 'Client should apply patch locally, then POST /api/story/version with fullText.' });
+			} else {
+				results.push({ tool: name || 'unknown', ok: false, error: 'Unsupported tool' });
+			}
+		}
+		return results;
 	},
 
 	reconstructCurrentText: async (brewId)=>{
@@ -102,6 +189,18 @@ const api = {
 			if (current) {
 				await current.update({ isActive: false });
 			}
+			// Optional Phase 2: auto-index for RAG
+			try {
+				if (process.env.STORY_IDE_AUTOINDEX === '1') {
+					await api.indexStoryChunks({ params: { brewId }, body: { fullText } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+				}
+			} catch (e) { console.warn('Auto-index error:', e.message); }
+			// Optional Phase 3: auto-process knowledge graph
+			try {
+				if (process.env.STORY_IDE_AUTOGRAPH === '1') {
+					await api.processKnowledgeGraph({ params: { brewId }, body: { fullText, title: req.body?.title || '' } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+				}
+			} catch (e) { console.warn('Auto-graph error:', e.message); }
 			return res.json({ success: true, version });
 		} catch (error) {
 			console.error('createStoryVersion error:', error);
@@ -207,7 +306,17 @@ const api = {
 			const { title, text, renderer, theme } = req.body;
 
 			const { Homebrew } = await getModels();
-			const brew = await Homebrew.findByPk(brewId);
+			// Accept either editId (preferred) or numeric id
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			if (!brew) {
+				// Fall back to primary key if brewId looks like a numeric id
+				try {
+					brew = await Homebrew.findByPk(brewId);
+				} catch(_) {}
+			}
+			if (!brew) {
+				console.warn(`[updateBrew] Brew not found for id/editId: ${brewId}`);
+			}
 			
 			if (!brew) {
 				return res.status(404).json({
@@ -626,6 +735,31 @@ ${requestText}`;
 				basePayload.max_tokens = 1800;
 			}
 			// Note: Some newer models ignore or reject presence/frequency penalties; we intentionally omit them here.
+			// Phase 4: Attempt JSON/tool-calling first when enabled
+			let toolResult = null;
+			if (process.env.STORY_IDE_JSON_MODE === '1') {
+				try {
+					const jsonSystem = `${systemPrompt}\n\nWhen appropriate, reply ONLY with strict JSON of shape {\n  \"mode\": \"chat\"|\"patch\"|\"tools\",\n  \"message\"?: string,\n  \"patch\"?: string,\n  \"tools\"?: Array<{name: string, args: object}>\n}.`;
+					const jsonPayload = { ...basePayload, messages: [ { role: 'system', content: jsonSystem }, { role: 'user', content: userPrompt } ] };
+					const jsonCompletion = await openai.chat.completions.create(jsonPayload);
+					const jsonText = (jsonCompletion.choices?.[0]?.message?.content || '').trim();
+					try {
+						const parsed = JSON.parse(jsonText);
+						if (parsed && parsed.mode === 'tools' && Array.isArray(parsed.tools)) {
+							toolResult = await api.executeStoryTools(parsed.tools, { documentText, metadata });
+						} else if (parsed && parsed.mode === 'patch' && parsed.patch) {
+							return res.status(200).json({ success: true, mode: 'patch', patch: parsed.patch, explanation: parsed.message || '', raw: jsonText });
+						} else if (parsed && parsed.mode === 'chat') {
+							return res.status(200).json({ success: true, mode: 'chat', message: parsed.message || '', raw: jsonText });
+						}
+					} catch (_e) {
+						// Fall back to normal parsing below
+					}
+				} catch (jsonErr) {
+					console.warn('JSON mode failed, fallback to default parsing:', jsonErr.message);
+				}
+			}
+
 			const completion = await openai.chat.completions.create(basePayload);
 
 			console.log(`[Story Assistant] OpenAI response received`);
@@ -636,7 +770,9 @@ ${requestText}`;
 			// Parse response for mode (patch vs chat)
 			const { mode, patch, explanation } = api.parseStoryIDEResponse(responseContent);
 
-			if (mode === 'patch' && patch) {
+			if (toolResult) {
+				return res.status(200).json({ success: true, mode: 'tools', result: toolResult });
+			} else if (mode === 'patch' && patch) {
 				// Optional: immediately persist a StoryVersion snapshot for undo/redo if enabled
 				try {
 					if (process.env.STORY_IDE_AUTOVERSION === '1') {
@@ -932,6 +1068,57 @@ ${requestText}`;
 				error: 'Failed to get project graph',
 				details: error.message
 			});
+		}
+	}
+	,
+
+	// === Phase 3: Knowledge Graph endpoints ===
+	processKnowledgeGraph: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { fullText, title = '' } = req.body || {};
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const text = fullText || await api.reconstructCurrentText(brewId);
+			if (!text) return res.status(400).json({ success: false, error: 'No text to process' });
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const result = await KG.processBrewDocument(brewId, title, text);
+			return res.json({ success: true, result });
+		} catch (e) {
+			console.error('processKnowledgeGraph error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	getKnowledgeGraph: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const proj = await KG.getProjectByBrewId(brewId);
+			if (!proj) return res.json({ success: true, graph: { nodes: [], edges: [] } });
+			const graph = await KG.getProjectGraph(proj.id);
+			return res.json({ success: true, graph });
+		} catch (e) {
+			console.error('getKnowledgeGraph error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	getCanonChecks: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const proj = await KG.getProjectByBrewId(brewId);
+			if (!proj) return res.json({ success: true, warnings: [] });
+			const { warnings } = await KG.runCanonChecks(proj.id);
+			return res.json({ success: true, warnings });
+		} catch (e) {
+			console.error('getCanonChecks error:', e);
+			return res.status(500).json({ success: false, error: e.message });
 		}
 	}
 };

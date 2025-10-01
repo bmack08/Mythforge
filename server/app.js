@@ -13,6 +13,7 @@ import jwt     from 'jwt-simple';
 import express from 'express';
 import config  from './config.js';
 import fs      from 'fs-extra';
+import zlib    from 'zlib';
 
 const app = express();
 
@@ -50,6 +51,77 @@ app.set('trust proxy', 1 /* number of proxies between user and server */);
 
 app.use('/', serveCompressedStaticAssets(`build`));
 app.use(contentNegotiation);
+// Legacy Homebrewery-compatible save endpoint: gzipped JSON body to /api/update/:id
+// Must be registered BEFORE bodyParser.json so we can read and decompress the raw request stream.
+app.put('/api/update/:id', async (req, res) => {
+	try {
+		// Collect raw request body
+		const chunks = [];
+		req.on('data', (chunk) => chunks.push(chunk));
+		req.on('end', async () => {
+			try {
+				const raw = Buffer.concat(chunks);
+				const enc = String(req.headers['content-encoding'] || '').toLowerCase();
+				let jsonStr;
+				if (enc.includes('gzip')) {
+					jsonStr = zlib.gunzipSync(raw).toString('utf8');
+				} else if (!enc || enc === 'identity') {
+					jsonStr = raw.toString('utf8');
+				} else {
+					return res.status(415).json({ error: `Unsupported Content-Encoding: ${enc}` });
+				}
+
+				let body;
+				try {
+					body = JSON.parse(jsonStr);
+				} catch (e) {
+					return res.status(400).json({ error: 'Invalid JSON body' });
+				}
+
+				const editOrPk = req.params.id;
+				const { Homebrew } = getModels();
+
+				// Find by editId first, then fallback to primary key
+				let brew = await Homebrew.findOne({ where: { editId: editOrPk } });
+				if (!brew) {
+					try { brew = await Homebrew.findByPk(editOrPk); } catch (_) { /* noop */ }
+				}
+				if (!brew) {
+					return res.status(404).json({ error: 'Brew not found' });
+				}
+
+				// Update core fields; ignore patch/hash mechanics for now (client still sends full text)
+				const newTitle    = body.title ?? brew.title;
+				const newText     = body.text ?? brew.text;
+				const newRenderer = body.renderer ?? brew.renderer;
+				const newTheme    = body.theme ?? brew.theme;
+
+				brew.title    = String(newTitle || '').trim() || 'Untitled Brew';
+				brew.text     = typeof newText === 'string' ? newText : brew.text;
+				brew.renderer = newRenderer || brew.renderer || 'V3';
+				brew.theme    = newTheme || brew.theme || '5ePHB';
+				brew.updatedAt = new Date();
+				brew.version = (Number(brew.version) || 1) + 1;
+
+				await brew.save();
+
+				// Respond with shape expected by client editPage.jsx
+				return res.status(200).json({
+					googleId : brew.googleId || null,
+					editId   : brew.editId,
+					shareId  : brew.shareId,
+					version  : brew.version
+				});
+			} catch (err) {
+				console.error('Legacy save route error:', err);
+				return res.status(500).json({ error: 'Failed to save brew' });
+			}
+		});
+	} catch (err) {
+		console.error('Legacy save route setup error:', err);
+		return res.status(500).json({ error: 'Internal server error' });
+	}
+});
 app.use(bodyParser.json({ limit: '25mb' }));
 app.use(cookieParser());
 // Temporarily disabled for local development
