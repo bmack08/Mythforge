@@ -1,111 +1,113 @@
 .ai-sidebar {
-	position: fixed;
-	right: 0;
-	top: 50%;
-	transform: translateY(-50%);
-	z-index: 1000;
 	background: white;
-	border: 1px solid #e0e0e0;
-	border-radius: 12px 0 0 12px;
+	border-left: 1px solid #e0e0e0;
 	box-shadow: -4px 0 20px rgba(0, 0, 0, 0.15);
-	transition: all 0.3s ease;
+	transition: width 0.3s ease;
+	display: flex;
+	flex-direction: column;
+	flex-shrink: 0;
+	height: 100%;
 
-	&.collapsed {
-		width: 80px;
-		height: 120px;
+	// Toggle button styles - always visible
+	.ai-toggle {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		width: 60px;
+		flex-shrink: 0;
+		color: #8b5cf6;
+		cursor: pointer;
+		padding: 20px 10px;
+		border-bottom: 1px solid #e0e0e0;
 		
-		.ai-toggle {
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			height: 100%;
-			color: #8b5cf6;
-			cursor: pointer;
-			padding: 15px;
-			border-radius: 12px 0 0 12px;
-			
-			&:hover {
-				background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
-				color: #7c3aed;
-			}
-			
-			i {
-				font-size: 28px;
-				margin-bottom: 8px;
-			}
-			
-			span {
-				font-size: 10px;
-				font-weight: 600;
-				text-align: center;
-				line-height: 1.2;
-			}
+		&:hover {
+			background: linear-gradient(135deg, #f3f4f6, #e5e7eb);
+			color: #7c3aed;
+		}
+		
+		i {
+			font-size: 24px;
+			margin-bottom: 8px;
+		}
+		
+		span {
+			font-size: 9px;
+			font-weight: 600;
+			text-align: center;
+			line-height: 1.2;
+			writing-mode: vertical-rl;
+			text-orientation: mixed;
 		}
 	}
 
+	&.collapsed {
+		width: 60px;
+	}
+
 	&.expanded {
-		width: 400px;
-		max-height: 85vh;
-		overflow: hidden;
-		display: flex;
-		flex-direction: column;
+		width: 384px;
 		
 		.ai-header {
 			display: flex;
 			justify-content: space-between;
 			align-items: center;
-			padding: 20px;
+			padding: 12px 16px;
 			background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
 			color: white;
 			border-radius: 12px 0 0 0;
 
 			h3 {
 				margin: 0;
-				font-size: 18px;
+				font-size: 16px;
 				font-weight: 600;
 				display: flex;
 				align-items: center;
-				gap: 10px;
+				gap: 8px;
 
 				i {
-					font-size: 20px;
+					font-size: 16px;
 				}
 			}
 
 			.ai-header-controls {
 				display: flex;
 				align-items: center;
-				gap: 10px;
+				gap: 4px;
+				flex-wrap: wrap;
 
 				label.auto-apply-toggle,
 				label.auto-index-toggle {
 					display: inline-flex;
 					align-items: center;
-					gap: 6px;
+					gap: 3px;
 					background: rgba(255,255,255,0.15);
-					padding: 6px 8px;
-					border-radius: 6px;
-					font-size: 12px;
+					padding: 7px 7px;
+					border-radius: 4px;
+					font-size: 10px;
 					font-weight: 600;
+					white-space: nowrap;
 				}
 
 				.version-controls {
 					display: inline-flex;
-					gap: 6px;
+					gap: 3px;
 
 					button {
 						border: none;
-						border-radius: 6px;
-						padding: 6px 10px;
-						font-size: 12px;
-						font-weight: 700;
+						border-radius: 4px;
+						padding: 7px 7px;
+						font-size: 10px;
+						font-weight: 600;
 						cursor: pointer;
 						color: #1f2937;
 						background: #f9fafb;
 						transition: background 0.2s ease, transform 0.15s ease;
 
-						i { margin-right: 6px; }
+						i { 
+							margin-right: 3px;
+							font-size: 9px;
+						}
 
 						&:hover { background: #eef2ff; transform: translateY(-1px); }
 					}
@@ -120,16 +122,18 @@
 				background: none;
 				border: none;
 				color: white;
-				font-size: 16px;
+				font-size: 14px;
 				cursor: pointer;
-				padding: 8px;
-				border-radius: 6px;
+				padding: 4px;
+				border-radius: 4px;
 				transition: background 0.2s ease;
 
 				&:hover {
 					background: rgba(255, 255, 255, 0.2);
 				}
 			}
+		}
+
 		}
 
 		.ai-content {
@@ -424,6 +428,20 @@
 	}
 }
 
+// Flex layout container for the main content area
+.homePage .content,
+.editPage .content {
+	display: flex;
+	height: calc(100vh - 56px); // Account for navbar height
+	overflow: hidden;
+
+	// SplitPane should take remaining space, AI sidebar should not shrink
+	.splitPane {
+		flex: 1;
+		min-width: 0; // Allow flexbox to shrink this container
+	}
+}
+
 @keyframes fadeIn {
 	from { opacity: 0; transform: translateY(8px); }
 	to { opacity: 1; transform: translateY(0); }
@@ -432,13 +450,13 @@
 // Responsive adjustments
 @media (max-width: 1024px) {
 	.ai-sidebar.expanded {
-		width: 350px;
+		width: 320px;
 	}
 }
 
 @media (max-width: 768px) {
 	.ai-sidebar.expanded {
-		width: 300px;
+		width: 280px;
 		max-height: 80vh;
 		
 		.patch-preview {
@@ -462,7 +480,7 @@
 				display: flex;
 				gap: 8px;
 				padding: 10px 12px;
-				border-top: 1px solid rgba(255, 255, 255, 0.08);
+				border-top: 1px solid rgba(255,255,255,0.08);
 
 				button {
 					flex: 1;
@@ -500,7 +518,7 @@
 						background: #ef4444;
 					}
 				}
-							}
+			}
 
 			.patch-status {
 				padding: 8px 12px;

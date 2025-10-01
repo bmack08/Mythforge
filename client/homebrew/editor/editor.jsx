@@ -2,7 +2,6 @@
 require('./editor.less');
 const React = require('react');
 const createClass = require('create-react-class');
-const AiSidebar = require('./aiSidebar/aiSidebar.jsx');
 const _ = require('lodash');
 const dedent = require('dedent-tabs').default;
 import Markdown from '../../../shared/naturalcrit/markdown.js';
@@ -579,12 +578,6 @@ const Editor = createClass({
 					themeBundle={this.props.themeBundle}
 					cursorPos={this.codeEditor.current?.getCursorPosition() || {}}
 					updateBrew={this.props.updateBrew}
-				/>
-
-				<AiSidebar
-					brew={this.props.brew}
-					onContentGenerate={this.handleAiContentGenerate}
-					onMetaChange={this.props.onMetaChange}
 				/>
 
 				{/* Temporarily disabled for debugging

@@ -25,6 +25,7 @@ const MythwrightProjectWizard = require('../../components/project-creation/mythw
 const SplitPane = require('client/components/splitPane/splitPane.jsx');
 const Editor = require('../../editor/editor.jsx');
 const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
+const AiSidebar = require('../../editor/aiSidebar/aiSidebar.jsx');
 
 const LockNotification = require('./lockNotification/lockNotification.jsx');
 
@@ -540,6 +541,19 @@ const EditPage = createClass({
 						allowPrint={true}
 					/>
 				</SplitPane>
+				<AiSidebar
+					brew={this.state.brew}
+					onContentGenerate={(content, replaceAll) => {
+						if (replaceAll) {
+							this.handleTextChange(content);
+						} else {
+							const currentText = this.state.brew.text;
+							const newText = currentText + '\n\n' + content + '\n\n';
+							this.handleTextChange(newText);
+						}
+					}}
+					onMetaChange={this.handleMetaChange}
+				/>
 			</div>
 			
 			<MythwrightProjectWizard ref={this.mythwrightWizard} />

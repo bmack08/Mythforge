@@ -12,6 +12,7 @@ import { initNPCModel } from './npc.model.js';
 import { initTemplateModel } from './template.model.js';
 import { initVersionModel } from './version.model.js';
 import { initStoryVersionModel } from './storyversion.model.js';
+import { initStoryChunkModel } from './storychunk.model.js';
 
 let models = null;
 
@@ -33,19 +34,20 @@ const initializeModels = async (config = null) => {
 	const NPC = initNPCModel(sequelize);
 	const Template = initTemplateModel(sequelize);
 	const Version = initVersionModel(sequelize);
-	const StoryVersion = initStoryVersionModel(sequelize);
+		const StoryVersion = initStoryVersionModel(sequelize);
+		const StoryChunk = initStoryChunkModel(sequelize);
 	
 	// Define associations
-	setupAssociations({ 
-		Project, Chapter, Section, Encounter, 
-		StatBlock, MagicItem, NPC, Template, Version, StoryVersion 
-	});
+		setupAssociations({ 
+			Project, Chapter, Section, Encounter, 
+			StatBlock, MagicItem, NPC, Template, Version, StoryVersion, StoryChunk 
+		});
 	
 	// Sync all models after they're all defined
 	await sequelize.sync({ alter: false });
 	console.log('All models synchronized successfully.');
 	
-	models = {
+		models = {
 		// Legacy Homebrewery models
 		Homebrew,
 		Notification,
@@ -59,8 +61,9 @@ const initializeModels = async (config = null) => {
 		MagicItem,
 		NPC,
 		Template,
-	Version,
-	StoryVersion,
+		Version,
+		StoryVersion,
+		StoryChunk,
 		
 		sequelize
 	};

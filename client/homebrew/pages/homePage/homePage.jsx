@@ -18,6 +18,7 @@ const { fetchThemeBundle } = require('../../../../shared/helpers.js');
 const SplitPane = require('client/components/splitPane/splitPane.jsx');
 const Editor = require('../../editor/editor.jsx');
 const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
+const AiSidebar = require('../../editor/aiSidebar/aiSidebar.jsx');
 
 const { DEFAULT_BREW } = require('../../../../server/brewDefaults.js');
 
@@ -126,6 +127,14 @@ const HomePage = createClass({
 						themeBundle={this.state.themeBundle}
 					/>
 				</SplitPane>
+				<AiSidebar
+					brew={this.state.brew}
+					onContentGenerate={(content) => {
+						const currentText = this.state.brew.text;
+						const newText = currentText + '\n\n' + content + '\n\n';
+						this.handleTextChange(newText);
+					}}
+				/>
 			</div>
 			<div className={cx('floatingSaveButton', { show: this.state.welcomeText != this.state.brew.text })} onClick={this.handleSave}>
 				Save current <i className='fas fa-save' />

@@ -31,6 +31,15 @@ const AiSidebar = createClass({
 		};
 	},
 
+	componentDidMount : function() {
+		// Initialize default references or any other setup
+	},
+
+	componentWillUnmount : function() {
+		// Clean up any pending timers
+		if (this._indexTimer) clearTimeout(this._indexTimer);
+	},
+
 	// Helper: extract the first H1 title ("# Title") from a markdown string
 	extractFirstH1 : function(text) {
 		if(!text) return null;
@@ -1252,7 +1261,9 @@ const AiSidebar = createClass({
 	},
 	
 	toggleExpanded : function() {
-		this.setState((prev) => ({ isExpanded: !prev.isExpanded }));
+		this.setState((prev) => ({
+			isExpanded: !prev.isExpanded
+		}));
 	},
 	
 	handleInputChange : function(event) {
@@ -1307,46 +1318,43 @@ const AiSidebar = createClass({
 	},
 	
 	render : function() {
-		if(!this.state.isExpanded) {
-			return (
-				<div className='ai-sidebar collapsed'>
-					<div className='ai-toggle' onClick={this.toggleExpanded}>
-						<i className='fas fa-dragon' />
-						<span>Story Assistant</span>
-					</div>
-				</div>
-			);
-		}
 		return (
-			<div className='ai-sidebar expanded'>
-				<div className='ai-header'>
-					<h3>
-						<i className='fas fa-dragon' />
-						Story Assistant
-					</h3>
-						<div className='ai-header-controls'>
-							<label className='auto-apply-toggle' title='Automatically apply AI patches to your document'>
-								<input type='checkbox' checked={this.state.autoApplyPatches} onChange={(e)=>this.setAutoApplyPatches(e.target.checked)} />
-								<span>Auto-apply patches</span>
-							</label>
-							<label className='auto-index-toggle' title='Automatically re-index the document for retrieval after changes'>
-								<input type='checkbox' checked={this.state.autoIndexRetrieval} onChange={(e)=>this.setAutoIndexRetrieval(e.target.checked)} />
-								<span>Auto-index for retrieval</span>
-							</label>
-							<div className='version-controls'>
-								<button className='undo-btn' onClick={this.handleUndoClick} title='Undo to previous version'>
-									<i className='fas fa-undo' /> Undo
-								</button>
-								<button className='redo-btn' onClick={this.handleRedoClick} title='Redo to next version'>
-									<i className='fas fa-redo' /> Redo
+			<div className={`ai-sidebar ${this.state.isExpanded ? 'expanded' : 'collapsed'}`}>
+				<div className='ai-toggle' onClick={this.toggleExpanded}>
+					<i className='fas fa-dragon' />
+					<span>Story Assistant</span>
+				</div>
+				
+				{this.state.isExpanded && (
+					<>
+						<div className='ai-header'>
+							<h3>
+								<i className='fas fa-dragon' />
+								Story Assistant
+							</h3>
+							<div className='ai-header-controls'>
+								<label className='auto-apply-toggle' title='Automatically apply AI patches to your document'>
+									<input type='checkbox' checked={this.state.autoApplyPatches} onChange={(e)=>this.setAutoApplyPatches(e.target.checked)} />
+									<span>Auto-apply patches</span>
+								</label>
+								<label className='auto-index-toggle' title='Automatically re-index the document for retrieval after changes'>
+									<input type='checkbox' checked={this.state.autoIndexRetrieval} onChange={(e)=>this.setAutoIndexRetrieval(e.target.checked)} />
+									<span>Auto-index for retrieval</span>
+								</label>
+								<div className='version-controls'>
+									<button className='undo-btn' onClick={this.handleUndoClick} title='Undo to previous version'>
+										<i className='fas fa-undo' /> Undo
+									</button>
+									<button className='redo-btn' onClick={this.handleRedoClick} title='Redo to next version'>
+										<i className='fas fa-redo' /> Redo
+									</button>
+								</div>
+								<button className='close-btn' onClick={this.toggleExpanded}>
+									<i className='fas fa-times' />
 								</button>
 							</div>
-							<button className='close-btn' onClick={this.toggleExpanded}>
-								<i className='fas fa-times' />
-							</button>
 						</div>
-				</div>
-				<div className='ai-content'>
+						<div className='ai-content'>
 					<div className='chat-container'>
 						<div className='chat-messages'>
 							{this.state.chatMessages.length === 0 && (
@@ -1420,7 +1428,9 @@ const AiSidebar = createClass({
 							)}
 						</div>
 					</div>
-				</div>
+						</div>
+					</>
+				)}
 			</div>
 		);
 	}
