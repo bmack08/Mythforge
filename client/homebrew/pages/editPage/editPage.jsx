@@ -23,6 +23,7 @@ const VaultNavItem = require('../../navbar/vault.navitem.jsx');
 const MythwrightProjectWizard = require('../../components/project-creation/mythwright-project-wizard.jsx');
 
 const SplitPane = require('client/components/splitPane/splitPane.jsx');
+const ToastHost = require('client/components/toast.jsx');
 const Editor = require('../../editor/editor.jsx');
 const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
 const AiSidebar = require('../../editor/aiSidebar/aiSidebar.jsx');
@@ -74,6 +75,74 @@ const EditPage = createClass({
 	editor    : React.createRef(null),
 	mythwrightWizard : React.createRef(null),
 	savedBrew : null,
+
+	// Derive nearest section (H1) title for current cursor page
+	getCurrentSectionHint : function(){
+		try {
+			const text = this.state.brew?.text || '';
+			const renderer = this.state.brew?.renderer || 'V3';
+			const pageRegexV3 = /^(?=\\page(?:break)?(?: *{[^\n{}]*})?$)/m;
+			const splitPattern = renderer === 'V3' ? pageRegexV3 : /\\page/;
+			const pages = text.split(splitPattern);
+			const idx = Math.max(0, (this.state.currentEditorCursorPageNum||1) - 1);
+			const uptoText = pages.slice(0, Math.min(pages.length, idx+1)).join('\n');
+			const headingRegex = /^#\s+(.+)$/gm;
+			let match, last = null;
+			while((match = headingRegex.exec(uptoText))){ last = match[1]; }
+			return (last && last.trim()) || (this.state.brew?.title || '');
+		} catch (_) { return this.state.brew?.title || ''; }
+	},
+
+	// --- Mythwright Orchestrator (Beta) ---
+	orchestrateAiEdit : async function(){
+		try {
+			const message = window.prompt('What should the AI do? (e.g., "Add an encounter with 3 goblins")');
+			if(!message || !message.trim()) return;
+			const defaultHint = this.getCurrentSectionHint();
+			const sectionHint = window.prompt('Section hint (e.g., "Glintstone Cave" or "Chapter 3")', defaultHint) || '';
+
+			// Call orchestrator
+			const postRes = await request
+				.post(`/api/story/orchestrate/${this.state.brew.editId}`)
+				.send({ message, cursor: { sectionHint } })
+				.catch((err)=>{
+					console.error('Orchestrator error', err);
+					this.setState({ error: err });
+				});
+			if(!postRes || !postRes.body?.success){ return; }
+			// Prefer direct fullText from orchestrator for immediate UX
+			if(postRes.body.fullText && typeof postRes.body.fullText === 'string'){
+				this.handleTextChange(postRes.body.fullText);
+				this.trySave(true);
+				const applied = postRes.body.applied ?? 0;
+				try {
+					if (applied > 0) {
+						if (window.NCToast && typeof window.NCToast.show === 'function') {
+							window.NCToast.show({ message: `AI applied ${applied} action(s).`, type: 'success', duration: 3000 });
+						}
+					}
+				} catch(_) { /* no-op in non-window env */ }
+				return;
+			}
+
+			// Fetch the active version's full text
+			const verRes = await request
+				.get(`/api/story/version/${this.state.brew.editId}/active`)
+				.catch((err)=>{
+					console.error('Fetch active version error', err);
+					this.setState({ error: err });
+				});
+			const newText = verRes?.body?.version?.fullText;
+			if(newText && typeof newText === 'string'){
+				// Update editor text and persist via normal save flow
+				this.handleTextChange(newText);
+				this.trySave(true);
+			}
+		} catch (e){
+			console.error('AI orchestrate failed:', e);
+			this.setState({ error: e });
+		}
+	},
 
 	componentDidMount : function(){
 		this.setState({
@@ -466,6 +535,9 @@ const EditPage = createClass({
 					<Nav.item color='purple' icon='fas fa-dragon' onClick={() => this.mythwrightWizard.current?.openModal()}>
 						New AI Campaign
 					</Nav.item>
+					<Nav.item color='blue' icon='fas fa-wand-magic-sparkles' onClick={this.orchestrateAiEdit}>
+						AI Orchestrate (beta)
+					</Nav.item>
 					<Nav.item color='blue' icon='fas fa-brain'>
 						AI Content Generator
 					</Nav.item>
@@ -557,6 +629,7 @@ const EditPage = createClass({
 			</div>
 			
 			<MythwrightProjectWizard ref={this.mythwrightWizard} />
+			<ToastHost />
 		</div>;
 	}
 });

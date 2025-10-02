@@ -1,0 +1,45 @@
+.nc-toast {
+  position: fixed;
+  right: 24px;
+  bottom: 24px;
+  z-index: 9999;
+  min-width: 260px;
+  max-width: 420px;
+  padding: 12px 16px;
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.nc-toast.success { background: #2e7d32; }
+.nc-toast.info { background: #1976d2; }
+.nc-toast.warning { background: #f57c00; }
+.nc-toast.error { background: #c62828; }
+
+.nc-toast .nc-toast__icon {
+  font-size: 16px;
+  opacity: 0.95;
+}
+
+.nc-toast .nc-toast__message {
+  flex: 1;
+}
+
+.nc-toast .nc-toast__close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 8px;
+  opacity: 0.8;
+}
+
+.nc-toast .nc-toast__close:hover {
+  opacity: 1;
+}

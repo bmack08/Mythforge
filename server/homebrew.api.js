@@ -49,6 +49,8 @@ router.get('/api/story/version/:brewId/active', asyncHandler((req, res) => api.g
 // Phase 2: Index and Retrieval
 router.post('/api/story/index/:brewId', asyncHandler((req, res) => api.indexStoryChunks(req, res)));
 router.post('/api/story/retrieve/:brewId', asyncHandler((req, res) => api.retrieveStoryChunks(req, res)));
+// Phase 6: Orchestrated flow (cursor-aware)
+router.post('/api/story/orchestrate/:brewId', asyncHandler((req, res) => api.orchestrateStoryEdit(req, res)));
 // Phase 5–7: env-gated feature endpoints
 router.post('/api/phase5/budget/compute', asyncHandler((req, res) => api.computeBudget(req, res)));
 router.post('/api/phase6/encounter/build', asyncHandler((req, res) => api.buildEncounter(req, res)));
@@ -145,6 +147,55 @@ const api = {
 				const content = String(args.content || '').trim();
 				const patch = `@@\n+\n# ${title}\n\n${content}\n`;
 				results.push({ tool: name, ok: true, patch });
+			} else if (name === 'add_encounter') {
+				// Minimal encounter block
+				const title = String(args.title || 'Encounter').trim();
+				const enemies = Array.isArray(args.enemies) ? args.enemies : [];
+				const lines = [
+					`### Encounter: ${title}`,
+					'',
+					'| Creature | CR | Count |',
+					'| --- | --- | --- |',
+					...enemies.map(e=>`| ${e.name||'Unknown'} | ${e.cr||'?'} | ${e.count||1} |`),
+					''
+				];
+				results.push({ tool: name, ok: true, insert: lines.join('\n') });
+			} else if (name === 'generate_statblock') {
+				const npc = String(args.npc || 'Unnamed NPC');
+				const cr = String(args.cr || '1');
+				const block = [
+					`### ${npc} (CR ${cr})`,
+					'',
+					':::statblock',
+					'Name: '+npc,
+					'CR: '+cr,
+					'AC: 12 | HP: 11 (2d8+2) | Speed: 30 ft.',
+					'STR 10 DEX 12 CON 12 INT 10 WIS 10 CHA 10',
+					'Traits: ...',
+					'Actions: ...',
+					':::',
+					''
+				].join('\n');
+				results.push({ tool: name, ok: true, insert: block });
+			} else if (name === 'add_trap') {
+				const dc = args.dc ?? 13;
+				const trigger = String(args.trigger || 'Pressure plate');
+				const effect = String(args.effect || '1d6 piercing damage');
+				const trap = [
+					'### Trap',
+					'',
+					`Trigger: ${trigger}`,
+					`Check: DC ${dc} Perception to notice; DC ${dc} Thieves\' Tools to disarm`,
+					`Effect: ${effect}`,
+					''
+				].join('\n');
+				results.push({ tool: name, ok: true, insert: trap });
+			} else if (name === 'timeline_update') {
+				const when = String(args.when || 'Unknown date');
+				const what = String(args.what || 'Event');
+				const who = String(args.who || 'Unknown');
+				const line = `- ${when}: ${what} (${who})`;
+				results.push({ tool: name, ok: true, timeline: line });
 			} else if (name === 'apply_patch') {
 				results.push({ tool: name, ok: true, note: 'Client should apply patch locally, then POST /api/story/version with fullText.' });
 			} else {
@@ -152,6 +203,41 @@ const api = {
 			}
 		}
 		return results;
+	},
+
+	// Apply insertions/updates into a section (by heading)
+	insertIntoSection: (fullText, sectionHint, insertText)=>{
+		const text = (fullText||'');
+		const lines = text.replace(/\r/g,'\n').split('\n');
+		const idx = lines.findIndex(l=>/^#\s+/.test(l) && l.toLowerCase().includes(String(sectionHint||'').toLowerCase()));
+		if (idx === -1) {
+			// Append at end if section not found
+			return text + (text.endsWith('\n')?'':'\n') + '\n' + insertText + '\n';
+		}
+		// Find next heading to insert before it (end of this section)
+		let j = idx + 1;
+		for (; j < lines.length; j++) {
+			if (/^#\s+/.test(lines[j])) break;
+		}
+		const before = lines.slice(0, j).join('\n');
+		const after = lines.slice(j).join('\n');
+		return `${before}\n\n${insertText}\n\n${after}`;
+	},
+
+	upsertTimeline: (fullText, timelineLine)=>{
+		const text = (fullText||'');
+		const lines = text.replace(/\r/g,'\n').split('\n');
+		let idx = lines.findIndex(l=>/^##\s+timeline/i.test(l));
+		if (idx === -1) {
+			// Create a Timeline section at the end
+			return `${text}\n\n## Timeline\n\n${timelineLine}\n`;
+		}
+		// Insert after the heading and contiguous bullet list
+		let j = idx + 1;
+		while (j < lines.length && lines[j].trim().startsWith('-')) j++;
+		const before = lines.slice(0, j).join('\n');
+		const after = lines.slice(j).join('\n');
+		return `${before}\n${timelineLine}\n${after}`;
 	},
 
 	reconstructCurrentText: async (brewId)=>{
@@ -826,11 +912,19 @@ ${requestText}`;
 			const lines = block.split('\n');
 			const titleLine = /^#\s+(.+)$/.exec(lines[0] || '');
 			let section = titleLine ? titleLine[1].trim() : `Section ${i+1}`;
+			// naive type detection
+			let type = undefined;
+			const low = block.toLowerCase();
+			if (low.includes('encounter')) type = 'encounter';
+			else if (low.includes('trap')) type = 'trap';
+			else if (low.includes('statblock') || low.includes(':::statblock')) type = 'statblock';
+			// extract candidate names (Proper Nouns)
+			const names = Array.from(new Set((block.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) || []).slice(0, 10)));
 			let buf = [];
 			let wordCount = 0;
 			const emit = ()=>{
 				if (!buf.length) return;
-				chunks.push({ section, text: buf.join('\n') });
+				chunks.push({ section, type, names, text: buf.join('\n') });
 				buf = []; wordCount = 0;
 			};
 			for (let j=0;j<lines.length;j++){
@@ -842,7 +936,7 @@ ${requestText}`;
 			emit();
 		}
 		// Fallback if nothing
-		if (!chunks.length && text.trim()) chunks.push({ section: 'Document', text });
+		if (!chunks.length && text.trim()) chunks.push({ section: 'Document', type: undefined, names: [], text });
 		return chunks;
 	},
 
@@ -911,13 +1005,17 @@ ${requestText}`;
 		}
 	},
 
-	retrieveContextForRequest : async (brewId, query, k=8)=>{
+	retrieveContextForRequest : async (brewId, query, k=8, sectionHint)=>{
 		try {
 			const { results } = await (async ()=>{
 				// Reuse the same logic without HTTP
 				const queryEmb = (await api.embedTexts([query]))[0];
 				const { StoryChunk } = await getModels();
-				const rows = await StoryChunk.findAll({ where: { brewId } });
+				let rows = await StoryChunk.findAll({ where: { brewId } });
+				if (sectionHint) {
+					const hint = String(sectionHint).toLowerCase();
+					rows = rows.filter(r => (r.section||'').toLowerCase().includes(hint));
+				}
 				const scored = rows.map(r => ({ section: r.section, text: r.text, score: api.cosineSim(queryEmb, r.embedding) }))
 					.sort((a,b)=> b.score - a.score)
 					.slice(0, Math.max(1, Math.min(50, Number(k)||8)));
@@ -927,6 +1025,106 @@ ${requestText}`;
 		} catch (e) {
 			console.warn('[RAG] retrieveContextForRequest failed:', e.message);
 			return [];
+		}
+	},
+
+	// === Phase 6: Orchestrated tool-calling flow ===
+	orchestrateStoryEdit: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { message, cursor = {}, limits = {} } = req.body || {};
+			if (!brewId || !message) return res.status(400).json({ success: false, error: 'brewId and message required' });
+			const sectionHint = cursor.sectionHint || '';
+			const current = await api.reconstructCurrentText(brewId);
+			// Retrieve context (prefer chunks matching sectionHint)
+			let ragBlock = '';
+			try {
+				const results = await api.retrieveContextForRequest(brewId, message, 8, sectionHint);
+				if (results && results.length) {
+					const joined = results.map(r => `- ${r.section ? r.section + ': ' : ''}${r.text}`).join('\n');
+					ragBlock = `\n[RETRIEVED CONTEXT]\n${joined.slice(0, 2000)}\n`;
+				}
+			} catch(e){ console.warn('Orchestrator RAG failed:', e.message); }
+
+			// JSON/tool-calling request
+			const systemPrompt = `You are Mythforge Story IDE. Reply ONLY with strict JSON of shape {\n  "mode": "tools",\n  "plan": string,\n  "tools": Array<{ name: string, args: object }>,\n  "notes"?: string\n}\nAllowed tools: [\n  {name: "add_encounter", args: {title: string, enemies: Array<{name:string, cr:string, count:number}>}},\n  {name: "generate_statblock", args: {npc: string, cr: string}},\n  {name: "add_trap", args: {dc:number, trigger:string, effect:string}},\n  {name: "timeline_update", args: {when:string, what:string, who:string}},\n  {name: "create_section", args: {title:string, content:string}}\n]\nNever output prose outside JSON.`;
+			const userPrompt = `Cursor section hint: ${sectionHint||'(none)'}\n${ragBlock}\n[USER REQUEST]\n${message}`;
+			const openai = getOpenAI();
+			if (!openai) return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+			const model = process.env.STORY_IDE_MODEL || 'gpt-4o-mini';
+			let parsed = null;
+			try {
+				const payload = { model, messages: [ { role:'system', content: systemPrompt }, { role:'user', content: userPrompt } ], response_format: { type: 'json_object' } };
+				const cmp = await openai.chat.completions.create(payload);
+				const raw = (cmp.choices?.[0]?.message?.content||'').trim();
+				parsed = JSON.parse(raw);
+			} catch(e) { return res.status(502).json({ success:false, error: 'Model did not return valid JSON', detail: e.message }); }
+			if (!parsed || parsed.mode !== 'tools' || !Array.isArray(parsed.tools)) return res.status(400).json({ success:false, error:'No tools returned' });
+
+			// Execute tools server-side into current text
+			let newText = current;
+			const execResults = [];
+			for (const t of parsed.tools) {
+				const name = t?.name; const args = t?.args || {};
+				if (!['add_encounter','generate_statblock','add_trap','timeline_update','create_section'].includes(name)) {
+					execResults.push({ tool:name, ok:false, error:'Unsupported tool' }); continue;
+				}
+				if (name === 'timeline_update') {
+					const r = `- ${String(args.when||'Unknown')}: ${String(args.what||'Event')} (${String(args.who||'Unknown')})`;
+					newText = api.upsertTimeline(newText, r); execResults.push({ tool:name, ok:true }); continue;
+				}
+				// For section-targeted inserts, prefer sectionHint if provided
+				let insertBlock = '';
+				if (name === 'add_encounter') {
+					const title = String(args.title||'Encounter').trim();
+					const enemies = Array.isArray(args.enemies)?args.enemies:[];
+					const lines = [
+						`### Encounter: ${title}`, '',
+						'| Creature | CR | Count |',
+						'| --- | --- | --- |',
+						...enemies.map(e=>`| ${e.name||'Unknown'} | ${e.cr||'?'} | ${e.count||1} |`),
+						''
+					];
+					insertBlock = lines.join('\n');
+				} else if (name === 'generate_statblock') {
+					const npc = String(args.npc||'Unnamed NPC');
+					const cr = String(args.cr||'1');
+					insertBlock = [
+						`### ${npc} (CR ${cr})`, '',
+						':::statblock',
+						'Name: '+npc,
+						'CR: '+cr,
+						'AC: 12 | HP: 11 (2d8+2) | Speed: 30 ft.',
+						'STR 10 DEX 12 CON 12 INT 10 WIS 10 CHA 10',
+						'Traits: ...',
+						'Actions: ...',
+						':::',
+						''
+					].join('\n');
+				} else if (name === 'add_trap') {
+					const dc = args.dc ?? 13; const trigger=String(args.trigger||'Pressure plate'); const effect=String(args.effect||'1d6 piercing damage');
+					insertBlock = [ '### Trap', '', `Trigger: ${trigger}`, `Check: DC ${dc} Perception to notice; DC ${dc} Thieves' Tools to disarm`, `Effect: ${effect}`, '' ].join('\n');
+				} else if (name === 'create_section') {
+					insertBlock = `# ${String(args.title||'New Section')}\n\n${String(args.content||'')}`;
+				}
+				newText = api.insertIntoSection(newText, sectionHint, insertBlock);
+				execResults.push({ tool:name, ok:true });
+			}
+
+			// Persist a new StoryVersion with full text
+			try {
+				await api.createStoryVersion({ params: { brewId } , body: { fullText: newText, author: 'ai', summary: parsed.plan||'orchestrate' } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+			} catch (e) { console.warn('Versioning failed:', e.message); }
+
+			// Re-index to keep RAG fresh
+			try {
+				await api.indexStoryChunks({ params: { brewId }, body: { fullText: newText } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+			} catch (e) { console.warn('Re-index failed:', e.message); }
+
+			return res.json({ success: true, applied: execResults.filter(r=>r.ok).length, results: execResults, notes: parsed.notes||null, fullText: newText });
+		} catch (error) {
+			console.error('orchestrateStoryEdit error:', error);
+			return res.status(500).json({ success:false, error: error.message });
 		}
 	},
 

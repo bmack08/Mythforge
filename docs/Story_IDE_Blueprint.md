@@ -292,7 +292,7 @@ Primary: gpt-5 (or gpt-5-mini for cost) at temp 0.2.
 
 Use JSON mode / function calling for tools.
 
-Long contexts: When you truly need massive context, use Claude Sonnet 4 (200k) for a planning pass only, then execute with your primary.
+
 
 Deterministic passes: For Canon Guard & validators, keep temp 0.0–0.1.
 
