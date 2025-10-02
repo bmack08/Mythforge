@@ -7,6 +7,7 @@ const dedent = require('dedent-tabs').default;
 import Markdown from '../../../shared/naturalcrit/markdown.js';
 
 const CodeEditor = require('naturalcrit/codeEditor/codeEditor.jsx');
+const TipTapEditor = require('client/components/TipTapEditor.jsx');
 const SnippetBar = require('./snippetbar/snippetbar.jsx');
 const MetadataEditor = require('./metadataEditor/metadataEditor.jsx');
 // const GraphPanel = require('./graphPanel/graphPanel.jsx');
@@ -81,8 +82,14 @@ const Editor = createClass({
 		document.getElementById('BrewRenderer').addEventListener('keydown', this.handleControlKeys);
 		document.addEventListener('keydown', this.handleControlKeys);
 
-		this.codeEditor.current.codeMirror.on('cursorActivity', (cm)=>{this.updateCurrentCursorPage(cm.getCursor());});
-		this.codeEditor.current.codeMirror.on('scroll', _.throttle(()=>{this.updateCurrentViewPage(this.codeEditor.current.getTopVisibleLine());}, 200));
+		// CodeMirror handlers are only relevant when CodeMirror is mounted (style/snippet tabs)
+		// Text tab now uses TipTap editor which handles its own events
+		try {
+			if (!this.isText()) {
+				this.codeEditor.current?.codeMirror?.on('cursorActivity', (cm)=>{this.updateCurrentCursorPage(cm.getCursor());});
+				this.codeEditor.current?.codeMirror?.on('scroll', _.throttle(()=>{this.updateCurrentViewPage(this.codeEditor.current.getTopVisibleLine());}, 200));
+			}
+		} catch(_) {}
 
 		const editorTheme = window.localStorage.getItem(EDITOR_THEME_KEY);
 		if(editorTheme) {
@@ -140,7 +147,14 @@ const Editor = createClass({
 	},
 
 	handleInject : function(injectText){
-		this.codeEditor.current?.injectText(injectText, false);
+		if (this.codeEditor.current?.injectText) {
+			this.codeEditor.current.injectText(injectText, false);
+		} else {
+			// TipTap fallback: append at the end
+			const currentText = this.props.brew.text || '';
+			const merged = currentText + (currentText.endsWith('\n') ? '' : '\n') + injectText + '\n';
+			this.props.onTextChange(merged);
+		}
 	},
 
 	handleViewChange : function(newView){
@@ -149,7 +163,10 @@ const Editor = createClass({
 		this.setState({
 			view : newView
 		}, ()=>{
-			this.codeEditor.current?.codeMirror.focus();
+			// Only focus CodeMirror for style/snippet tabs, not text tab (using TipTap)
+			if (newView !== 'text') {
+				this.codeEditor.current?.codeMirror?.focus();
+			}
 		});
 	},
 
@@ -187,8 +204,9 @@ const Editor = createClass({
 	},
 
 	highlightCustomMarkdown : function(){
+		// Skip highlighting for text view (now using TipTap) - only apply to snippet view
 		if(!this.codeEditor.current) return;
-		if((this.state.view === 'text') ||(this.state.view === 'snippet')) {
+		if(this.state.view === 'snippet') {
 			const codeMirror = this.codeEditor.current.codeMirror;
 
 			codeMirror.operation(()=>{ // Batch CodeMirror styling
@@ -400,49 +418,11 @@ const Editor = createClass({
 		if(!this.isText() || isJumping)
 			return;
 
-		const textSplit  = this.props.renderer == 'V3' ? PAGEBREAK_REGEX_V3 : /\\page/;
-		const textString = this.props.brew.text.split(textSplit).slice(0, targetPage-1).join(textSplit);
-		const targetLine = textString.match('\n') ? textString.split('\n').length - 1 : -1;
-
-		let currentY = this.codeEditor.current.codeMirror.getScrollInfo().top;
-		let targetY  = this.codeEditor.current.codeMirror.heightAtLine(targetLine, 'local', true);
-
-		const checkIfScrollComplete = ()=>{
-			let scrollingTimeout;
-			clearTimeout(scrollingTimeout); // Reset the timer every time a scroll event occurs
-			scrollingTimeout = setTimeout(()=>{
-				isJumping = false;
-				this.codeEditor.current.codeMirror.off('scroll', checkIfScrollComplete);
-			}, 150); // If 150 ms pass without a scroll event, assume scrolling is done
-		};
-
-		isJumping = true;
-		checkIfScrollComplete();
-		this.codeEditor.current.codeMirror.on('scroll', checkIfScrollComplete);
-
-		if(smooth) {
-			//Scroll 1/10 of the way every 10ms until 1px off.
-			const incrementalScroll = setInterval(()=>{
-				currentY += (targetY - currentY) / 10;
-				this.codeEditor.current.codeMirror.scrollTo(null, currentY);
-
-				// Update target: target height is not accurate until within +-10 lines of the visible window
-				if(Math.abs(targetY - currentY > 100))
-					targetY = this.codeEditor.current.codeMirror.heightAtLine(targetLine, 'local', true);
-
-				// End when close enough
-				if(Math.abs(targetY - currentY) < 1) {
-					this.codeEditor.current.codeMirror.scrollTo(null, targetY);  // Scroll any remaining difference
-					this.codeEditor.current.setCursorPosition({ line: targetLine + 1, ch: 0 });
-					this.codeEditor.current.codeMirror.addLineClass(targetLine + 1, 'wrap', 'sourceMoveFlash');
-					clearInterval(incrementalScroll);
-				}
-			}, 10);
-		} else {
-			this.codeEditor.current.codeMirror.scrollTo(null, targetY);  // Scroll any remaining difference
-			this.codeEditor.current.setCursorPosition({ line: targetLine + 1, ch: 0 });
-			this.codeEditor.current.codeMirror.addLineClass(targetLine + 1, 'wrap', 'sourceMoveFlash');
-		}
+		// TipTap editor doesn't have the same line-based API as CodeMirror
+		// For now, we'll skip page jumping in text view
+		console.log('TipTap sourceJump not yet implemented - target page:', targetPage);
+		// TODO: Implement page jumping for TipTap editor
+		return;
 	},
 
 	//Called when there are changes to the editor's dimensions
@@ -468,15 +448,15 @@ const Editor = createClass({
 	renderEditor : function(){
 		if(this.isText()){
 			return <>
-				<CodeEditor key='codeEditor'
-					ref={this.codeEditor}
-					language='gfm'
-					view={this.state.view}
-					value={this.props.brew.text}
-					onChange={this.props.onTextChange}
-					editorTheme={this.state.editorTheme}
-					rerenderParent={this.rerenderParent}
-					style={{  height: `calc(100% - ${this.state.snippetbarHeight}px)` }} />
+				<div style={{ height: `calc(100% - ${this.state.snippetbarHeight}px)` }}>
+					<TipTapEditor
+						value={this.props.brew.text}
+						onChange={this.props.onTextChange}
+						onCursorPageChange={this.props.onCursorPageChange}
+						onViewPageChange={this.props.onViewPageChange}
+						renderer={this.props.renderer}
+					/>
+				</div>
 			</>;
 		}
 		if(this.isStyle()){
@@ -526,23 +506,23 @@ const Editor = createClass({
 	},
 
 	redo : function(){
-		return this.codeEditor.current?.redo();
+	return this.codeEditor.current?.redo?.();
 	},
 
 	historySize : function(){
-		return this.codeEditor.current?.historySize();
+	return this.codeEditor.current?.historySize?.();
 	},
 
 	undo : function(){
-		return this.codeEditor.current?.undo();
+	return this.codeEditor.current?.undo?.();
 	},
 
 	foldCode : function(){
-		return this.codeEditor.current?.foldAllCode();
+	return this.codeEditor.current?.foldAllCode?.();
 	},
 
 	unfoldCode : function(){
-		return this.codeEditor.current?.unfoldAllCode();
+	return this.codeEditor.current?.unfoldAllCode?.();
 	},
 
 	onAiContentGenerate: function(newText) {

@@ -1,4 +1,9 @@
-require('./toast.less');
+if (typeof window !== 'undefined') {
+    try {
+        const req = eval('require');
+        req('./toast.less');
+    } catch (_) {}
+}
 const React = require('react');
 const createClass = require('create-react-class');
 
