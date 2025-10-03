@@ -6,6 +6,17 @@ const _ = require('lodash');
 
 const MarkdownLegacy = require('naturalcrit/markdownLegacy.js');
 import Markdown from 'naturalcrit/markdown.js';
+// TipTap HTML generator and extensions (lazy required to avoid SSR issues in build)
+let generateHTML;
+let TipTapStarterKit;
+let TipTapIcon;
+try {
+	generateHTML = require('@tiptap/html').generateHTML;
+	TipTapStarterKit = require('@tiptap/starter-kit').default || require('@tiptap/starter-kit');
+	const core = require('@tiptap/core');
+	const createIcon = require('../../extensions/Icon').default || require('../../extensions/Icon');
+	TipTapIcon = createIcon(core);
+} catch(_) { /* fallback to Markdown below */ }
 const ErrorBar = require('./errorBar/errorBar.jsx');
 const ToolBar  = require('./toolBar/toolBar.jsx');
 
@@ -190,7 +201,11 @@ const BrewRenderer = (props)=>{
 		let classes    = 'page';
 		let attributes = {};
 
-		if(props.renderer == 'legacy') {
+			// If props.text is a TipTap JSON doc, render via generateHTML
+			if (props && props.text && typeof props.text === 'object' && generateHTML) {
+				const html = generateHTML(props.text, [TipTapStarterKit, TipTapIcon]);
+				return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
+			} else if(props.renderer == 'legacy') {
 			pageText.replace(COLUMNBREAK_REGEX_LEGACY, '```\n````\n'); // Allow Legacy brews to use `\column(break)`
 			const html = MarkdownLegacy.render(pageText);
 
@@ -211,7 +226,7 @@ const BrewRenderer = (props)=>{
 			// DO NOT REMOVE!!! REQUIRED FOR BACKWARDS COMPATIBILITY WITH NON-UPGRADABLE VERSIONS OF CHROME.
 			pageText += `\n\n&nbsp;\n\\column\n&nbsp;`; //Artificial column break at page end to emulate column-fill:auto (until `wide` is used, when column-fill:balance will reappear)
 
-			const html = Markdown.render(pageText, index);
+					const html = Markdown.render(pageText, index);
 
 			return <BrewPage className={classes} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 		}
@@ -347,9 +362,9 @@ const BrewRenderer = (props)=>{
 					}
 				</div>
 				{headerState ? <HeaderNav ref={pagesRef} /> : <></>}
-			</Frame>
-		</>
+		</Frame>
+	</>
 	);
 };
 
-module.exports = BrewRenderer;
+export default BrewRenderer;

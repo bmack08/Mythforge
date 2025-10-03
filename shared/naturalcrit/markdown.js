@@ -15,10 +15,12 @@ import { romanize } from 'romans';
 import writtenNumber from 'written-number';
 
 //Icon fonts included so they can appear in emoji autosuggest dropdown
-import diceFont      from '../../themes/fonts/iconFonts/diceFont.js';
-import elderberryInn from '../../themes/fonts/iconFonts/elderberryInn.js';
-import gameIcons     from '../../themes/fonts/iconFonts/gameIcons.js';
-import fontAwesome   from '../../themes/fonts/iconFonts/fontAwesome.js';
+// TipTap migration: icon handling is now implemented via TipTap Icon node (client/extensions/Icon).
+// The legacy icon font emoji packs are disabled to avoid duplicate icon rendering logic.
+// import diceFont      from '../../themes/fonts/iconFonts/diceFont.js';
+// import elderberryInn from '../../themes/fonts/iconFonts/elderberryInn.js';
+// import gameIcons     from '../../themes/fonts/iconFonts/gameIcons.js';
+// import fontAwesome   from '../../themes/fonts/iconFonts/fontAwesome.js';
 
 const renderer  = new Marked.Renderer();
 const tokenizer = new Marked.Tokenizer();
@@ -664,10 +666,7 @@ function MarkedVariables() {
 // 7) Import the .js file here to markdown.js, and add to `emojis` object below
 const MarkedEmojiOptions = {
 	emojis : {
-		...diceFont,
-		...elderberryInn,
-		...fontAwesome,
-		...gameIcons,
+		// TipTap handles icons; keep other emojis if any are added elsewhere
 	},
 	renderer : (token)=>`<i class="${token.emoji}"></i>`
 };

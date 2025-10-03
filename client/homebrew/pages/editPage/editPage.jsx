@@ -3,7 +3,8 @@ require('./editPage.less');
 const React = require('react');
 const _ = require('lodash');
 const createClass = require('create-react-class');
-import {makePatches, applyPatches, stringifyPatches, parsePatches} from '@sanity/diff-match-patch';
+import * as diffMatchPatch from '@sanity/diff-match-patch';
+const {makePatches, applyPatches, stringifyPatches, parsePatches} = diffMatchPatch;
 import { md5 } from 'hash-wasm';
 import { gzipSync, strToU8 } from 'fflate';
 
@@ -215,9 +216,10 @@ const EditPage = createClass({
 	},
 
 	handleTextChange : function(text){
-		//If there are errors, run the validator on every change to give quick feedback
+		// Accept TipTap JSON (object) or legacy markdown (string)
 		let htmlErrors = this.state.htmlErrors;
-		if(htmlErrors.length) htmlErrors = Markdown.validate(text);
+		const isJSON = text && typeof text === 'object';
+		if(!isJSON && htmlErrors.length) htmlErrors = Markdown.validate(text);
 
 		this.setState((prevState)=>({
 			brew       : { ...prevState.brew, text: text },

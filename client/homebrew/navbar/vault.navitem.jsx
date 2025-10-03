@@ -2,7 +2,7 @@ const React = require('react');
 
 const Nav = require('naturalcrit/nav/nav.jsx');
 
-module.exports = function (props) {
+const VaultNavItem = function (props) {
 	return (
 		<Nav.item
 			color='purple'
@@ -15,3 +15,5 @@ module.exports = function (props) {
 		</Nav.item>
 	);
 };
+
+export default VaultNavItem;

@@ -1,194 +1,112 @@
-const React = require('react');
-const { useEffect, useState, useRef } = React;
+import React, { useEffect, useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+// Load StarterKit via require to handle ESM/CJS interop in our bundler and v2/v3 shapes
+const __SK = require('@tiptap/starter-kit');
+const StarterKit = __SK.default || __SK;
+import './tiptap.less' // your styles
 
-// Simple rich text editor that works immediately - no complex dependencies
-const TipTapEditor = ({
-  value = '',
-  onChange = () => {},
-  onCursorPageChange = () => {},
-  onViewPageChange = () => {},
-  renderer = 'V3',
-}) => {
-  const [content, setContent] = useState(value);
-  const editorRef = useRef(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+// Include basic TipTap styles and our overrides
+if (typeof window !== 'undefined') {
+  try {
+    const req = eval('require');
+    req('./tiptap.css');
+  } catch(_) {}
+}
+import createIcon from 'client/extensions/Icon.js'
 
-  // Initialize editor content
+// Load TipTap Icon extension at module level to ensure browserify bundles it
+let IconExtension;
+try {
+  const core = require('@tiptap/core');
+  IconExtension = createIcon(core);
+} catch(err) {
+  console.error('Failed to load TipTap Icon extension:', err);
+}
+
+
+// value: TipTap JSON doc OR legacy markdown string
+// onChange: emits TipTap JSON as source of truth
+const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {}, onViewPageChange = () => {}, renderer = 'V3' }) => {
+  const initialContent = (() => {
+    // If value is an object, assume TipTap JSON
+    if (value && typeof value === 'object') return value;
+    // Otherwise seed with a paragraph containing legacy markdown
+    return { type: 'doc', content: [{ type: 'paragraph', content: value ? [{ type: 'text', text: String(value) }] : [] }] };
+  })();
+
+  // Client-only mount guard to prevent SSR hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
   useEffect(() => {
-    if (editorRef.current && !isLoaded) {
-      editorRef.current.innerHTML = markdownToHtml(value);
-      setIsLoaded(true);
-    }
-  }, [value, isLoaded]);
+    setIsMounted(true);
+  }, []);
 
-  // Update content when value prop changes
+  // Resolve StarterKit across v2/v3 shapes
+  const starterKitOptions = {
+    heading: { levels: [1, 2] },
+    horizontalRule: true,
+  };
+  const StarterKitResolved = (typeof StarterKit === 'function')
+    ? StarterKit(starterKitOptions)
+    : (StarterKit && typeof StarterKit.configure === 'function')
+      ? StarterKit.configure(starterKitOptions)
+      : StarterKit;
+
+  const resolvedExtensions = [];
+  if (Array.isArray(StarterKitResolved)) resolvedExtensions.push(...StarterKitResolved);
+  else if (StarterKitResolved) resolvedExtensions.push(StarterKitResolved);
+  if (IconExtension) resolvedExtensions.push(IconExtension);
+
+  // Use the recommended useEditor hook (TipTap v3 React way)
+  const editor = useEditor({
+    extensions: resolvedExtensions,
+    content: initialContent,
+    onUpdate: ({ editor }) => {
+      const json = editor.getJSON();
+      onChange(json);
+      onCursorPageChange(1);
+      onViewPageChange(1);
+    },
+    editorProps: {
+      attributes: {
+        class: 'tiptap',
+        spellcheck: 'false',
+      },
+    },
+  }, []); // Empty dependency array ensures editor is only created once
+
+  // Hydrate when external JSON changes
   useEffect(() => {
-    if (editorRef.current && value !== content) {
-      setContent(value);
-      editorRef.current.innerHTML = markdownToHtml(value);
+    if (!editor) return;
+    if (value && typeof value === 'object') {
+      editor.commands.setContent(value);
     }
-  }, [value, content]);
+  }, [value, editor]);
 
-  // Simple markdown to HTML converter
-  const markdownToHtml = (markdown) => {
-    if (!markdown) return '<p><br></p>';
-    
-    return markdown
-      .split('\n\n')
-      .map(paragraph => {
-        if (!paragraph.trim()) return '<p><br></p>';
-        
-        // Headers
-        if (paragraph.startsWith('# ')) {
-          return `<h1>${paragraph.slice(2)}</h1>`;
-        }
-        if (paragraph.startsWith('## ')) {
-          return `<h2>${paragraph.slice(3)}</h2>`;
-        }
-        if (paragraph.startsWith('### ')) {
-          return `<h3>${paragraph.slice(4)}</h3>`;
-        }
-        
-        // Horizontal rule
-        if (paragraph.trim() === '---') {
-          return '<hr>';
-        }
-        
-        // Regular paragraph with basic formatting
-        let text = paragraph
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/_(.*?)_/g, '<em>$1</em>')
-          .replace(/`(.*?)`/g, '<code>$1</code>');
-        
-        return `<p>${text}</p>`;
-      })
-      .join('');
-  };
-
-  // Simple HTML to markdown converter
-  const htmlToMarkdown = (html) => {
-    if (!html) return '';
-    
-    return html
-      .replace(/<h1>(.*?)<\/h1>/g, '# $1\n\n')
-      .replace(/<h2>(.*?)<\/h2>/g, '## $1\n\n')
-      .replace(/<h3>(.*?)<\/h3>/g, '### $1\n\n')
-      .replace(/<hr\s*\/?>/g, '---\n\n')
-      .replace(/<p><br><\/p>/g, '\n')
-      .replace(/<p>(.*?)<\/p>/g, '$1\n\n')
-      .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-      .replace(/<em>(.*?)<\/em>/g, '_$1_')
-      .replace(/<code>(.*?)<\/code>/g, '`$1`')
-      .replace(/<br\s*\/?>/g, '\n')
-      .replace(/&nbsp;/g, ' ')
-      .trim();
-  };
-
-  const handleInput = () => {
-    if (editorRef.current) {
-      const html = editorRef.current.innerHTML;
-      const markdown = htmlToMarkdown(html);
-      setContent(markdown);
-      onChange(markdown);
-    }
-  };
-
-  const formatText = (command, value = null) => {
-    document.execCommand(command, false, value);
-    handleInput();
-    editorRef.current?.focus();
-  };
-
-  const insertHeading = (level) => {
-    const selection = window.getSelection();
-    if (selection.rangeCount > 0) {
-      const range = selection.getRangeAt(0);
-      const element = range.commonAncestorContainer.nodeType === Node.TEXT_NODE 
-        ? range.commonAncestorContainer.parentElement 
-        : range.commonAncestorContainer;
-      
-      if (element.tagName && element.tagName.match(/^H[1-6]$/)) {
-        // Change existing heading
-        element.outerHTML = `<h${level}>${element.textContent}</h${level}>`;
-      } else {
-        // Create new heading
-        document.execCommand('formatBlock', false, `<h${level}>`);
-      }
-    }
-    handleInput();
-    editorRef.current?.focus();
-  };
-
-  const insertHorizontalRule = () => {
-    document.execCommand('insertHTML', false, '<hr>');
-    handleInput();
-    editorRef.current?.focus();
-  };
+  // Render placeholder until editor is ready to avoid hydration mismatch
+  if (!isMounted || !editor) {
+    return (
+      <div className='tiptap-editor' style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <div className='tiptap-editor__toolbar' style={{ padding: '8px', borderBottom: '1px solid #ccc', display: 'flex', gap: '4px', flexShrink: 0 }} />
+        <div className='tiptap-editor__content' style={{ flex: 1 }} />
+      </div>
+    );
+  }
 
   return (
     <div className='tiptap-editor' style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div className='tiptap-editor__toolbar' style={{
-        padding: '8px',
-        borderBottom: '1px solid #ccc',
-        display: 'flex',
-        gap: '4px',
-        flexShrink: 0
-      }}>
-        <button 
-          onClick={() => insertHeading(1)} 
-          title='Heading 1'
-          style={{ padding: '4px 8px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
-        >
-          H1
-        </button>
-        <button 
-          onClick={() => insertHeading(2)} 
-          title='Heading 2'
-          style={{ padding: '4px 8px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
-        >
-          H2
-        </button>
-        <button 
-          onClick={() => formatText('bold')} 
-          title='Bold'
-          style={{ padding: '4px 8px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
-        >
-          <strong>B</strong>
-        </button>
-        <button 
-          onClick={() => formatText('italic')} 
-          title='Italic'
-          style={{ padding: '4px 8px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
-        >
-          <em>I</em>
-        </button>
-        <button 
-          onClick={insertHorizontalRule} 
-          title='Horizontal Rule'
-          style={{ padding: '4px 8px', border: '1px solid #ccc', background: '#f5f5f5', cursor: 'pointer' }}
-        >
-          ---
-        </button>
+      <div className='tiptap-editor__toolbar' style={{ padding: '8px', borderBottom: '1px solid #ccc', display: 'flex', gap: '4px', flexShrink: 0 }}>
+        <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title='H1'>H1</button>
+        <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title='H2'>H2</button>
+        <button onClick={() => editor.chain().focus().toggleBold().run()} title='Bold'><strong>B</strong></button>
+        <button onClick={() => editor.chain().focus().toggleItalic().run()} title='Italic'><em>I</em></button>
+        <button onClick={() => editor.chain().focus().setHorizontalRule().run()} title='HR'>---</button>
       </div>
-      <div 
-        ref={editorRef}
-        contentEditable
-        onInput={handleInput}
-        style={{
-          flex: 1,
-          padding: '10px',
-          border: 'none',
-          outline: 'none',
-          overflow: 'auto',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          lineHeight: '1.5'
-        }}
-        suppressContentEditableWarning={true}
-      />
+      <EditorContent editor={editor} />
     </div>
   );
 };
 
+export default TipTapEditor;
+// Ensure CommonJS consumers using require() receive the component directly
+// (our codebase mixes CJS and ESM in places)
 module.exports = TipTapEditor;
-module.exports.default = TipTapEditor;

@@ -1,26 +1,26 @@
-require('./homePage.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const cx = require('classnames');
+import './homePage.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import cx from 'classnames';
 import request from '../../utils/request-middleware.js';
-const { Meta } = require('vitreum/headtags');
+import { Meta } from 'vitreum/headtags';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
-const Navbar = require('../../navbar/navbar.jsx');
-const NewBrewItem = require('../../navbar/newbrew.navitem.jsx');
-const HelpNavItem = require('../../navbar/help.navitem.jsx');
-const VaultNavItem = require('../../navbar/vault.navitem.jsx');
-const RecentNavItem = require('../../navbar/recent.navitem.jsx').both;
-const AccountNavItem = require('../../navbar/account.navitem.jsx');
-const ErrorNavItem = require('../../navbar/error-navitem.jsx');
-const { fetchThemeBundle } = require('../../../../shared/helpers.js');
+import Nav from 'naturalcrit/nav/nav.jsx';
+import Navbar from '../../navbar/navbar.jsx';
+import NewBrewItem from '../../navbar/newbrew.navitem.jsx';
+import HelpNavItem from '../../navbar/help.navitem.jsx';
+import VaultNavItem from '../../navbar/vault.navitem.jsx';
+import RecentNavItem from '../../navbar/recent.navitem.jsx';
+import AccountNavItem from '../../navbar/account.navitem.jsx';
+import ErrorNavItem from '../../navbar/error-navitem.jsx';
+import { fetchThemeBundle } from '../../../../shared/helpers.js';
 
-const SplitPane = require('client/components/splitPane/splitPane.jsx');
-const Editor = require('../../editor/editor.jsx');
-const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
-const AiSidebar = require('../../editor/aiSidebar/aiSidebar.jsx');
+import SplitPane from 'client/components/splitPane/splitPane.jsx';
+import Editor from '../../editor/editor.jsx';
+import BrewRenderer from '../../brewRenderer/brewRenderer.jsx';
+import AiSidebar from '../../editor/aiSidebar/aiSidebar.jsx';
 
-const { DEFAULT_BREW } = require('../../../../server/brewDefaults.js');
+import { DEFAULT_BREW } from '../../../../server/brewDefaults.js';
 
 const HomePage = createClass({
 	displayName     : 'HomePage',
@@ -91,7 +91,7 @@ const HomePage = createClass({
 				<NewBrewItem />
 				<HelpNavItem />
 				<VaultNavItem />
-				<RecentNavItem />
+				<RecentNavItem.both />
 				<AccountNavItem />
 			</Nav.section>
 		</Navbar>;
@@ -147,4 +147,4 @@ const HomePage = createClass({
 	}
 });
 
-module.exports = HomePage;
+export default HomePage;

@@ -1436,7 +1436,7 @@ const AiSidebar = createClass({
 	}
 });
 
-module.exports = AiSidebar;
+export default AiSidebar;
 
 
 

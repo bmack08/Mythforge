@@ -450,7 +450,7 @@ const Editor = createClass({
 			return <>
 				<div style={{ height: `calc(100% - ${this.state.snippetbarHeight}px)` }}>
 					<TipTapEditor
-						value={this.props.brew.text}
+						value={this.props.brew.text || { type: 'doc', content: [{ type: 'paragraph' }] }}
 						onChange={this.props.onTextChange}
 						onCursorPageChange={this.props.onCursorPageChange}
 						onViewPageChange={this.props.onViewPageChange}
@@ -574,9 +574,9 @@ const Editor = createClass({
 				*/}
 
 				{this.renderEditor()}
-			</div>
-		);
+		</div>
+	);
 	}
 });
 
-module.exports = Editor;
+export default Editor;

@@ -56,9 +56,9 @@ const NewBrew = ()=>{
 				onClick={()=>{ document.getElementById('uploadTxt').click(); }}>
 				<input id='uploadTxt' className='newFromLocal' type='file' onChange={handleFileChange} style={{ display: 'none' }} />
                 from file
-			</Nav.item>
-		</Nav.dropdown>
+		</Nav.item>
+	</Nav.dropdown>
 	);
 };
 
-module.exports = NewBrew;
+export default NewBrew;

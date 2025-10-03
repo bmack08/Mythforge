@@ -102,9 +102,9 @@ const Pane = ({ width, children, isDragging, moveBrew, moveSource, liveScroll, s
 
 	return (
 		<div className='pane' style={styles}>
-			{React.cloneElement(children, { moveBrew, moveSource, liveScroll, setMoveArrows })}
-		</div>
+		{React.cloneElement(children, { moveBrew, moveSource, liveScroll, setMoveArrows })}
+	</div>
 	);
 };
 
-module.exports = SplitPane;
+export default SplitPane;

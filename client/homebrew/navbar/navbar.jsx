@@ -14,13 +14,6 @@ const Navbar = createClass({
 	displayName     : 'Navbar',
 	getInitialState : function() {
 		return {
-			//showNonChromeWarning : false,
-			ver : '0.0.0'
-		};
-	},
-
-	getInitialState : function() {
-		return {
 			ver : global.version
 		};
 	},
@@ -53,9 +46,9 @@ const Navbar = createClass({
 				<PatreonNavItem />
 				{/*this.renderChromeWarning()*/}
 			</Nav.section>
-			{this.props.children}
-		</Nav.base>;
+		{this.props.children}
+	</Nav.base>;
 	}
 });
 
-module.exports = Navbar;
+export default Navbar;

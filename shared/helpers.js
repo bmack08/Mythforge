@@ -117,15 +117,19 @@ const printCurrentBrew = ()=>{
 };
 
 const fetchThemeBundle = async (obj, renderer, theme)=>{
-	if(!renderer || !theme) {
-		console.log('❌ fetchThemeBundle: Missing renderer or theme', { renderer, theme });
+	// Provide default fallbacks for renderer and theme
+	const finalRenderer = renderer || 'V3';
+	const finalTheme = theme || '5ePHB';
+	
+	if(!finalRenderer || !finalTheme) {
+		console.log('❌ fetchThemeBundle: Missing renderer or theme', { renderer: finalRenderer, theme: finalTheme });
 		return;
 	}
 	// Add cache-busting parameter to ensure fresh theme bundle
 	const cacheBuster = Date.now();
-	console.log(`🎨 fetchThemeBundle: Requesting ${renderer}/${theme} (cb=${cacheBuster})`);
+	console.log(`🎨 fetchThemeBundle: Requesting ${finalRenderer}/${finalTheme} (cb=${cacheBuster})`);
 	const res = await request
-			.get(`/api/theme/${renderer}/${theme}?cb=${cacheBuster}`)
+			.get(`/api/theme/${finalRenderer}/${finalTheme}?cb=${cacheBuster}`)
 			.catch((err)=>{
 				console.error('❌ fetchThemeBundle: Request failed', err);
 				obj.setState({ error: err });

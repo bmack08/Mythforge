@@ -149,9 +149,9 @@ const ErrorNavItem = createClass({
 				Report the issue <a target='_blank' rel='noopener noreferrer' href={`https://github.com/naturalcrit/homebrewery/issues/new?template=save_issue.yml&error-code=${encodeURIComponent(errMsg)}`}>
 				here
 				</a>.
-			</div>
-		</Nav.item>;
+		</div>
+	</Nav.item>;
 	}
 });
 
-module.exports = ErrorNavItem;
+export default ErrorNavItem;

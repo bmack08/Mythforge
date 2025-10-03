@@ -175,7 +175,7 @@ const RecentItems = createClass({
 
 });
 
-module.exports = {
+const RecentNavItemExports = {
 
 	edited : (props)=>{
 		return <RecentItems
@@ -205,3 +205,5 @@ module.exports = {
 		/>;
 	}
 };
+
+export default RecentNavItemExports;
