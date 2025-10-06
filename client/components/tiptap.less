@@ -1,6 +1,7 @@
 @import 'naturalcrit/styles/animations.less';
 @import 'naturalcrit/styles/colors.less';
 
+// Main TipTap editor container
 .tiptap-editor {
   display: flex;
   flex-direction: column;
@@ -8,35 +9,35 @@
   background: white;
 }
 
+// Toolbar with formatting buttons
 .tiptap-editor__toolbar {
   display: flex;
-  gap: 8px;
-  padding: 6px 8px;
-  border-bottom: 1px solid #ddd;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
   background: #f9f9f9;
   flex-shrink: 0;
+  
+  button {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    
+    &:hover {
+      background: #e0e0e0;
+    }
+    
+    &:active {
+      background: #d0d0d0;
+    }
+  }
 }
 
-.tiptap-editor__toolbar button {
-  background: #f7f7f7;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 4px 8px;
-  cursor: pointer;
-  
-  &:hover {
-    background: #e0e0e0;
-  }
-  
-  &:active {
-    background: #d0d0d0;
-  }
-}
-
+// Editor content wrapper (contains ProseMirror)
 .tiptap-editor__content {
   flex: 1;
-  padding: 12px;
-  outline: none;
   overflow: auto;
   background: white;
 }
