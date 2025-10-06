@@ -1,6 +1,6 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const Navbar = require('../../navbar/navbar.jsx');
+import React from 'react';
+import createClass from 'create-react-class';
+import Navbar from '../../navbar/navbar.jsx';
 
 const ProjectsPage = createClass({
 	displayName: 'ProjectsPage',
@@ -152,4 +152,4 @@ const ProjectsPage = createClass({
 	}
 });
 
-module.exports = ProjectsPage;
+export default ProjectsPage;

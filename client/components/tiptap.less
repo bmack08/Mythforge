@@ -1,7 +1,11 @@
+@import 'naturalcrit/styles/animations.less';
+@import 'naturalcrit/styles/colors.less';
+
 .tiptap-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background: white;
 }
 
 .tiptap-editor__toolbar {
@@ -9,6 +13,8 @@
   gap: 8px;
   padding: 6px 8px;
   border-bottom: 1px solid #ddd;
+  background: #f9f9f9;
+  flex-shrink: 0;
 }
 
 .tiptap-editor__toolbar button {
@@ -17,6 +23,14 @@
   border-radius: 4px;
   padding: 4px 8px;
   cursor: pointer;
+  
+  &:hover {
+    background: #e0e0e0;
+  }
+  
+  &:active {
+    background: #d0d0d0;
+  }
 }
 
 .tiptap-editor__content {
@@ -24,4 +38,40 @@
   padding: 12px;
   outline: none;
   overflow: auto;
+  background: white;
+}
+
+// Style the actual ProseMirror editor content
+.ProseMirror {
+  min-height: 100%;
+  background: white;
+  padding: 16px;
+  outline: none;
+  
+  // Make content editable and cursor visible
+  &:focus {
+    outline: none;
+  }
+  
+  // Ensure paragraphs have proper spacing
+  p {
+    margin: 0 0 1em 0;
+    min-height: 1em;
+  }
+  
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    margin: 1em 0 0.5em 0;
+    line-height: 1.2;
+  }
+  
+  // Horizontal rule
+  hr {
+    border: none;
+    border-top: 2px solid #ddd;
+    margin: 1em 0;
+  }
+  
+  // Show cursor/caret
+  caret-color: black;
 }

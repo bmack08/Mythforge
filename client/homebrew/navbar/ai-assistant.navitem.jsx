@@ -1,6 +1,6 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import createClass from 'create-react-class';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 const AIAssistantNavItem = createClass({
   displayName: 'AIAssistantNavItem',
@@ -317,4 +317,4 @@ const AIAssistantNavItem = createClass({
   }
 });
 
-module.exports = AIAssistantNavItem;
+export default AIAssistantNavItem;

@@ -60,4 +60,3 @@ function createIcon(core) {
 }
 
 export default createIcon;
-module.exports = createIcon;

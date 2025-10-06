@@ -1,19 +1,16 @@
 /* eslint-disable max-lines */
-require('./metadataEditor.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const _     = require('lodash');
+import './metadataEditor.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
 import request from '../../utils/request-middleware.js';
-const Combobox = require('client/components/combobox.jsx');
-const TagInput = require('../tagInput/tagInput.jsx');
-
-
-const Themes = require('themes/themes.json');
-const validations = require('./validations.js');
+import Combobox from 'client/components/combobox.jsx';
+import TagInput from '../tagInput/tagInput.jsx';
+import Themes from 'themes/themes.json';
+import validations from './validations.js';
+import homebreweryThumbnail from '../../thumbnail.png';
 
 const SYSTEMS = ['5e', '4e', '3.5e', 'Pathfinder'];
-
-const homebreweryThumbnail = require('../../thumbnail.png');
 
 const callIfExists = (val, fn, ...args)=>{
 	if(val[fn]) {
@@ -415,4 +412,4 @@ const MetadataEditor = createClass({
 	}
 });
 
-module.exports = MetadataEditor;
+export default MetadataEditor;

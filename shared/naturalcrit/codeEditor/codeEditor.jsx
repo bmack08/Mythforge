@@ -1,48 +1,48 @@
 /* eslint-disable max-lines */
-require('./codeEditor.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const _ = require('lodash');
-const closeTag = require('./close-tag');
-const autoCompleteEmoji = require('./autocompleteEmoji');
+import './codeEditor.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import closeTag from './close-tag.js';
+import autoCompleteEmoji from './autocompleteEmoji.js';
 
 let CodeMirror;
 if(typeof window !== 'undefined'){
-	CodeMirror = require('codemirror');
+	CodeMirror = (await import('codemirror')).default;
 
 	//Language Modes
-	require('codemirror/mode/gfm/gfm.js'); //Github flavoured markdown
-	require('codemirror/mode/css/css.js');
-	require('codemirror/mode/javascript/javascript.js');
+	await import('codemirror/mode/gfm/gfm.js'); //Github flavoured markdown
+	await import('codemirror/mode/css/css.js');
+	await import('codemirror/mode/javascript/javascript.js');
 
 	//Addons
 	//Code folding
-	require('codemirror/addon/fold/foldcode.js');
-	require('codemirror/addon/fold/foldgutter.js');
+	await import('codemirror/addon/fold/foldcode.js');
+	await import('codemirror/addon/fold/foldgutter.js');
 	//Search and replace
-	require('codemirror/addon/search/search.js');
-	require('codemirror/addon/search/searchcursor.js');
-	require('codemirror/addon/search/jump-to-line.js');
-	require('codemirror/addon/search/match-highlighter.js');
-	require('codemirror/addon/search/matchesonscrollbar.js');
-	require('codemirror/addon/dialog/dialog.js');
+	await import('codemirror/addon/search/search.js');
+	await import('codemirror/addon/search/searchcursor.js');
+	await import('codemirror/addon/search/jump-to-line.js');
+	await import('codemirror/addon/search/match-highlighter.js');
+	await import('codemirror/addon/search/matchesonscrollbar.js');
+	await import('codemirror/addon/dialog/dialog.js');
 	//Trailing space highlighting
-	// require('codemirror/addon/edit/trailingspace.js');
+	// await import('codemirror/addon/edit/trailingspace.js');
 	//Active line highlighting
-	// require('codemirror/addon/selection/active-line.js');
+	// await import('codemirror/addon/selection/active-line.js');
 	//Scroll past last line
-	require('codemirror/addon/scroll/scrollpastend.js');
+	await import('codemirror/addon/scroll/scrollpastend.js');
 	//Auto-closing
 	//XML code folding is a requirement of the auto-closing tag feature and is not enabled
-	require('codemirror/addon/fold/xml-fold.js');
-	require('codemirror/addon/edit/closetag.js');
+	await import('codemirror/addon/fold/xml-fold.js');
+	await import('codemirror/addon/edit/closetag.js');
 	//Autocompletion
-	require('codemirror/addon/hint/show-hint.js');
+	await import('codemirror/addon/hint/show-hint.js');
 
-	const foldPagesCode = require('./fold-pages');
-	foldPagesCode.registerHomebreweryHelper(CodeMirror);
-	const foldCSSCode = require('./fold-css');
-	foldCSSCode.registerHomebreweryHelper(CodeMirror);
+	const foldPagesModule = await import('./fold-pages');
+	foldPagesModule.default.registerHomebreweryHelper(CodeMirror);
+	const foldCSSModule = await import('./fold-css');
+	foldCSSModule.default.registerHomebreweryHelper(CodeMirror);
 }
 
 const CodeEditor = createClass({
@@ -456,10 +456,9 @@ const CodeEditor = createClass({
 	render : function(){
 		return <>
 			<link href={`../homebrew/cm-themes/${this.props.editorTheme}.css`} type='text/css' rel='stylesheet' />
-			<div className='codeEditor' ref={this.editor} style={this.props.style}/>
-		</>;
+		<div className='codeEditor' ref={this.editor} style={this.props.style}/>
+	</>;
 	}
 });
 
-module.exports = CodeEditor;
-
+export default CodeEditor;

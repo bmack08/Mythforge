@@ -1,6 +1,6 @@
-require('./aiSidebar.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './aiSidebar.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
 const MAX_REFERENCE_SIZE = 1024 * 1024 * 30; // 30 MB per reference
 const MAX_REFERENCE_CHARS = 20000;

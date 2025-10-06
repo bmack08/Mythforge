@@ -1,6 +1,6 @@
-require('./inlineEditor.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './inlineEditor.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
 const InlineEditor = createClass({
 	displayName : 'InlineEditor',
@@ -317,4 +317,4 @@ const InlineEditor = createClass({
 	}
 });
 
-module.exports = InlineEditor;
+export default InlineEditor;

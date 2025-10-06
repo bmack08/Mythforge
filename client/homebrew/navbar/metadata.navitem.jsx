@@ -1,8 +1,7 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const Moment = require('moment');
-
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import createClass from 'create-react-class';
+import Moment from 'moment';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 
 const MetadataNav = createClass({
@@ -86,4 +85,4 @@ const MetadataNav = createClass({
 
 });
 
-module.exports = MetadataNav;
+export default MetadataNav;

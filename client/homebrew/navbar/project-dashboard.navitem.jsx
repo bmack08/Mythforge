@@ -1,7 +1,7 @@
-const React = require('react');
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
-module.exports = function(props){
+const ProjectDashboardNavItem = function(props){
   return <Nav.item
     color='green'
     icon='fas fa-tachometer-alt'
@@ -10,3 +10,5 @@ module.exports = function(props){
     Projects
   </Nav.item>;
 };
+
+export default ProjectDashboardNavItem;

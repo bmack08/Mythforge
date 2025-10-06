@@ -1,6 +1,6 @@
-require('./graphPanel.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './graphPanel.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
 const GraphPanel = createClass({
 	displayName : 'GraphPanel',
@@ -354,4 +354,4 @@ const GraphPanel = createClass({
 	}
 });
 
-module.exports = GraphPanel;
+export default GraphPanel;

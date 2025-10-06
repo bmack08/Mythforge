@@ -842,7 +842,7 @@ function generatePrintRecommendations(issues, warnings) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
+export {
   optimizeForPrint,
   analyzePageBreaks,
   generatePrintCSS,

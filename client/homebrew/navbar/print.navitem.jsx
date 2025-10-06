@@ -1,9 +1,11 @@
-const React = require('react');
-const Nav = require('naturalcrit/nav/nav.jsx');
-const { printCurrentBrew } = require('../../../shared/helpers.js');
+import React from 'react';
+import Nav from 'naturalcrit/nav/nav.jsx';
+import { printCurrentBrew } from 'shared/helpers.js';
 
-module.exports = function(){
+const PrintNavItem = function(){
 	return <Nav.item onClick={printCurrentBrew} color='purple' icon='far fa-file-pdf'>
 		get PDF
 	</Nav.item>;
 };
+
+export default PrintNavItem;

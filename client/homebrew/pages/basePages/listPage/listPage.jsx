@@ -1,11 +1,11 @@
 /*eslint max-lines: ["warn", {"max": 300, "skipBlankLines": true, "skipComments": true}]*/
-require('./listPage.less');
-const React       = require('react');
-const createClass = require('create-react-class');
-const _           = require('lodash');
-const moment      = require('moment');
+import './listPage.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import moment from 'moment';
 
-const BrewItem    = require('./brewItem/brewItem.jsx');
+import BrewItem from './brewItem/brewItem.jsx';
 
 const USERPAGE_KEY_PREFIX = 'HOMEBREWERY-LISTPAGE';
 
@@ -277,4 +277,4 @@ const ListPage = createClass({
 	}
 });
 
-module.exports = ListPage;
+export default ListPage;

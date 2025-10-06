@@ -1,7 +1,7 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const Nav = require('naturalcrit/nav/nav.jsx');
-const request = require('superagent');
+import React from 'react';
+import createClass from 'create-react-class';
+import Nav from 'naturalcrit/nav/nav.jsx';
+import request from 'superagent';
 
 const Account = createClass({
 	displayName     : 'AccountNavItem',

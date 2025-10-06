@@ -1,6 +1,5 @@
-require('./splitPane.less');
-const React = require('react');
-const { useState, useEffect } = React;
+import './splitPane.less';
+import React, { useState, useEffect } from 'react';
 
 const storageKey = 'naturalcrit-pane-split';
 

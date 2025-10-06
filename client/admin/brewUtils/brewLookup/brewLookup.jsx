@@ -1,9 +1,9 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const cx    = require('classnames');
+import React from 'react';
+import createClass from 'create-react-class';
+import cx from 'classnames';
 
-const request = require('superagent');
-const Moment = require('moment');
+import request from 'superagent';
+import Moment from 'moment';
 
 
 const BrewLookup = createClass({
@@ -110,4 +110,4 @@ const BrewLookup = createClass({
 	}
 });
 
-module.exports = BrewLookup;
+export default BrewLookup;

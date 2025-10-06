@@ -1,7 +1,7 @@
-const React = require('react');
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
-module.exports = function(props){
+const PatreonNavItem = function(props){
 	return <Nav.item
 		className='patreon'
 		newTab={true}
@@ -11,3 +11,5 @@ module.exports = function(props){
 		help out
 	</Nav.item>;
 };
+
+export default PatreonNavItem;

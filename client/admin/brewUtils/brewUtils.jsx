@@ -1,11 +1,11 @@
-const React = require('react');
-const createClass = require('create-react-class');
-require('./brewUtils.less');
+import React from 'react';
+import createClass from 'create-react-class';
+import './brewUtils.less';
 
-const BrewCleanup = require('./brewCleanup/brewCleanup.jsx');
-const BrewLookup = require('./brewLookup/brewLookup.jsx');
-const BrewCompress = require ('./brewCompress/brewCompress.jsx');
-const Stats = require('./stats/stats.jsx');
+import BrewCleanup from './brewCleanup/brewCleanup.jsx';
+import BrewLookup from './brewLookup/brewLookup.jsx';
+import BrewCompress from './brewCompress/brewCompress.jsx';
+import Stats from './stats/stats.jsx';
 
 const BrewUtils = createClass({
 	render : function(){
@@ -21,4 +21,4 @@ const BrewUtils = createClass({
 	}
 });
 
-module.exports = BrewUtils;
+export default BrewUtils;

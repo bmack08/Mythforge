@@ -1,44 +1,45 @@
 /* eslint-disable max-lines */
-require('./editPage.less');
-const React = require('react');
-const _ = require('lodash');
-const createClass = require('create-react-class');
+import './editPage.less';
+import React from 'react';
+import _ from 'lodash';
+import createClass from 'create-react-class';
 import * as diffMatchPatch from '@sanity/diff-match-patch';
 const {makePatches, applyPatches, stringifyPatches, parsePatches} = diffMatchPatch;
 import { md5 } from 'hash-wasm';
 import { gzipSync, strToU8 } from 'fflate';
 
 import request from '../../utils/request-middleware.js';
-const { Meta } = require('vitreum/headtags');
+import { Meta } from 'vitreum/headtags';
+import { ensureString } from 'shared/helpers/tiptapToMarkdown.js';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
-const Navbar = require('../../navbar/navbar.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
+import Navbar from '../../navbar/navbar.jsx';
 
-const NewBrew = require('../../navbar/newbrew.navitem.jsx');
-const HelpNavItem = require('../../navbar/help.navitem.jsx');
-const PrintNavItem = require('../../navbar/print.navitem.jsx');
-const ErrorNavItem = require('../../navbar/error-navitem.jsx');
-const Account = require('../../navbar/account.navitem.jsx');
-const RecentNavItem = require('../../navbar/recent.navitem.jsx').both;
-const VaultNavItem = require('../../navbar/vault.navitem.jsx');
-const MythwrightProjectWizard = require('../../components/project-creation/mythwright-project-wizard.jsx');
+import NewBrew from '../../navbar/newbrew.navitem.jsx';
+import HelpNavItem from '../../navbar/help.navitem.jsx';
+import PrintNavItem from '../../navbar/print.navitem.jsx';
+import ErrorNavItem from '../../navbar/error-navitem.jsx';
+import Account from '../../navbar/account.navitem.jsx';
+import { both as RecentNavItem } from '../../navbar/recent.navitem.jsx';
+import VaultNavItem from '../../navbar/vault.navitem.jsx';
+import MythwrightProjectWizard from '../../components/project-creation/mythwright-project-wizard.jsx';
 
-const SplitPane = require('client/components/splitPane/splitPane.jsx');
-const ToastHost = require('client/components/toast.jsx');
-const Editor = require('../../editor/editor.jsx');
-const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
-const AiSidebar = require('../../editor/aiSidebar/aiSidebar.jsx');
+import SplitPane from 'client/components/splitPane/splitPane.jsx';
+import ToastHost from 'client/components/toast.jsx';
+import Editor from '../../editor/editor.jsx';
+import BrewRenderer from '../../brewRenderer/brewRenderer.jsx';
+import AiSidebar from '../../editor/aiSidebar/aiSidebar.jsx';
 
-const LockNotification = require('./lockNotification/lockNotification.jsx');
+import LockNotification from './lockNotification/lockNotification.jsx';
 
 import Markdown from 'naturalcrit/markdown.js';
 
-const { DEFAULT_BREW_LOAD } = require('../../../../server/brewDefaults.js');
-const { printCurrentBrew, fetchThemeBundle } = require('../../../../shared/helpers.js');
+import { DEFAULT_BREW_LOAD } from '../../../../server/brewDefaults.js';
+import { printCurrentBrew, fetchThemeBundle } from '../../../../shared/helpers.js';
 
 import { updateHistory, versionHistoryGarbageCollection } from '../../utils/versionHistory.js';
 
-const googleDriveIcon = require('../../googleDrive.svg');
+import googleDriveIcon from '../../googleDrive.svg';
 
 const SAVE_TIMEOUT = 10000;
 
@@ -219,7 +220,10 @@ const EditPage = createClass({
 		// Accept TipTap JSON (object) or legacy markdown (string)
 		let htmlErrors = this.state.htmlErrors;
 		const isJSON = text && typeof text === 'object';
-		if(!isJSON && htmlErrors.length) htmlErrors = Markdown.validate(text);
+		
+		// Convert TipTap JSON to markdown string for validation
+		const textForValidation = ensureString(text);
+		if(!isJSON && htmlErrors.length) htmlErrors = Markdown.validate(textForValidation);
 
 		this.setState((prevState)=>({
 			brew       : { ...prevState.brew, text: text },
@@ -337,11 +341,15 @@ const EditPage = createClass({
 
 		//Prepare content to send to server
 		const brew          = { ...brewState };
-		brew.text           = brew.text.normalize('NFC');
-		this.savedBrew.text = this.savedBrew.text.normalize('NFC');
+		// Convert TipTap JSON to string before normalization
+		const brewText = ensureString(brew.text);
+		const savedBrewText = ensureString(this.savedBrew.text);
+		
+		brew.text           = brewText.normalize('NFC');
+		const savedBrewNormalized = savedBrewText.normalize('NFC');
 		brew.pageCount      = ((brew.renderer=='legacy' ? brew.text.match(/\\page/g) : brew.text.match(/^\\page$/gm)) || []).length + 1;
-		brew.patches        = stringifyPatches(makePatches(encodeURI(this.savedBrew.text), encodeURI(brew.text)));
-		brew.hash           = await md5(this.savedBrew.text);
+		brew.patches        = stringifyPatches(makePatches(encodeURI(savedBrewNormalized), encodeURI(brew.text)));
+		brew.hash           = await md5(savedBrewNormalized);
 		//brew.text           = undefined; - Temporary parallel path
 		brew.textBin        = undefined;
 
@@ -636,4 +644,4 @@ const EditPage = createClass({
 	}
 });
 
-module.exports = EditPage;
+export default EditPage;

@@ -1,15 +1,15 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import createClass from 'create-react-class';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 const ProjectCreationNavItem = createClass({
   displayName: 'ProjectCreationNavItem',
 
   render: function() {
     return (
-      <Nav.item 
-        href='/create-project' 
-        color='blue' 
+      <Nav.item
+        href='/create-project'
+        color='blue'
         icon='fas fa-plus-circle'
       >
         New Project
@@ -18,4 +18,4 @@ const ProjectCreationNavItem = createClass({
   }
 });
 
-module.exports = ProjectCreationNavItem;
+export default ProjectCreationNavItem;

@@ -1,24 +1,14 @@
-import React, { useEffect, useState } from 'react'
-import { useEditor, EditorContent } from '@tiptap/react'
-// Load StarterKit via require to handle ESM/CJS interop in our bundler and v2/v3 shapes
-const __SK = require('@tiptap/starter-kit');
-const StarterKit = __SK.default || __SK;
-import './tiptap.less' // your styles
+import React, { useEffect, useState } from 'react';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import * as TipTapCore from '@tiptap/core';
+import './tiptap.less';
+import createIcon from 'client/extensions/Icon.js';
 
-// Include basic TipTap styles and our overrides
-if (typeof window !== 'undefined') {
-  try {
-    const req = eval('require');
-    req('./tiptap.css');
-  } catch(_) {}
-}
-import createIcon from 'client/extensions/Icon.js'
-
-// Load TipTap Icon extension at module level to ensure browserify bundles it
+// Load TipTap Icon extension at module level
 let IconExtension;
 try {
-  const core = require('@tiptap/core');
-  IconExtension = createIcon(core);
+  IconExtension = createIcon(TipTapCore);
 } catch(err) {
   console.error('Failed to load TipTap Icon extension:', err);
 }
@@ -40,26 +30,22 @@ const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {
     setIsMounted(true);
   }, []);
 
-  // Resolve StarterKit across v2/v3 shapes
+  // Configure StarterKit for TipTap v3
   const starterKitOptions = {
     heading: { levels: [1, 2] },
     horizontalRule: true,
   };
-  const StarterKitResolved = (typeof StarterKit === 'function')
-    ? StarterKit(starterKitOptions)
-    : (StarterKit && typeof StarterKit.configure === 'function')
-      ? StarterKit.configure(starterKitOptions)
-      : StarterKit;
 
-  const resolvedExtensions = [];
-  if (Array.isArray(StarterKitResolved)) resolvedExtensions.push(...StarterKitResolved);
-  else if (StarterKitResolved) resolvedExtensions.push(StarterKitResolved);
+  const resolvedExtensions = [
+    StarterKit.configure(starterKitOptions)
+  ];
   if (IconExtension) resolvedExtensions.push(IconExtension);
 
   // Use the recommended useEditor hook (TipTap v3 React way)
   const editor = useEditor({
     extensions: resolvedExtensions,
     content: initialContent,
+    editable: true, // Make editor editable by default
     onUpdate: ({ editor }) => {
       const json = editor.getJSON();
       onChange(json);
@@ -107,6 +93,3 @@ const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {
 };
 
 export default TipTapEditor;
-// Ensure CommonJS consumers using require() receive the component directly
-// (our codebase mixes CJS and ESM in places)
-module.exports = TipTapEditor;

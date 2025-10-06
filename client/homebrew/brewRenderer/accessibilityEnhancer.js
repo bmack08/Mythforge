@@ -795,7 +795,7 @@ function generateAccessibilityRecommendations(issues) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
+export {
   enhanceAccessibility,
   validateAccessibilityCompliance,
   analyzeAndFixHeadings,

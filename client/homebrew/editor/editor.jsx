@@ -1,15 +1,15 @@
 /*eslint max-lines: ["warn", {"max": 500, "skipBlankLines": true, "skipComments": true}]*/
-require('./editor.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const _ = require('lodash');
-const dedent = require('dedent-tabs').default;
+import './editor.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import dedent from 'dedent-tabs';
 import Markdown from '../../../shared/naturalcrit/markdown.js';
 
-const CodeEditor = require('naturalcrit/codeEditor/codeEditor.jsx');
-const TipTapEditor = require('client/components/TipTapEditor.jsx');
-const SnippetBar = require('./snippetbar/snippetbar.jsx');
-const MetadataEditor = require('./metadataEditor/metadataEditor.jsx');
+import CodeEditor from 'naturalcrit/codeEditor/codeEditor.jsx';
+import TipTapEditor from 'client/components/TipTapEditor.jsx';
+import SnippetBar from './snippetbar/snippetbar.jsx';
+import MetadataEditor from './metadataEditor/metadataEditor.jsx';
 // const GraphPanel = require('./graphPanel/graphPanel.jsx');
 // const InlineEditor = require('./inlineEditor/inlineEditor.jsx');
 

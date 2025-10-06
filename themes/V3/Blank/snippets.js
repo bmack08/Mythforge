@@ -1,13 +1,13 @@
 /* eslint-disable max-lines */
 
-const WatercolorGen = require('./snippets/watercolor.gen.js');
-const ImageMaskGen  = require('./snippets/imageMask.gen.js');
-const FooterGen     = require('./snippets/footer.gen.js');
-const dedent        = require('dedent-tabs').default;
-const TableOfContentsGen = require('./snippets/tableOfContents.gen.js');
-const indexGen           = require('./snippets/index.gen.js');
+import WatercolorGen from './snippets/watercolor.gen.js';
+import ImageMaskGen from './snippets/imageMask.gen.js';
+import FooterGen from './snippets/footer.gen.js';
+import dedent from 'dedent-tabs';
+import TableOfContentsGen from './snippets/tableOfContents.gen.js';
+import indexGen from './snippets/index.gen.js';
 
-module.exports = [
+export default [
 
 	{
 		groupName : 'Text Editor',

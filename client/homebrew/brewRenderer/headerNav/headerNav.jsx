@@ -1,5 +1,4 @@
-require('./headerNav.less');
-
+import './headerNav.less';
 import * as React from 'react';
 import * as _ from 'lodash';
 

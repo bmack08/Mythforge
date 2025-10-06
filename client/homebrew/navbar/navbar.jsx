@@ -1,14 +1,14 @@
-require('./navbar.less');
-require('./mythwright-navbar.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './navbar.less';
+import './mythwright-navbar.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
-const PatreonNavItem = require('./patreon.navitem.jsx');
-const ProjectCreationNavItem = require('./project-creation.navitem.jsx');
-const ProjectDashboardNavItem = require('./project-dashboard.navitem.jsx');
-const CollaborationNavItem = require('./collaboration.navitem.jsx');
-const MythwrightSettingsNavItem = require('./mythwright-settings.navitem.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
+import PatreonNavItem from './patreon.navitem.jsx';
+import ProjectCreationNavItem from './project-creation.navitem.jsx';
+import ProjectDashboardNavItem from './project-dashboard.navitem.jsx';
+import CollaborationNavItem from './collaboration.navitem.jsx';
+import MythwrightSettingsNavItem from './mythwright-settings.navitem.jsx';
 
 const Navbar = createClass({
 	displayName     : 'Navbar',

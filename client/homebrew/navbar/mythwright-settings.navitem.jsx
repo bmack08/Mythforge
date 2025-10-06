@@ -1,7 +1,7 @@
-const React = require('react');
-const Nav = require('naturalcrit/nav/nav.jsx');
+import React from 'react';
+import Nav from 'naturalcrit/nav/nav.jsx';
 
-module.exports = function(props){
+const MythwrightSettingsNavItem = function(props){
   return <Nav.item
     color='gray'
     icon='fas fa-cog'
@@ -10,3 +10,5 @@ module.exports = function(props){
     Settings
   </Nav.item>;
 };
+
+export default MythwrightSettingsNavItem;

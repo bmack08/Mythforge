@@ -1,7 +1,7 @@
-const React = require('react');
+import React from 'react';
 
-const NotificationLookup = require('./notificationLookup/notificationLookup.jsx');
-const NotificationAdd = require('./notificationAdd/notificationAdd.jsx');
+import NotificationLookup from './notificationLookup/notificationLookup.jsx';
+import NotificationAdd from './notificationAdd/notificationAdd.jsx';
 
 const NotificationUtils = ()=>{
 	return (
@@ -12,4 +12,4 @@ const NotificationUtils = ()=>{
 	);
 };
 
-module.exports = NotificationUtils;
+export default NotificationUtils;

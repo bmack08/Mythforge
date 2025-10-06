@@ -1,6 +1,6 @@
-const React       = require('react');
-const createClass = require('create-react-class');
-const request = require('superagent');
+import React from 'react';
+import createClass from 'create-react-class';
+import request from 'superagent';
 
 const BrewCompress = createClass({
 	displayName : 'BrewCompress',
@@ -85,4 +85,4 @@ const BrewCompress = createClass({
 	}
 });
 
-module.exports = BrewCompress;
+export default BrewCompress;

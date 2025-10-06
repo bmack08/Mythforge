@@ -1,7 +1,7 @@
-require('./renderWarnings.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const _     = require('lodash');
+import './renderWarnings.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
 
 import Dialog from '../../../client/components/dialog.jsx';
 
@@ -52,9 +52,9 @@ const RenderWarnings = createClass({
 			<i className='fas fa-exclamation-triangle ohno' />
 			<h3>Render Warnings</h3>
 			<small>If this homebrew is rendering badly if might be because of the following:</small>
-			<ul>{_.values(this.state.warnings)}</ul>
-		</Dialog>;
+		<ul>{_.values(this.state.warnings)}</ul>
+	</Dialog>;
 	}
 });
 
-module.exports = RenderWarnings;
+export default RenderWarnings;

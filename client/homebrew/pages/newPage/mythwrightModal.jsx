@@ -1,6 +1,6 @@
-require('./mythwrightModal.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './mythwrightModal.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
 const MythwrightModal = createClass({
 	displayName : 'MythwrightModal',
@@ -539,4 +539,4 @@ if (typeof window !== 'undefined') {
 	window.MythwrightModal = MythwrightModal;
 }
 
-module.exports = MythwrightModal;
+export default MythwrightModal;

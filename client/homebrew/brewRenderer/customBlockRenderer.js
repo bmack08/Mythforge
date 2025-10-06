@@ -1,7 +1,12 @@
 // Custom Block Renderer Extension for Homebrewery - Task 63
-// Extends the Homebrewery renderer to support Mythwright content blocks
+// Extends the Homebrewery renderer to support Mythwright content blocks and TipTap block nodes
 // Note: ContentBlockProcessor is not available in frontend context
 // We'll create a simple fallback renderer for now
+
+/**
+ * Content Block Processor with TipTap block node support
+ * Handles both custom Mythwright blocks and TipTap-generated block nodes
+ */
 const ContentBlockProcessor = {
   renderBlock: (type, content, metadata = {}) => {
     // Simple fallback renderer for frontend
@@ -12,13 +17,57 @@ const ContentBlockProcessor = {
         return content.content || '';
       case 'boxedtext':
         return `> ${content.content || ''}`;
+      // TipTap block node types
+      case 'paragraph':
+        return content.content || '';
+      case 'heading':
+        const level = content.level || 1;
+        const headingContent = content.content || '';
+        return `${'#'.repeat(level)} ${headingContent}`;
+      case 'codeBlock':
+        const language = content.language || '';
+        const code = content.content || '';
+        return `\`\`\`${language}\n${code}\n\`\`\``;
+      case 'blockquote':
+        return `> ${content.content || ''}`;
+      case 'bulletList':
+      case 'orderedList':
+        return content.content || '';
+      case 'listItem':
+        return `- ${content.content || ''}`;
+      case 'horizontalRule':
+        return '---';
       default:
         return `<!-- ${type} block: ${JSON.stringify(content)} -->`;
     }
+  },
+
+  /**
+   * Validate TipTap block node structure
+   * @param {string} type - Block type
+   * @param {Object} content - Block content
+   * @returns {Object} - Validation result
+   */
+  validateBlock: (type, content) => {
+    const result = {
+      isValid: true,
+      errors: [],
+      warnings: []
+    };
+
+    // TipTap node validation
+    if (type === 'heading') {
+      if (!content.level || content.level < 1 || content.level > 6) {
+        result.errors.push('Heading level must be between 1 and 6');
+        result.isValid = false;
+      }
+    }
+
+    return result;
   }
 };
-const { enhanceAccessibility, validateAccessibilityCompliance } = require('./accessibilityEnhancer.js');
-const { optimizeForPrint, generatePrintCSS, validatePrintReadiness } = require('./printOptimizer.js');
+import { enhanceAccessibility, validateAccessibilityCompliance } from './accessibilityEnhancer.js';
+import { optimizeForPrint, generatePrintCSS, validatePrintReadiness } from './printOptimizer.js';
 
 // ============================================================================
 // CUSTOM BLOCK PROCESSING
@@ -567,7 +616,7 @@ function validateContentBlocks(markdown) {
 // EXPORTS
 // ============================================================================
 
-module.exports = {
+export {
   extendHomebreweryRenderer,
   getCustomBlockCSS,
   processCustomBlocks,

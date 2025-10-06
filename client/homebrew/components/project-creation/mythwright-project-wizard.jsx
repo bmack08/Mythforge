@@ -1,6 +1,6 @@
-require('./mythwright-project-wizard.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './mythwright-project-wizard.less';
+import React from 'react';
+import createClass from 'create-react-class';
 
 const MythwrightProjectWizard = createClass({
 	displayName : 'MythwrightProjectWizard',
@@ -486,4 +486,4 @@ if (typeof window !== 'undefined') {
 	window.MythwrightProjectWizard = MythwrightProjectWizard;
 }
 
-module.exports = MythwrightProjectWizard;
+export default MythwrightProjectWizard;

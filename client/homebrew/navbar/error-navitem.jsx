@@ -1,7 +1,7 @@
-require('./error-navitem.less');
-const React = require('react');
-const Nav = require('naturalcrit/nav/nav.jsx');
-const createClass = require('create-react-class');
+import './error-navitem.less';
+import React from 'react';
+import Nav from 'naturalcrit/nav/nav.jsx';
+import createClass from 'create-react-class';
 
 const ErrorNavItem = createClass({
 	getDefaultProps : function() {

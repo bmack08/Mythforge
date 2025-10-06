@@ -1,7 +1,7 @@
-const React = require('react');
-const dedent = require('dedent-tabs').default;
+import React from 'react';
+import dedent from 'dedent-tabs';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 const HelpNavItem = function(props){
 	return <Nav.dropdown>

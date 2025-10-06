@@ -1,19 +1,18 @@
 /*eslint max-lines: ["warn", {"max": 400, "skipBlankLines": true, "skipComments": true}]*/
 /*eslint max-params:["warn", { max: 10 }], */
-require('./vaultPage.less');
+import './vaultPage.less';
 
-const React = require('react');
-const { useState, useEffect, useRef } = React;
+import React, { useState, useEffect, useRef } from 'react';
 
-const Nav           = require('naturalcrit/nav/nav.jsx');
-const Navbar        = require('../../navbar/navbar.jsx');
-const RecentNavItem = require('../../navbar/recent.navitem.jsx').both;
-const Account       = require('../../navbar/account.navitem.jsx');
-const NewBrew       = require('../../navbar/newbrew.navitem.jsx');
-const HelpNavItem   = require('../../navbar/help.navitem.jsx');
-const BrewItem      = require('../basePages/listPage/brewItem/brewItem.jsx');
-const SplitPane     = require('client/components/splitPane/splitPane.jsx');
-const ErrorIndex    = require('../errorPage/errors/errorIndex.js');
+import Nav from 'naturalcrit/nav/nav.jsx';
+import Navbar from '../../navbar/navbar.jsx';
+import { both as RecentNavItem } from '../../navbar/recent.navitem.jsx';
+import Account from '../../navbar/account.navitem.jsx';
+import NewBrew from '../../navbar/newbrew.navitem.jsx';
+import HelpNavItem from '../../navbar/help.navitem.jsx';
+import BrewItem from '../basePages/listPage/brewItem/brewItem.jsx';
+import SplitPane from 'client/components/splitPane/splitPane.jsx';
+import ErrorIndex from '../errorPage/errors/errorIndex.js';
 
 import request from '../../utils/request-middleware.js';
 
@@ -429,4 +428,4 @@ const VaultPage = (props)=>{
 	);
 };
 
-module.exports = VaultPage;
+export default VaultPage;

@@ -1,31 +1,29 @@
 /*eslint max-lines: ["warn", {"max": 300, "skipBlankLines": true, "skipComments": true}]*/
-require('./brewRenderer.less');
-const React = require('react');
-const { useState, useRef, useMemo, useEffect } = React;
-const _ = require('lodash');
+import './brewRenderer.less';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import { ensureString } from 'shared/helpers/tiptapToMarkdown.js';
+import _ from 'lodash';
 
-const MarkdownLegacy = require('naturalcrit/markdownLegacy.js');
+import MarkdownLegacy from 'naturalcrit/markdownLegacy.js';
 import Markdown from 'naturalcrit/markdown.js';
-// TipTap HTML generator and extensions (lazy required to avoid SSR issues in build)
-let generateHTML;
-let TipTapStarterKit;
-let TipTapIcon;
-try {
-	generateHTML = require('@tiptap/html').generateHTML;
-	TipTapStarterKit = require('@tiptap/starter-kit').default || require('@tiptap/starter-kit');
-	const core = require('@tiptap/core');
-	const createIcon = require('../../extensions/Icon').default || require('../../extensions/Icon');
-	TipTapIcon = createIcon(core);
-} catch(_) { /* fallback to Markdown below */ }
-const ErrorBar = require('./errorBar/errorBar.jsx');
-const ToolBar  = require('./toolBar/toolBar.jsx');
+// TipTap HTML generator and extensions
+import { generateHTML } from '@tiptap/html';
+import StarterKit from '@tiptap/starter-kit';
+import * as TipTapCore from '@tiptap/core';
+import createIcon from 'client/extensions/Icon.js';
+
+const TipTapStarterKit = StarterKit;
+const TipTapIcon = createIcon(TipTapCore);
+
+import ErrorBar from './errorBar/errorBar.jsx';
+import ToolBar from './toolBar/toolBar.jsx';
 
 //TODO: move to the brew renderer
-const RenderWarnings = require('homebrewery/renderWarnings/renderWarnings.jsx');
-const NotificationPopup = require('./notificationPopup/notificationPopup.jsx');
-const Frame = require('react-frame-component').default;
-const dedent = require('dedent-tabs').default;
-const { printCurrentBrew } = require('../../../shared/helpers.js');
+import RenderWarnings from 'homebrewery/renderWarnings/renderWarnings.jsx';
+import NotificationPopup from './notificationPopup/notificationPopup.jsx';
+import Frame from 'react-frame-component';
+import dedent from 'dedent-tabs';
+import { printCurrentBrew } from 'shared/helpers.js';
 
 import HeaderNav from './headerNav/headerNav.jsx';
 import { safeHTML } from './safeHTML.js';
@@ -144,10 +142,13 @@ const BrewRenderer = (props)=>{
 	const mainRef  = useRef(null);
 	const pagesRef = useRef(null);
 
+	// Convert TipTap JSON to markdown string if needed
+	const textContent = ensureString(props.text);
+
 	if(props.renderer == 'legacy') {
-		rawPages = props.text.split(PAGEBREAK_REGEX_LEGACY);
+		rawPages = textContent.split(PAGEBREAK_REGEX_LEGACY);
 	} else {
-		rawPages = props.text.split(PAGEBREAK_REGEX_V3);
+		rawPages = textContent.split(PAGEBREAK_REGEX_V3);
 	}
 
 	const handlePageVisibilityChange = (pageNum, isVisible, isCenter)=>{

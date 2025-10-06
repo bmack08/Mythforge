@@ -1,22 +1,26 @@
 /*eslint max-lines: ["warn", {"max": 350, "skipBlankLines": true, "skipComments": true}]*/
-require('./snippetbar.less');
-const React = require('react');
-const createClass = require('create-react-class');
-const _     = require('lodash');
-const cx    = require('classnames');
-
+import './snippetbar.less';
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import cx from 'classnames';
 import { loadHistory } from '../../utils/versionHistory.js';
 import { brewSnippetsToJSON } from '../../../../shared/helpers.js';
 
 //Import all themes
 const ThemeSnippets = {};
-ThemeSnippets['Legacy_5ePHB'] = require('themes/Legacy/5ePHB/snippets.js');
-ThemeSnippets['V3_5ePHB']     = require('themes/V3/5ePHB/snippets.js');
-ThemeSnippets['V3_5eDMG']     = require('themes/V3/5eDMG/snippets.js');
-ThemeSnippets['V3_Journal']   = require('themes/V3/Journal/snippets.js');
-ThemeSnippets['V3_Blank']     = require('themes/V3/Blank/snippets.js');
+import Legacy_5ePHB_Snippets from 'themes/Legacy/5ePHB/snippets.js';
+import V3_5ePHB_Snippets from 'themes/V3/5ePHB/snippets.js';
+import V3_5eDMG_Snippets from 'themes/V3/5eDMG/snippets.js';
+import V3_Journal_Snippets from 'themes/V3/Journal/snippets.js';
+import V3_Blank_Snippets from 'themes/V3/Blank/snippets.js';
+ThemeSnippets['Legacy_5ePHB'] = Legacy_5ePHB_Snippets;
+ThemeSnippets['V3_5ePHB'] = V3_5ePHB_Snippets;
+ThemeSnippets['V3_5eDMG'] = V3_5eDMG_Snippets;
+ThemeSnippets['V3_Journal'] = V3_Journal_Snippets;
+ThemeSnippets['V3_Blank'] = V3_Blank_Snippets;
 
-const EditorThemes = require('../../../../themes/codeMirror/editorThemes.json');
+import EditorThemes from '../../../../themes/codeMirror/editorThemes.json';
 
 const execute = function(val, props){
 	if(_.isFunction(val)) return val(props);
@@ -281,7 +285,7 @@ const Snippetbar = createClass({
 	}
 });
 
-module.exports = Snippetbar;
+export default Snippetbar;
 
 const SnippetGroup = createClass({
 	displayName     : 'SnippetGroup',

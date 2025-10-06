@@ -1,6 +1,6 @@
-const React = require('react');
+import React from 'react';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 const VaultNavItem = function (props) {
 	return (

@@ -1,9 +1,9 @@
-const React = require('react');
-const createClass = require('create-react-class');
-const _ = require('lodash');
-const Moment = require('moment');
+import React from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import Moment from 'moment';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
 
 const EDIT_KEY = 'homebrewery-recently-edited';
 const VIEW_KEY = 'homebrewery-recently-viewed';
@@ -207,3 +207,4 @@ const RecentNavItemExports = {
 };
 
 export default RecentNavItemExports;
+export const { edit, view, both } = RecentNavItemExports;

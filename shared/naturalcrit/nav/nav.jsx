@@ -1,11 +1,10 @@
-require('client/homebrew/navbar/navbar.less');
-const React = require('react');
-const { useState, useRef, useEffect } = React;
-const createClass = require('create-react-class');
-const _ = require('lodash');
-const cx = require('classnames');
+import 'client/homebrew/navbar/navbar.less';
+import React, { useState, useRef, useEffect } from 'react';
+import createClass from 'create-react-class';
+import _ from 'lodash';
+import cx from 'classnames';
 
-const NaturalCritIcon = require('naturalcrit/svg/naturalcrit.svg.jsx');
+import NaturalCritIcon from 'naturalcrit/svg/naturalcrit.svg.jsx';
 
 const Nav = {
 	base : createClass({

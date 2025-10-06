@@ -1,26 +1,26 @@
 /*eslint max-lines: ["warn", {"max": 300, "skipBlankLines": true, "skipComments": true}]*/
-require('./newPage.less');
-const React = require('react');
-const createClass = require('create-react-class');
+import './newPage.less';
+import React from 'react';
+import createClass from 'create-react-class';
 import request from '../../utils/request-middleware.js';
 
 import Markdown from 'naturalcrit/markdown.js';
 
-const Nav = require('naturalcrit/nav/nav.jsx');
-const PrintNavItem = require('../../navbar/print.navitem.jsx');
-const Navbar = require('../../navbar/navbar.jsx');
-const AccountNavItem = require('../../navbar/account.navitem.jsx');
-const ErrorNavItem = require('../../navbar/error-navitem.jsx');
-const RecentNavItem = require('../../navbar/recent.navitem.jsx').both;
-const HelpNavItem = require('../../navbar/help.navitem.jsx');
+import Nav from 'naturalcrit/nav/nav.jsx';
+import PrintNavItem from '../../navbar/print.navitem.jsx';
+import Navbar from '../../navbar/navbar.jsx';
+import AccountNavItem from '../../navbar/account.navitem.jsx';
+import ErrorNavItem from '../../navbar/error-navitem.jsx';
+import { both as RecentNavItem } from '../../navbar/recent.navitem.jsx';
+import HelpNavItem from '../../navbar/help.navitem.jsx';
 
-const SplitPane = require('client/components/splitPane/splitPane.jsx');
-const Editor = require('../../editor/editor.jsx');
-const BrewRenderer = require('../../brewRenderer/brewRenderer.jsx');
-const MythwrightProjectWizard = require('../../components/project-creation/mythwright-project-wizard.jsx');
+import SplitPane from 'client/components/splitPane/splitPane.jsx';
+import Editor from '../../editor/editor.jsx';
+import BrewRenderer from '../../brewRenderer/brewRenderer.jsx';
+import MythwrightProjectWizard from '../../components/project-creation/mythwright-project-wizard.jsx';
 
-const { DEFAULT_BREW } = require('../../../../server/brewDefaults.js');
-const { printCurrentBrew, fetchThemeBundle } = require('../../../../shared/helpers.js');
+import { DEFAULT_BREW } from '../../../../server/brewDefaults.js';
+import { printCurrentBrew, fetchThemeBundle } from '../../../../shared/helpers.js';
 
 const BREWKEY  = 'homebrewery-new';
 const STYLEKEY = 'homebrewery-new-style';
@@ -279,4 +279,4 @@ const NewPage = createClass({
 	}
 });
 
-module.exports = NewPage;
+export default NewPage;
