@@ -3,7 +3,7 @@ import _ from 'lodash';
 // Default properties for newly-created brews
 const DEFAULT_BREW = {
 	title       : '',
-	text        : '',
+	text        : { type: 'doc', content: [] }, // TipTap JSON format (empty document)
 	style       : undefined,
 	description : '',
 	editId      : undefined,

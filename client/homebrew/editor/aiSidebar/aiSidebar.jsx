@@ -1,4 +1,5 @@
 import './aiSidebar.less';
+import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import React from 'react';
 import createClass from 'create-react-class';
 
@@ -554,17 +555,21 @@ const AiSidebar = createClass({
 	},
 
 	updateStoryFromBot : function(request, options = {}) {
-		const documentText = this.getCurrentDocumentText();
+		const rawDoc = this.getCurrentDocumentText();
+		// rawDoc may already be JSON (TipTap) or a legacy string
+		const docJson = ensureJson(rawDoc);
+		const plain = toPlainText(docJson).slice(0, 8000); // cap plaintext to reduce token usage
 		const metadata = this.getCurrentDocumentMetadata();
 		const chatHistory = options.chatMessages || this.state.chatMessages;
 
 		const payload = {
-			message      : request,
-			documentText : documentText,
+			message       : request,
+			document       : docJson,          // canonical TipTap JSON
+			documentPlain  : plain,            // truncated plain text for prompt
 			metadata,
-			chatHistory  : this.buildChatHistoryPayload(chatHistory),
-			storyState   : {
-				lastStoryText       : this.state.lastFullStory || documentText,
+			chatHistory    : this.buildChatHistoryPayload(chatHistory),
+			storyState     : {
+				lastStoryText       : this.state.lastFullStory || plain,
 				pendingContinuation : this.state.pendingContinuation,
 				lastUserRequest     : this.state.lastRequest,
 				continueRequest     : !!options.continueRequest
@@ -590,6 +595,8 @@ const AiSidebar = createClass({
 			},
 			body : JSON.stringify({
 				...payload,
+				// backward compatibility: still include documentText for any legacy handlers
+				documentText : typeof payload.documentPlain === 'string' ? payload.documentPlain : '',
 				references : this.state.uploadedReferences.map((ref)=>({
 					name     : ref.name,
 					content  : ref.content,

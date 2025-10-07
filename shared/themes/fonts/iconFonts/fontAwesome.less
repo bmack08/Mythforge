@@ -1,10 +1,7 @@
-@import (less) "./themes/fonts/iconFonts/fontawesome-free.less";
-@import (less) "./themes/fonts/iconFonts/fontawesome-solid.less";
-@import (less) "./themes/fonts/iconFonts/fontawesome-brands.less";
-@import (less) "./themes/fonts/iconFonts/fontawesome-regular.less";
+/* Using npm @fortawesome/fontawesome-free instead of local font-face declarations */
+/* Note: Font Awesome CSS is imported directly in homebrew-entry.jsx to avoid LESS resolution issues */
 
-
-/* Icon Font: Font Awesome */
-.far,.fas,.fab { display : inline; }
+/* Ensure legacy class display styling remains */
+.far,.fas,.fab { display: inline; }
 
 

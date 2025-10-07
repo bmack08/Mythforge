@@ -348,18 +348,68 @@ const api = {
 	},
 
 	// Create new brew
-	// Create new brew
 	newBrew : async (req, res)=>{
 		try {
-			const { Homebrew } = await getModels();
-			const brew = await Homebrew.create({
-				title: 'Untitled Brew',
-				text: DEFAULT_BREW,
-				renderer: 'PHB',
-				theme: '5ePHB',
-				shareId: nanoid(8),
-				editId: nanoid(8)
+			console.log('[newBrew] Incoming body raw:', req.body);
+			const { title, text: rawText, renderer, theme, style, description } = req.body || {};
+
+			// ---- TipTap doc validation & normalization ----
+			const defaultDoc = { type: 'doc', content: [] };
+			function isTipTapDoc(val){
+				return !!val && typeof val === 'object' && val.type === 'doc' && Array.isArray(val.content);
+			}
+			let text = rawText;
+			if(typeof text === 'string'){
+				// Could be legacy markdown or serialized JSON
+				try {
+					const maybe = JSON.parse(text);
+					if(isTipTapDoc(maybe)){
+						text = maybe;
+						console.log('[newBrew] Parsed stringified JSON doc.');
+					} else {
+						console.log('[newBrew] String provided but not TipTap doc shape; wrapping in paragraph.');
+						text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text } ] } ] };
+					}
+				} catch(e){
+					// Treat as legacy plain text
+					text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text } ] } ] };
+					console.log('[newBrew] Converted legacy string -> TipTap paragraph.');
+				}
+			}
+			if(!isTipTapDoc(text)){
+				console.warn('[newBrew] Provided text not valid TipTap doc, falling back to empty doc. Received:', text);
+				text = defaultDoc;
+			}
+
+			console.log('[newBrew] Normalized text summary:', {
+				type: typeof text,
+				keys: Object.keys(text||{}),
+				contentLength: Array.isArray(text?.content) ? text.content.length : null
 			});
+
+			const { Homebrew } = await getModels();
+			let brew;
+			try {
+				brew = await Homebrew.create({
+					title: title || 'Untitled Brew',
+					text: text || defaultDoc,
+					style: style || '',
+					renderer: renderer || 'V3',
+					theme: theme || '5ePHB',
+					description: description || '',
+					shareId: nanoid(8),
+					editId: nanoid(8)
+				});
+			} catch(dbErr){
+				console.error('[newBrew] Sequelize create failed. Payload snapshot:', {
+					title: title || 'Untitled Brew',
+					textType: typeof text,
+					textStringHead: JSON.stringify(text).slice(0,200)
+				});
+				throw dbErr; // handled by outer catch
+			}
+
+			console.log('[newBrew] Brew created successfully:', brew.id);
 
 			res.json({
 				success: true,
@@ -367,8 +417,10 @@ const api = {
 					_id: brew.id,
 					title: brew.title,
 					text: brew.text,
+					style: brew.style,
 					renderer: brew.renderer,
 					theme: brew.theme,
+					description: brew.description,
 					shareId: brew.shareId,
 					editId: brew.editId,
 					createdAt: brew.createdAt,
@@ -377,6 +429,7 @@ const api = {
 			});
 		} catch (error) {
 			console.error('New brew error:', error);
+			console.error('Error stack:', error.stack);
 			res.status(500).json({
 				success: false,
 				error: 'Failed to create new brew',
@@ -389,7 +442,7 @@ const api = {
 	updateBrew : async (req, res)=>{
 		try {
 			const { brewId } = req.params;
-			const { title, text, renderer, theme } = req.body;
+			const { title, text, renderer, theme, style, description } = req.body;
 
 			const { Homebrew } = await getModels();
 			// Accept either editId (preferred) or numeric id
@@ -412,10 +465,12 @@ const api = {
 			}
 			
 			await brew.update({
-				title: title || brew.title,
-				text: text || brew.text,
-				renderer: renderer || brew.renderer,
-				theme: theme || brew.theme
+				title: title !== undefined ? title : brew.title,
+				text: text !== undefined ? text : brew.text,
+				style: style !== undefined ? style : brew.style,
+				renderer: renderer !== undefined ? renderer : brew.renderer,
+				theme: theme !== undefined ? theme : brew.theme,
+				description: description !== undefined ? description : brew.description
 			});
 
 			res.json({
@@ -424,8 +479,10 @@ const api = {
 					_id: brew.id,
 					title: brew.title,
 					text: brew.text,
+					style: brew.style,
 					renderer: brew.renderer,
 					theme: brew.theme,
+					description: brew.description,
 					shareId: brew.shareId,
 					editId: brew.editId,
 					createdAt: brew.createdAt,
@@ -605,12 +662,32 @@ const api = {
 
 			const {
 				message,
-				documentText = '',
+				documentText = '', // legacy plain text
+				document,          // TipTap JSON (optional)
+				documentPlain,     // new normalized plain text (preferred)
 				metadata = {},
 				chatHistory = [],
 				references = [],
 				storyState = {}
 			} = req.body;
+
+			// Normalize document content
+			let workingDoc = document;
+			if (workingDoc && typeof workingDoc === 'string') {
+				try { workingDoc = JSON.parse(workingDoc); } catch { workingDoc = null; }
+			}
+			// Import adapter lazily to avoid circular deps at module load
+			let plainFromJson = '';
+			if (workingDoc && typeof workingDoc === 'object' && workingDoc.type === 'doc') {
+				try {
+					const { toPlainText } = await import('../shared/helpers/../contentAdapter.js').catch(()=>({ toPlainText: null }));
+					if (toPlainText) plainFromJson = toPlainText(workingDoc).slice(0, 12000);
+				} catch {}
+			}
+			const basePlain = (documentPlain && typeof documentPlain === 'string') ? documentPlain : documentText;
+			let normalizedPlain = (basePlain && typeof basePlain === 'string' ? basePlain : '') || plainFromJson;
+			if (normalizedPlain.length > 16000) normalizedPlain = normalizedPlain.slice(0, 16000); // hard cap
+			const docSummary = `Document length: ${normalizedPlain.length} chars`;
 
 			if (!message || !message.trim()) {
 				return res.status(400).json({
@@ -621,6 +698,7 @@ const api = {
 
 			const requestText = message.trim();
 			console.log('[Story IDE] Request: "' + requestText.substring(0, 100) + '"');
+			console.log('[Story IDE] ' + docSummary);
 
 			if (!process.env.OPENAI_API_KEY) {
 				console.error("❌ OPENAI_API_KEY not found in environment");
@@ -740,7 +818,7 @@ RULES:
 
 			const systemPrompt = [baseSystemPrompt, pdfGuidance].filter(Boolean).join('\n\n');
 
-			// Build context with document (always) and PDF content (only when present) - use full document for patch accuracy
+			// Build context with normalized plain doc + optional PDF context
 			const docContext = documentText || 'No document content';
 			const metaInfo = `Title: ${metadata?.title || 'Untitled'}\nURL: ${metadata?.url || ''}\nEditId: ${metadata?.editId || ''}`;
 			
@@ -1206,27 +1284,34 @@ ${requestText}`;
 			const { Homebrew } = await getModels();
 			const brew = await Homebrew.findByPk(brewId);
 			
-			if (!brew) {
-				return res.status(404).json({
-					success: false,
-					error: 'Brew not found'
-				});
-			}
-			
-			// Simple text search
-			const results = brew.text.toLowerCase().includes(query.toLowerCase()) ? [{
-				id: brew.id,
-				title: brew.title,
-				text: brew.text.substring(0, 200) + '...',
-				score: 1.0
-			}] : [];
-			
-			res.json({
-				success: true,
-				results: results
+		if (!brew) {
+			return res.status(404).json({
+				success: false,
+				error: 'Brew not found'
 			});
-
-		} catch (error) {
+		}
+		
+		// Simple text search - handle both string and JSON text
+		let searchableText = '';
+		if (typeof brew.text === 'string') {
+			searchableText = brew.text;
+		} else if (typeof brew.text === 'object') {
+			// For TipTap JSON, extract plain text using contentAdapter
+			const { toPlainText } = await import('../shared/contentAdapter.js');
+			searchableText = toPlainText(brew.text);
+		}
+		
+		const results = searchableText.toLowerCase().includes(query.toLowerCase()) ? [{
+			id: brew.id,
+			title: brew.title,
+			text: searchableText.substring(0, 200) + '...',
+			score: 1.0
+		}] : [];
+		
+		res.json({
+			success: true,
+			results: results
+		});		} catch (error) {
 			console.error('Search project error:', error);
 			res.status(500).json({
 				success: false,
@@ -1338,17 +1423,29 @@ export const getBrew = (type = 'share', requireAuth = false) => {
 				return res.status(404).json({ error: 'Brew not found' });
 			}
 			
+			// Handle backward compatibility: if text is a string, convert to TipTap JSON
+			let text = brew.text;
+			if (typeof text === 'string') {
+				// Legacy markdown string - convert to TipTap JSON
+				const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+				text = markdownToTiptap(text);
+				console.log('[getBrew] Converted legacy markdown to TipTap JSON');
+			}
+			
 			// Add brew to request object for next middleware
 			req.brew = {
 				_id: brew.id,
 				title: brew.title,
-				text: brew.text,
+				text: text,
+				style: brew.style || '',
+				snippets: brew.snippets || '',
 				renderer: brew.renderer,
-				theme: brew.theme,
+				theme: brew.theme || '5ePHB',
 				shareId: brew.shareId,
 				editId: brew.editId,
 				createdAt: brew.createdAt,
-				updatedAt: brew.updatedAt
+				updatedAt: brew.updatedAt,
+				description: brew.description || ''
 			};
 			
 			next();

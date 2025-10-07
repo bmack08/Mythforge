@@ -1,12 +1,16 @@
 import './errorPage.less';
 import React from 'react';
 import UIPage from '../basePages/uiPage/uiPage.jsx';
-import Markdown from '../../../../shared/naturalcrit/markdown.js';
+import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import ErrorIndex from './errors/errorIndex.js';
 
 const ErrorPage = ({ brew })=>{
 	// Retrieving the error text based on the brew's error code from ErrorIndex
 	const errorText = ErrorIndex({ brew })[brew.HBErrorCode.toString()] || '';
+
+	// Convert text to TipTap JSON and render
+	const jsonDoc = ensureJson(errorText);
+	const html = toHTML(jsonDoc);
 
 	return (
 		<UIPage brew={{ title: 'Crit Fail!' }}>
@@ -16,7 +20,7 @@ const ErrorPage = ({ brew })=>{
 					<h4>{brew?.text || 'No error text'}</h4>
 				</div>
 				<hr />
-				<div dangerouslySetInnerHTML={{ __html: Markdown.render(errorText) }} />
+				<div dangerouslySetInnerHTML={{ __html: html }} />
 			</div>
 		</UIPage>
 	);

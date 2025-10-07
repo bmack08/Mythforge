@@ -1,5 +1,6 @@
 import React from 'react';
 import createClass from 'create-react-class';
+import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import Nav from 'naturalcrit/nav/nav.jsx';
 
 const AIAssistantNavItem = createClass({
@@ -113,6 +114,8 @@ const AIAssistantNavItem = createClass({
   },
 
   callStoryAssistantAPI: function(message, documentText, metadata) {
+    const docJson = ensureJson(documentText);
+    const plain = toPlainText(docJson).slice(0, 8000);
     return fetch('/api/story-ide', {
       method: 'POST',
       headers: {
@@ -120,7 +123,9 @@ const AIAssistantNavItem = createClass({
       },
       body: JSON.stringify({
         message: message,
-        documentText: documentText,
+        document: docJson,
+        documentPlain: plain,
+        documentText: plain, // legacy fallback
         metadata: metadata
       })
     })

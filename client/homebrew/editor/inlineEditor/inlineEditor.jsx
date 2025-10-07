@@ -80,7 +80,28 @@ const InlineEditor = createClass({
 		const brewId = this.props.brew?.editId || this.props.brew?.shareId;
 		const documentText = this.props.getText ? this.props.getText() : '';
 
-		// Call legacy Story Assistant endpoint for inline edits (keeps existing suggestion shape)
+		// Prepare document context (TipTap JSON + plain text) if available
+		let docJson = null; let docPlain = '';
+		if (this.props.brew?.text) {
+			import('shared/contentAdapter.js')
+				.then(({ ensureJson, toPlainText })=>{
+					try {
+						docJson = ensureJson(this.props.brew.text);
+						docPlain = toPlainText(docJson).slice(0, 4000);
+					} catch(_) { /* swallow */ }
+				})
+				.finally(()=>{
+					this.dispatchInlineEditRequest(operation, documentText, brewId, docJson, docPlain);
+				});
+			return; // exit; request will be sent in finally
+		}
+
+		// If no brew text, fallback immediately
+		this.dispatchInlineEditRequest(operation, documentText, brewId, docJson, docPlain);
+	},
+
+	dispatchInlineEditRequest : function(operation, documentText, brewId, docJson, docPlain){
+		// Original fetch moved here for reuse
 		fetch('/api/story-assistant', {
 			method: 'POST',
 			headers: {
@@ -88,7 +109,9 @@ const InlineEditor = createClass({
 			},
 			body: JSON.stringify({
 				message: this.getOperationPrompt(operation),
-				documentText: documentText,
+				document: docJson,
+				documentPlain: docPlain,
+				documentText: docPlain || documentText,
 				metadata: { 
 					editId: brewId,
 					selectedText: this.state.selectedText,
@@ -126,6 +149,7 @@ const InlineEditor = createClass({
 				}]
 			});
 		});
+
 	},
 
 	getOperationPrompt : function(operation) {

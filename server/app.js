@@ -142,6 +142,7 @@ const corsOptions = {
 			'https://homebrewery-stage.herokuapp.com',
 			'http://localhost:8000',
 			'http://localhost:3000',
+			'http://localhost:8081', // Vite dev server
 		];
 
 		const localNetworkRegex = /^http:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;

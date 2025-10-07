@@ -120,8 +120,23 @@ const initHomebrewModel = (sequelize) => {
 			allowNull: false
 		},
 		text: {
-			type: DataTypes.TEXT,
+			type: DataTypes.JSON, // Changed from TEXT to JSON to support TipTap JSON content
+			defaultValue: {},
+			allowNull: true
+		},
+		style: {
+			type: DataTypes.TEXT, // CSS styles
 			defaultValue: '',
+			allowNull: true
+		},
+		snippets: {
+			type: DataTypes.TEXT, // User snippets
+			defaultValue: '',
+			allowNull: true
+		},
+		theme: {
+			type: DataTypes.STRING(50), // Theme name
+			defaultValue: '5ePHB',
 			allowNull: true
 		},
 		textBin: {

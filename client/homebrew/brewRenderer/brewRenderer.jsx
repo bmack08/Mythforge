@@ -1,11 +1,13 @@
 /*eslint max-lines: ["warn", {"max": 300, "skipBlankLines": true, "skipComments": true}]*/
 import './brewRenderer.less';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { ensureString } from 'shared/helpers/tiptapToMarkdown.js';
+import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import _ from 'lodash';
 
 import MarkdownLegacy from 'naturalcrit/markdownLegacy.js';
-import Markdown from 'naturalcrit/markdown.js';
+// Removed: import Markdown from 'naturalcrit/markdown.js';
+// Now using contentAdapter.toHTML() for rendering
+
 // TipTap HTML generator and extensions
 import { generateHTML } from '@tiptap/html';
 import StarterKit from '@tiptap/starter-kit';
@@ -142,13 +144,19 @@ const BrewRenderer = (props)=>{
 	const mainRef  = useRef(null);
 	const pagesRef = useRef(null);
 
-	// Convert TipTap JSON to markdown string if needed
-	const textContent = ensureString(props.text);
-
-	if(props.renderer == 'legacy') {
-		rawPages = textContent.split(PAGEBREAK_REGEX_LEGACY);
+	// Handle TipTap JSON content - for now, render as single page
+	// TODO: Implement proper page breaking for TipTap JSON
+	if (props.text && typeof props.text === 'object') {
+		// TipTap JSON - render entire document as one page for now
+		rawPages = [props.text];
 	} else {
-		rawPages = textContent.split(PAGEBREAK_REGEX_V3);
+		// Legacy string-based content
+		const textContent = typeof props.text === 'string' ? props.text : '';
+		if(props.renderer == 'legacy') {
+			rawPages = textContent.split(PAGEBREAK_REGEX_LEGACY);
+		} else {
+			rawPages = textContent.split(PAGEBREAK_REGEX_V3);
+		}
 	}
 
 	const handlePageVisibilityChange = (pageNum, isVisible, isCenter)=>{
@@ -202,35 +210,34 @@ const BrewRenderer = (props)=>{
 		let classes    = 'page';
 		let attributes = {};
 
-			// If props.text is a TipTap JSON doc, render via generateHTML
-			if (props && props.text && typeof props.text === 'object' && generateHTML) {
-				const html = generateHTML(props.text, [TipTapStarterKit, TipTapIcon]);
-				return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
-			} else if(props.renderer == 'legacy') {
-			pageText.replace(COLUMNBREAK_REGEX_LEGACY, '```\n````\n'); // Allow Legacy brews to use `\column(break)`
-			const html = MarkdownLegacy.render(pageText);
-
+		// Handle TipTap JSON content
+		if (pageText && typeof pageText === 'object') {
+			const html = toHTML(pageText);
 			return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
-		} else {
-			if(pageText.startsWith('\\page')) {
-				const firstLineTokens  = Markdown.marked.lexer(pageText.split('\n', 1)[0])[0].tokens;
-				const injectedTags = firstLineTokens?.find((obj)=>obj.injectedTags !== undefined)?.injectedTags;
-				if(injectedTags) {
-					styles     = { ...styles, ...injectedTags.styles };
-					styles     = _.mapKeys(styles, (v, k)=>k.startsWith('--') ? k : _.camelCase(k)); // Convert CSS to camelCase for React
-					classes    = [classes, injectedTags.classes].join(' ').trim();
-					attributes = injectedTags.attributes;
-				}
-				pageText = pageText.includes('\n') ? pageText.substring(pageText.indexOf('\n') + 1) : ''; // Remove the \page line
-			}
-
-			// DO NOT REMOVE!!! REQUIRED FOR BACKWARDS COMPATIBILITY WITH NON-UPGRADABLE VERSIONS OF CHROME.
-			pageText += `\n\n&nbsp;\n\\column\n&nbsp;`; //Artificial column break at page end to emulate column-fill:auto (until `wide` is used, when column-fill:balance will reappear)
-
-					const html = Markdown.render(pageText, index);
-
-			return <BrewPage className={classes} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 		}
+		
+		// Legacy renderer
+		if(props.renderer == 'legacy') {
+			pageText = pageText.replace(COLUMNBREAK_REGEX_LEGACY, '```\n````\n'); // Allow Legacy brews to use `\column(break)`
+			const html = MarkdownLegacy.render(pageText);
+			return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
+		}
+		
+		// V3 renderer with markdown strings
+		if(pageText.startsWith('\\page')) {
+			// Note: Markdown.marked.lexer was removed with markdown.js migration
+			// Page styling tags are now simplified - just remove the \page line
+			pageText = pageText.includes('\n') ? pageText.substring(pageText.indexOf('\n') + 1) : '';
+		}
+
+		// DO NOT REMOVE!!! REQUIRED FOR BACKWARDS COMPATIBILITY WITH NON-UPGRADABLE VERSIONS OF CHROME.
+		pageText += `\n\n&nbsp;\n\\column\n&nbsp;`; //Artificial column break at page end to emulate column-fill:auto (until `wide` is used, when column-fill:balance will reappear)
+
+		// Convert markdown string to HTML via contentAdapter
+		const jsonDoc = ensureJson(pageText);
+		const html = toHTML(jsonDoc);
+
+		return <BrewPage className={classes} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 	};
 
 	const renderPages = ()=>{

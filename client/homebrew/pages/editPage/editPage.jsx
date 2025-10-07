@@ -3,14 +3,11 @@ import './editPage.less';
 import React from 'react';
 import _ from 'lodash';
 import createClass from 'create-react-class';
-import * as diffMatchPatch from '@sanity/diff-match-patch';
-const {makePatches, applyPatches, stringifyPatches, parsePatches} = diffMatchPatch;
-import { md5 } from 'hash-wasm';
-import { gzipSync, strToU8 } from 'fflate';
+// Removed: import * as diffMatchPatch, md5, gzipSync - no longer needed with JSON-based saves
 
 import request from '../../utils/request-middleware.js';
 import { Meta } from 'vitreum/headtags';
-import { ensureString } from 'shared/helpers/tiptapToMarkdown.js';
+import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 
 import Nav from 'naturalcrit/nav/nav.jsx';
 import Navbar from '../../navbar/navbar.jsx';
@@ -32,7 +29,8 @@ import AiSidebar from '../../editor/aiSidebar/aiSidebar.jsx';
 
 import LockNotification from './lockNotification/lockNotification.jsx';
 
-import Markdown from 'naturalcrit/markdown.js';
+// Removed: import Markdown from 'naturalcrit/markdown.js';
+// Now using contentAdapter for TipTap JSON compatibility
 
 import { DEFAULT_BREW_LOAD } from '../../../../server/brewDefaults.js';
 import { printCurrentBrew, fetchThemeBundle } from '../../../../shared/helpers.js';
@@ -61,7 +59,7 @@ const EditPage = createClass({
 			saveGoogle                 : this.props.brew.googleId ? true : false,
 			confirmGoogleTransfer      : false,
 			error                      : null,
-			htmlErrors                 : Markdown.validate(this.props.brew.text),
+			htmlErrors                 : [], // Validation disabled for TipTap
 			url                        : '',
 			autoSave                   : true,
 			autoSaveWarning            : false,
@@ -167,9 +165,10 @@ const EditPage = createClass({
 			}
 		};
 
-		this.setState((prevState)=>({
-			htmlErrors : Markdown.validate(prevState.brew.text)
-		}));
+		// Validation disabled for TipTap
+		this.setState({
+			htmlErrors : []
+		});
 
 		fetchThemeBundle(this, this.props.brew.renderer, this.props.brew.theme);
 
@@ -217,29 +216,26 @@ const EditPage = createClass({
 	},
 
 	handleTextChange : function(text){
-		// Accept TipTap JSON (object) or legacy markdown (string)
-		let htmlErrors = this.state.htmlErrors;
-		const isJSON = text && typeof text === 'object';
+		// text can be TipTap JSON or legacy string
+		const isJSON = (typeof text === 'object');
 		
-		// Convert TipTap JSON to markdown string for validation
-		const textForValidation = ensureString(text);
-		if(!isJSON && htmlErrors.length) htmlErrors = Markdown.validate(textForValidation);
+		// Validation disabled for TipTap - we trust the editor's output
+		let htmlErrors = [];
 
 		this.setState((prevState)=>({
-			brew       : { ...prevState.brew, text: text },
-			htmlErrors : htmlErrors,
+			brew           : { ...prevState.brew, text: text },
+			htmlErrors     : htmlErrors,
+			unsavedChanges : true,
 		}), ()=>{if(this.state.autoSave) this.trySave();});
 	},
 
 	handleSnipChange : function(snippet){
-		//If there are errors, run the validator on every change to give quick feedback
-		let htmlErrors = this.state.htmlErrors;
-		if(htmlErrors.length) htmlErrors = Markdown.validate(snippet);
+		// Validation disabled for TipTap
+		let htmlErrors = [];
 
 		this.setState((prevState)=>({
-			brew           : { ...prevState.brew, snippets: snippet },
-			unsavedChanges : true,
-			htmlErrors     : htmlErrors,
+			brew       : { ...prevState.brew, snippets: snippet },
+			htmlErrors : htmlErrors,
 		}), ()=>{if(this.state.autoSave) this.trySave();});
 	},
 
@@ -330,64 +326,111 @@ const EditPage = createClass({
 		const brewState       = this.state.brew; // freeze the current state
 		const preSaveSnapshot = { ...brewState };
 
-		this.setState((prevState)=>({
+		// Validation disabled for TipTap
+		this.setState({
 			isSaving   : true,
 			error      : null,
-			htmlErrors : Markdown.validate(prevState.brew.text)
-		}));
+			htmlErrors : []
+		});
 
 		await updateHistory(this.state.brew).catch(console.error);
 		await versionHistoryGarbageCollection().catch(console.error);
 
-		//Prepare content to send to server
-		const brew          = { ...brewState };
-		// Convert TipTap JSON to string before normalization
-		const brewText = ensureString(brew.text);
-		const savedBrewText = ensureString(this.savedBrew.text);
+		// Get the brewId - prefer editId, fallback to _id
+		const brewId = brewState.editId || brewState._id || brewState.id;
 		
-		brew.text           = brewText.normalize('NFC');
-		const savedBrewNormalized = savedBrewText.normalize('NFC');
-		brew.pageCount      = ((brew.renderer=='legacy' ? brew.text.match(/\\page/g) : brew.text.match(/^\\page$/gm)) || []).length + 1;
-		brew.patches        = stringifyPatches(makePatches(encodeURI(savedBrewNormalized), encodeURI(brew.text)));
-		brew.hash           = await md5(savedBrewNormalized);
-		//brew.text           = undefined; - Temporary parallel path
-		brew.textBin        = undefined;
+		// If no brewId exists, this is a new brew (e.g., homepage)
+		if (!brewId) {
+			console.log('[Save] No brewId - creating new brew');
+			console.log('[Save] brewState.text:', brewState.text);
+			console.log('[Save] brewState.text type:', typeof brewState.text);
+			
+			const payload = {
+				title: brewState.title || 'Untitled Brew',
+				text: brewState.text,
+				renderer: brewState.renderer || 'V3',
+				theme: brewState.theme || '5ePHB',
+				style: brewState.style || '',
+				description: brewState.description || ''
+			};
 
-		const compressedBrew = gzipSync(strToU8(JSON.stringify(brew)));
+			console.log('[Save] Payload:', JSON.stringify(payload, null, 2));
 
-		const transfer = this.state.saveGoogle == _.isNil(this.state.brew.googleId);
-		const params = `${transfer ? `?${this.state.saveGoogle ? 'saveToGoogle' : 'removeFromGoogle'}=true` : ''}`;
-		const res = await request
-			.put(`/api/update/${brew.editId}${params}`)
-			.set('Content-Encoding', 'gzip')
-			.set('Content-Type', 'application/json')
-			.send(compressedBrew)
-			.catch((err)=>{
-				console.log('Error Updating Local Brew');
-				this.setState({ error: err });
+			const res = await request
+				.post('/api/brews')
+				.send(payload)
+				.catch((err)=>{
+					console.error('[Save] Error creating new brew:', err);
+					console.error('[Save] Error details:', err.response?.body);
+					this.setState({ error: err, isSaving: false });
+				});
+				
+			if(!res) return;
+
+			console.log('[Save] New brew created:', res.body);
+
+			// Navigate to the edit page for the new brew
+			const editId = res.body.brew?.editId || res.body.editId;
+			// Reset unsaved changes & remove beforeunload handler to prevent prompt
+			this.setState({ unsavedChanges: false, isSaving: false }, ()=>{
+				window.onbeforeunload = null; // explicitly clear
+				// Use replace so back button doesn't go to temporary unsaved page
+				window.location.replace(`/edit/${editId}`);
 			});
+			return;
+		}
+
+		//Prepare content to send to server
+		const payload = {
+			title: brewState.title,
+			text: brewState.text, // Send TipTap JSON directly, no conversion
+			renderer: brewState.renderer,
+			theme: brewState.theme,
+			style: brewState.style,
+			description: brewState.description
+		};
+
+		console.log('[Save] Sending to /api/brews/' + brewId, {
+			textType: typeof payload.text,
+			textLength: typeof payload.text === 'object' ? JSON.stringify(payload.text).length : payload.text?.length
+		});
+
+		const res = await request
+			.put(`/api/brews/${brewId}`)
+			.send(payload)
+			.catch((err)=>{
+				console.error('[Save] Error updating brew:', err);
+				this.setState({ error: err, isSaving: false });
+			});
+			
 		if(!res) return;
+
+		console.log('[Save] Success:', res.body);
 
 		this.savedBrew = {
 			...preSaveSnapshot,
-			googleId : res.body.googleId ? res.body.googleId : null,
-			editId 	 : res.body.editId,
-			shareId  : res.body.shareId,
-			version  : res.body.version
+			_id      : res.body.brew._id,
+			editId   : res.body.brew.editId,
+			shareId  : res.body.brew.shareId,
+			googleId : res.body.brew.googleId || null
 		};
 
 		this.setState((prevState) => ({
 			brew: {
 				...prevState.brew,
-				googleId : res.body.googleId ? res.body.googleId : null,
-				editId 	 : res.body.editId,
-				shareId  : res.body.shareId,
-				version  : res.body.version
+				_id      : res.body.brew._id,
+				editId   : res.body.brew.editId,
+				shareId  : res.body.brew.shareId,
+				googleId : res.body.brew.googleId || null
 			},
 			isSaving    : false,
 			unsavedTime : new Date()
 		}), ()=>{
-			this.setState({ unsavedChanges : this.hasChanges() });
+			const hasChanges = this.hasChanges();
+			this.setState({ unsavedChanges : hasChanges });
+			if(!hasChanges){
+				window.onbeforeunload = null; // no prompt needed after clean save
+			}
 		});
 
 		history.replaceState(null, null, `/edit/${this.savedBrew.editId}`);

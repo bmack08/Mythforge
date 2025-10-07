@@ -1,6 +1,14 @@
 /* eslint-disable camelcase */
 // Removed core-js polyfill - Vite handles polyfills via build.target
 import './homebrew.less';
+import './white-background-overrides.less';
+
+// Import Font Awesome CSS directly (LESS can't resolve npm packages in @import)
+import '@fortawesome/fontawesome-free/css/fontawesome.css';
+import '@fortawesome/fontawesome-free/css/solid.css';
+import '@fortawesome/fontawesome-free/css/brands.css';
+import '@fortawesome/fontawesome-free/css/regular.css';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';
@@ -77,21 +85,18 @@ const Homebrew = (props)=>{
 	);
 };
 
-// Client-side mounting for Vite
-if (typeof window !== 'undefined') {
-	const root = document.getElementById('reactRoot');
-	if (root) {
-		const reactRoot = createRoot(root);
-		// Get initial props from server-rendered data if available
-		const initialProps = window.__INITIAL_PROPS__ || {
-			url: window.location.pathname + window.location.search,
-			version: '3.19.3',
-			enable_v3: true,
-			enable_themes: true
-		};
-		reactRoot.render(<Homebrew {...initialProps} />);
-	}
+// Client-side-only mounting (no SSR)
+const root = document.getElementById('reactRoot');
+if (root) {
+	const reactRoot = createRoot(root);
+	reactRoot.render(
+		<Homebrew 
+			url={window.location.pathname + window.location.search}
+			version="3.19.3"
+			enable_v3={true}
+			enable_themes={true}
+		/>
+	);
 }
 
-// Export for SSR
 export default Homebrew;

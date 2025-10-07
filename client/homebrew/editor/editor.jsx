@@ -4,7 +4,8 @@ import React from 'react';
 import createClass from 'create-react-class';
 import _ from 'lodash';
 import dedent from 'dedent-tabs';
-import Markdown from '../../../shared/naturalcrit/markdown.js';
+// Removed: import Markdown from '../../../shared/naturalcrit/markdown.js';
+// No longer needed - TipTap handles emoji rendering internally
 
 import CodeEditor from 'naturalcrit/codeEditor/codeEditor.jsx';
 import TipTapEditor from 'client/components/TipTapEditor.jsx';
@@ -36,6 +37,10 @@ let isJumping = false;
 
 const Editor = createClass({
 	displayName     : 'Editor',
+	
+	codeEditor   : React.createRef(null),
+	tipTapEditor : React.createRef(null), // Add ref for TipTap editor
+	
 	getDefaultProps : function() {
 		return {
 			brew : {
@@ -69,7 +74,6 @@ const Editor = createClass({
 	},
 
 	editor     : React.createRef(null),
-	codeEditor : React.createRef(null),
 
 	isText  : function() {return this.state.view == 'text';},
 	isStyle : function() {return this.state.view == 'style';},
@@ -133,6 +137,9 @@ const Editor = createClass({
 	},
 
 	updateCurrentCursorPage : function(cursor) {
+		// Skip if brew.text is TipTap JSON (not markdown string)
+		if (typeof this.props.brew.text !== 'string') return;
+		
 		const lines = this.props.brew.text.split('\n').slice(1, cursor.line + 1);
 		const pageRegex = this.props.brew.renderer == 'V3' ? PAGEBREAK_REGEX_V3 : /\\page/;
 		const currentPage = lines.reduce((count, line)=>count + (pageRegex.test(line) ? 1 : 0), 1);
@@ -140,6 +147,9 @@ const Editor = createClass({
 	},
 
 	updateCurrentViewPage : function(topScrollLine) {
+		// Skip if brew.text is TipTap JSON (not markdown string)
+		if (typeof this.props.brew.text !== 'string') return;
+		
 		const lines = this.props.brew.text.split('\n').slice(1, topScrollLine + 1);
 		const pageRegex = this.props.brew.renderer == 'V3' ? PAGEBREAK_REGEX_V3 : /\\page/;
 		const currentPage = lines.reduce((count, line)=>count + (pageRegex.test(line) ? 1 : 0), 1);
@@ -147,13 +157,12 @@ const Editor = createClass({
 	},
 
 	handleInject : function(injectText){
-		if (this.codeEditor.current?.injectText) {
+		// For TipTap text editor, use the editor's insertContent method
+		if (this.state.view === 'text' && this.tipTapEditor.current) {
+			this.tipTapEditor.current.insertContent(injectText);
+		} else if (this.codeEditor.current?.injectText) {
+			// CodeMirror for style/snippet tabs
 			this.codeEditor.current.injectText(injectText, false);
-		} else {
-			// TipTap fallback: append at the end
-			const currentText = this.props.brew.text || '';
-			const merged = currentText + (currentText.endsWith('\n') ? '' : '\n') + injectText + '\n';
-			this.props.onTextChange(merged);
 		}
 	},
 
@@ -349,20 +358,10 @@ const Editor = createClass({
 								emojiRegex.lastIndex = startIndex;
 								const match = emojiRegex.exec(line);
 								if(match) {
-									let tokens = Markdown.marked.lexer(match[0]);
-									tokens = tokens[0].tokens.filter((t)=>t.type == 'emoji');
-									if(!tokens.length)
-										return;
-
-									const startPos = { line: lineNumber, ch: match.index };
-									const endPos   = { line: lineNumber, ch: match.index + match[0].length };
-
-									// Iterate over conflicting marks and clear them
-									const marks = codeMirror.findMarks(startPos, endPos);
-									marks.forEach(function(marker) {
-										if(!marker.__isFold) marker.clear();
-									});
-									codeMirror.markText(startPos, endPos, { className: 'emoji' });
+									// Note: Markdown.marked.lexer removed with markdown.js migration
+									// Emoji syntax highlighting disabled for CodeMirror
+									// TipTap handles emoji rendering in the text editor
+									// This code only affects style/snippet tabs which still use CodeMirror
 								}
 								startIndex = line.indexOf(':', Math.max(startIndex + 1, emojiRegex.lastIndex));
 							}
@@ -450,6 +449,7 @@ const Editor = createClass({
 			return <>
 				<div style={{ height: `calc(100% - ${this.state.snippetbarHeight}px)` }}>
 					<TipTapEditor
+						ref={this.tipTapEditor}
 						value={this.props.brew.text || { type: 'doc', content: [{ type: 'paragraph' }] }}
 						onChange={this.props.onTextChange}
 						onCursorPageChange={this.props.onCursorPageChange}

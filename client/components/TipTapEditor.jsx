@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import * as TipTapCore from '@tiptap/core';
@@ -17,7 +17,7 @@ try {
 
 // value: TipTap JSON doc OR legacy markdown string
 // onChange: emits TipTap JSON as source of truth
-const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {}, onViewPageChange = () => {}, renderer = 'V3' }) => {
+const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChange = () => {}, onViewPageChange = () => {}, renderer = 'V3' }, ref) => {
   const initialContent = (() => {
     // Debug logging
     console.log('[TipTap] Initial value type:', typeof value);
@@ -97,6 +97,20 @@ const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {
     }
   }, [value, editor]);
 
+  // Expose editor instance and helper methods via ref
+  useImperativeHandle(ref, () => ({
+    editor,
+    insertContent: (text) => {
+      if (!editor) return;
+      // Convert markdown text to TipTap JSON
+      const doc = markdownToTiptap(text);
+      // Insert content at current cursor position
+      editor.chain().focus().insertContent(doc.content).run();
+    },
+    getJSON: () => editor?.getJSON(),
+    setContent: (content) => editor?.commands.setContent(content),
+  }), [editor]);
+
   // Render placeholder until editor is ready to avoid hydration mismatch
   if (!isMounted || !editor) {
     return (
@@ -119,6 +133,8 @@ const TipTapEditor = ({ value, onChange = () => {}, onCursorPageChange = () => {
       <EditorContent editor={editor} />
     </div>
   );
-};
+});
+
+TipTapEditor.displayName = 'TipTapEditor';
 
 export default TipTapEditor;

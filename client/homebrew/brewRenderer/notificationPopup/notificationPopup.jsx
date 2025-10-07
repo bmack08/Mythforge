@@ -1,7 +1,7 @@
 import './notificationPopup.less';
 import React, { useEffect, useState } from 'react';
 import request from '../../utils/request-middleware.js';
-import Markdown from 'naturalcrit/markdown.js';
+import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import Dialog from '../../../components/dialog.jsx';
 
 const DISMISS_BUTTON = <i className='fas fa-times dismiss' />;
@@ -40,12 +40,16 @@ const NotificationPopup = ()=>{
 
 	const renderNotificationsList = ()=>{
 		if(error) return <div className='error'>{error}</div>;
-		return notifications.map((notification)=>(
-			<li key={notification.dismissKey} >
-				<em>{notification.title}</em><br />
-				<p dangerouslySetInnerHTML={{ __html: Markdown.render(notification.text) }}></p>
-			</li>
-		));
+		return notifications.map((notification)=>{
+			const jsonDoc = ensureJson(notification.text);
+			const html = toHTML(jsonDoc);
+			return (
+				<li key={notification.dismissKey} >
+					<em>{notification.title}</em><br />
+					<p dangerouslySetInnerHTML={{ __html: html }}></p>
+				</li>
+			);
+		});
 	};
 
 	if(!notifications.length) return;

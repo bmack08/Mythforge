@@ -4,7 +4,8 @@ import React from 'react';
 import createClass from 'create-react-class';
 import request from '../../utils/request-middleware.js';
 
-import Markdown from 'naturalcrit/markdown.js';
+// Removed: import Markdown from 'naturalcrit/markdown.js';
+// Validation disabled for TipTap - editor handles it
 
 import Nav from 'naturalcrit/nav/nav.jsx';
 import PrintNavItem from '../../navbar/print.navitem.jsx';
@@ -44,7 +45,7 @@ const NewPage = createClass({
 			isSaving                   : false,
 			saveGoogle                 : (global.account && global.account.googleId ? true : false),
 			error                      : null,
-			htmlErrors                 : Markdown.validate(brew.text),
+			htmlErrors                 : [], // Validation disabled for TipTap
 			currentEditorViewPageNum   : 1,
 			currentEditorCursorPageNum : 1,
 			currentBrewRendererPageNum : 1,
@@ -125,9 +126,8 @@ const NewPage = createClass({
 	},
 
 	handleTextChange : function(text){
-		//If there are errors, run the validator on every change to give quick feedback
-		let htmlErrors = this.state.htmlErrors;
-		if(htmlErrors.length) htmlErrors = Markdown.validate(text);
+		// Validation disabled for TipTap
+		let htmlErrors = [];
 
 		this.setState((prevState)=>({
 			brew       : { ...prevState.brew, text: text },
@@ -144,9 +144,8 @@ const NewPage = createClass({
 	},
 
 	handleSnipChange : function(snippet){
-		//If there are errors, run the validator on every change to give quick feedback
-		let htmlErrors = this.state.htmlErrors;
-		if(htmlErrors.length) htmlErrors = Markdown.validate(snippet);
+		// Validation disabled for TipTap
+		let htmlErrors = [];
 
 		this.setState((prevState)=>({
 			brew       : { ...prevState.brew, snippets: snippet },
@@ -177,28 +176,46 @@ const NewPage = createClass({
 			isSaving : true
 		});
 
-		let brew = this.state.brew;
-		// Split out CSS to Style if CSS codefence exists
-		if(brew.text.startsWith('```css') && brew.text.indexOf('```\n\n') > 0) {
-			const index = brew.text.indexOf('```\n\n');
-			brew.style = `${brew.style ? `${brew.style}\n` : ''}${brew.text.slice(7, index - 1)}`;
-			brew.text = brew.text.slice(index + 5);
-		}
+		const brew = this.state.brew;
+		
+		// Note: CSS extraction from text no longer supported with TipTap JSON
+		// Users should use the Style tab directly
+		
+		// Create new brew using /api/brews endpoint
+		const payload = {
+			title: brew.title,
+			text: brew.text, // Send TipTap JSON directly
+			style: brew.style,
+			renderer: brew.renderer,
+			theme: brew.theme,
+			description: brew.description
+		};
 
-		brew.pageCount=((brew.renderer=='legacy' ? brew.text.match(/\\page/g) : brew.text.match(/^\\page$/gm)) || []).length + 1;
+		console.log('[NewPage Save] Creating brew with payload:', {
+			textType: typeof payload.text,
+			textLength: typeof payload.text === 'object' ? JSON.stringify(payload.text).length : payload.text?.length
+		});
+
 		const res = await request
-			.post(`/api${this.state.saveGoogle ? '?saveToGoogle=true' : ''}`)
-			.send(brew)
+			.post(`/api/brews${this.state.saveGoogle ? '?saveToGoogle=true' : ''}`)
+			.send(payload)
 			.catch((err)=>{
+				console.error('[NewPage Save] Error:', err);
 				this.setState({ isSaving: false, error: err });
 			});
+			
 		if(!res) return;
 
-		brew = res.body;
+		console.log('[NewPage Save] Success:', res.body);
+		
+		// Clear localStorage
 		localStorage.removeItem(BREWKEY);
 		localStorage.removeItem(STYLEKEY);
 		localStorage.removeItem(METAKEY);
-		window.location = `/edit/${brew.editId}`;
+		
+		// Navigate to edit page
+		const editId = res.body.brew?.editId || res.body.editId;
+		window.location = `/edit/${editId}`;
 	},
 
 	renderSaveButton : function(){
