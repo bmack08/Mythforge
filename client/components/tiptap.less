@@ -73,6 +73,87 @@
     margin: 1em 0;
   }
   
+  // Page break styling
+  hr.page-break,
+  hr[data-type="pageBreak"] {
+    border: none;
+    border-top: 2px dashed #999;
+    margin: 2rem 0;
+    page-break-after: always;
+    position: relative;
+    
+    &::after {
+      content: "Page Break";
+      position: absolute;
+      top: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 0 8px;
+      font-size: 10px;
+      color: #999;
+      text-transform: uppercase;
+    }
+  }
+  
+  // D&D 5e PHB custom blocks
+  div.classFeature,
+  div[data-type="classFeature"] {
+    background: #faf7ea;
+    border: 1px solid #c9ad6a;
+    padding: 0.5em 1em;
+    margin: 1em 0;
+    border-radius: 4px;
+  }
+  
+  div.spell,
+  div[data-type="spell"] {
+    background: #f3f3f3;
+    border-left: 3px solid #58180d;
+    padding: 0.5em 1em;
+    margin: 1em 0;
+  }
+  
+  div.spellList,
+  div[data-type="spellList"] {
+    background: #fdf8f3;
+    border: 1px solid #c9ad6a;
+    padding: 0.5em;
+    margin: 1em 0;
+  }
+  
+  // Table styling
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    
+    td, th {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    th {
+      background: #f3f3f3;
+      font-weight: bold;
+    }
+  }
+  
+  // Image styling
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1em 0;
+  }
+  
+  // Highlight colors
+  mark {
+    background-color: #ffeb3b;
+    padding: 2px 0;
+  }
+  
   // Show cursor/caret
   caret-color: black;
 }

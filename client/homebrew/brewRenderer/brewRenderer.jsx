@@ -5,17 +5,7 @@ import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import _ from 'lodash';
 
 import MarkdownLegacy from 'naturalcrit/markdownLegacy.js';
-// Removed: import Markdown from 'naturalcrit/markdown.js';
-// Now using contentAdapter.toHTML() for rendering
-
-// TipTap HTML generator and extensions
-import { generateHTML } from '@tiptap/html';
-import StarterKit from '@tiptap/starter-kit';
-import * as TipTapCore from '@tiptap/core';
-import createIcon from 'client/extensions/Icon.js';
-
-const TipTapStarterKit = StarterKit;
-const TipTapIcon = createIcon(TipTapCore);
+// Now using contentAdapter.toHTML() for rendering with full extension registry
 
 import ErrorBar from './errorBar/errorBar.jsx';
 import ToolBar from './toolBar/toolBar.jsx';

@@ -9,21 +9,7 @@
  */
 
 import { generateHTML } from '@tiptap/html';
-import StarterKit from '@tiptap/starter-kit';
-import * as TipTapCore from '@tiptap/core';
-import createIcon from '../client/extensions/Icon.js';
-
-// Load Icon extension
-let IconExtension;
-try {
-  IconExtension = createIcon(TipTapCore);
-} catch (err) {
-  console.error('Failed to load Icon extension in contentAdapter:', err);
-}
-
-const extensions = IconExtension 
-  ? [StarterKit, IconExtension]
-  : [StarterKit];
+import extensions from '../client/extensions/index.js';
 
 /**
  * Ensures content is in TipTap JSON format

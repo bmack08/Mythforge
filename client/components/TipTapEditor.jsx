@@ -1,18 +1,8 @@
 import React, { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
-import StarterKit from '@tiptap/starter-kit';
-import * as TipTapCore from '@tiptap/core';
 import './tiptap.less';
-import createIcon from 'client/extensions/Icon.js';
+import extensions from 'client/extensions/index.js';
 import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
-
-// Load TipTap Icon extension at module level
-let IconExtension;
-try {
-  IconExtension = createIcon(TipTapCore);
-} catch(err) {
-  console.error('Failed to load TipTap Icon extension:', err);
-}
 
 
 // value: TipTap JSON doc OR legacy markdown string
@@ -46,20 +36,10 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     setIsMounted(true);
   }, []);
 
-  // Configure StarterKit for TipTap v3
-  const starterKitOptions = {
-    heading: { levels: [1, 2] },
-    horizontalRule: true,
-  };
-
-  const resolvedExtensions = [
-    StarterKit.configure(starterKitOptions)
-  ];
-  if (IconExtension) resolvedExtensions.push(IconExtension);
-
   // Use the recommended useEditor hook (TipTap v3 React way)
+  // Extensions are now imported from central registry
   const editor = useEditor({
-    extensions: resolvedExtensions,
+    extensions,
     content: initialContent,
     editable: true, // Make editor editable by default
     onUpdate: ({ editor }) => {
@@ -97,15 +77,60 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     }
   }, [value, editor]);
 
+  // Scroll sync: sync TipTap editor scroll with BrewRenderer preview
+  useEffect(() => {
+    if (!editor) return;
+    
+    const editorElement = document.querySelector('.ProseMirror');
+    if (!editorElement) return;
+    
+    const handleScroll = () => {
+      try {
+        const brewRendererFrame = window.frames['BrewRenderer'];
+        if (!brewRendererFrame || !brewRendererFrame.contentDocument) return;
+        
+        const previewElement = brewRendererFrame.contentDocument.querySelector('.brewRenderer');
+        if (!previewElement) return;
+        
+        // Calculate scroll ratio
+        const scrollRatio = editorElement.scrollTop / (editorElement.scrollHeight - editorElement.clientHeight);
+        
+        // Apply same ratio to preview (if not NaN)
+        if (!isNaN(scrollRatio)) {
+          const targetScroll = scrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
+          previewElement.scrollTop = targetScroll;
+        }
+      } catch (e) {
+        // Silently fail if iframe not accessible
+      }
+    };
+    
+    editorElement.addEventListener('scroll', handleScroll);
+    return () => editorElement.removeEventListener('scroll', handleScroll);
+  }, [editor]);
+
   // Expose editor instance and helper methods via ref
   useImperativeHandle(ref, () => ({
     editor,
-    insertContent: (text) => {
+    insertContent: (content) => {
       if (!editor) return;
-      // Convert markdown text to TipTap JSON
-      const doc = markdownToTiptap(text);
+      
+      // Accept both structured JSON and legacy markdown strings
+      let insertableContent;
+      
+      if (typeof content === 'string') {
+        // Legacy markdown text - convert to TipTap JSON
+        const doc = markdownToTiptap(content);
+        insertableContent = doc.content;
+      } else if (typeof content === 'object') {
+        // Already structured TipTap JSON - use directly
+        insertableContent = content;
+      } else {
+        return; // Invalid content type
+      }
+      
       // Insert content at current cursor position
-      editor.chain().focus().insertContent(doc.content).run();
+      editor.chain().focus().insertContent(insertableContent).run();
     },
     getJSON: () => editor?.getJSON(),
     setContent: (content) => editor?.commands.setContent(content),

@@ -947,3 +947,122 @@
 		}
 	}
 }
+
+// *****************************
+// * PHASE 3.5 EXTENSIONS
+// *****************************/
+
+// Sidebar Block
+.page .sidebar {
+	background-color    : #f8f3e7;
+	border              : 1px solid #bca37b;
+	padding             : 1em;
+	margin-bottom       : 0.325cm;
+	break-inside        : avoid;
+	-webkit-column-break-inside : avoid;
+	
+	.sidebar-title {
+		margin-top    : 0;
+		margin-bottom : 0.5em;
+		font-family   : 'MrEavesRemake';
+		color         : var(--HB_Color_HeaderText);
+	}
+}
+
+// Feature Block (class features, racial traits, etc.)
+.page .feature, .page .featureBlock {
+	margin-bottom       : 0.325cm;
+	break-inside        : avoid;
+	-webkit-column-break-inside : avoid;
+	
+	.feature-header {
+		margin-bottom : 0.2em;
+	}
+	
+	.feature-name {
+		margin          : 0;
+		font-family     : 'MrEavesSmallCapsRemake';
+		font-size       : 0.375cm;
+		color           : var(--HB_Color_HeaderText);
+		border-bottom   : 2px solid var(--HB_Color_HeaderUnderline);
+	}
+	
+	.feature-source {
+		margin      : 0.1em 0 0 0;
+		font-style  : italic;
+		font-size   : 0.3cm;
+		color       : var(--HB_Color_CaptionText);
+	}
+}
+
+// Column Break
+.page .column-break {
+	visibility      : hidden;
+	column-span     : none;
+	display         : block;
+	-webkit-column-break-after : always;
+	break-after     : column;
+	
+	&::before {
+		content     : "\\00a0"; // Non-breaking space
+	}
+}
+
+// Cover and Credits Blocks
+.page .cover, .page .credits {
+	column-span         : all;
+	-webkit-column-span : all;
+	-moz-column-span    : all;
+	text-align          : center;
+	padding             : 2cm 0;
+}
+
+// Inline Reference Marks
+.page {
+	.spell-ref {
+		font-style     : italic;
+		color          : #58180d;
+		cursor         : help;
+		border-bottom  : 1px dotted #58180d;
+	}
+	
+	.ability-ref {
+		font-weight    : bold;
+		font-variant   : small-caps;
+		color          : #322814;
+	}
+	
+	.skill-ref {
+		font-style     : italic;
+		color          : #766649;
+	}
+	
+	.condition-ref {
+		font-weight    : 600;
+		color          : #9c2b1b;
+		font-variant   : small-caps;
+	}
+	
+	.damage-ref {
+		font-weight    : 600;
+		color          : #c9ad6a;
+	}
+}
+
+// Table Block (PHB-styled)
+.page .phb-table, .page table.phb-table {
+	width              : 100%;
+	margin-bottom      : 0.325cm;
+	font-family        : 'ScalySansRemake';
+	break-inside       : avoid;
+	-webkit-column-break-inside : avoid;
+	
+	thead {
+		font-weight : bold;
+	}
+	
+	tbody tr:nth-child(odd) {
+		background-color : #e0e5c1;
+	}
+}
+
