@@ -21,6 +21,7 @@ import api, { homebrewApi, getBrew, getUsersBrewThemes, getCSS } from './homebre
 import adminApi                    from './admin.api.simple.js';
 import vaultApi                    from './vault.api.simple.js';
 import aiRoutes                    from './routes/ai-routes.js';
+import chapterRoutes               from './routes/chapters.js';
 import GoogleActions               from './googleActions.js';
 import serveCompressedStaticAssets from './static-assets.mv.js';
 import sanitizeFilename            from 'sanitize-filename';
@@ -185,6 +186,9 @@ app.use(homebrewApi);
 app.use(adminApi);
 app.use(vaultApi);
 // app.use(aiRoutes); // Temporarily disabled
+
+// Chapter routes for D&D Beyond-style navigation
+app.use('/api/projects/:projectId/chapters', chapterRoutes);
 
 // Story IDE API routes
 app.get('/api/story-ide/graph/:brewId', api.getProjectGraph);

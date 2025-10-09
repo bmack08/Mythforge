@@ -191,9 +191,10 @@ const initChapterModel = (sequelize) => {
 		
 		// Content
 		content: {
-			type: DataTypes.TEXT,
+			type: DataTypes.JSON, // Changed from TEXT to JSON for TipTap content
 			allowNull: true,
-			comment: 'Homebrewery markdown content'
+			defaultValue: { type: 'doc', content: [] },
+			comment: 'TipTap JSON content'
 		},
 		
 		// Generation Settings

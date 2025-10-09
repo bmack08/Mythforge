@@ -1,12 +1,13 @@
 /**
- * Convert markdown-like text to TipTap JSON structure
- * This is a SIMPLE converter for basic markdown used in brews
+ * Convert Homebrewery markdown to TipTap JSON structure
  * 
  * Supports:
- * - Headings (# H1, ## H2)
+ * - Headings (# H1, ## H2, ### H3 for red PHB style)
+ * - Homebrewery blocks ({{quote}}, {{attribution}}, etc.)
+ * - Page/column breaks (\page, \column)
  * - Horizontal rules (---, ***)
- * - Bold (**text**)
- * - Italic (*text*)
+ * - Bold (**text**), Italic (*text*)
+ * - Inline macros (\spell{}, \ability{}, etc.)
  * - Paragraphs
  */
 
@@ -18,17 +19,40 @@ export function markdownToTiptap(markdown) {
   const lines = markdown.split('\n');
   const content = [];
   let currentParagraph = [];
+  let currentBlock = null; // For {{quote}}, {{sidebar}}, etc.
+  let blockContent = [];
 
   const flushParagraph = () => {
     if (currentParagraph.length > 0) {
       const text = currentParagraph.join('\n').trim();
       if (text) {
-        content.push({
-          type: 'paragraph',
-          content: parseInlineMarks(text)
-        });
+        if (currentBlock) {
+          // Add to current block
+          blockContent.push({
+            type: 'paragraph',
+            content: parseInlineMarks(text)
+          });
+        } else {
+          // Add to document
+          content.push({
+            type: 'paragraph',
+            content: parseInlineMarks(text)
+          });
+        }
       }
       currentParagraph = [];
+    }
+  };
+
+  const flushBlock = () => {
+    if (currentBlock) {
+      content.push({
+        type: currentBlock.type,
+        attrs: currentBlock.attrs,
+        content: blockContent.length > 0 ? blockContent : [{ type: 'paragraph' }]
+      });
+      currentBlock = null;
+      blockContent = [];
     }
   };
 
@@ -42,10 +66,55 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
+    // Page break: \page
+    if (trimmed === '\\page') {
+      flushParagraph();
+      flushBlock();
+      content.push({ type: 'pageBreak' });
+      continue;
+    }
+
+    // Column break: \column
+    if (trimmed === '\\column') {
+      flushParagraph();
+      flushBlock();
+      content.push({ type: 'columnBreak' });
+      continue;
+    }
+
+    // Start of quote block: {{quote
+    if (trimmed.startsWith('{{quote')) {
+      flushParagraph();
+      flushBlock();
+      currentBlock = { type: 'quoteBlock', attrs: {} };
+      continue;
+    }
+
+    // Attribution in quote: {{attribution
+    if (trimmed.startsWith('{{attribution ')) {
+      const attribution = trimmed.slice(14).replace(/}}$/, '').trim();
+      if (currentBlock && currentBlock.type === 'quoteBlock') {
+        currentBlock.attrs.attribution = attribution;
+      }
+      continue;
+    }
+
+    // End of block: }}
+    if (trimmed === '}}') {
+      flushParagraph();
+      flushBlock();
+      continue;
+    }
+
     // Heading H1
     if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
       flushParagraph();
-      content.push({
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 1 },
+        content: parseInlineMarks(trimmed.slice(2))
+      });
+      else blockContent.push({
         type: 'heading',
         attrs: { level: 1 },
         content: parseInlineMarks(trimmed.slice(2))
@@ -54,9 +123,14 @@ export function markdownToTiptap(markdown) {
     }
 
     // Heading H2
-    if (trimmed.startsWith('## ')) {
+    if (trimmed.startsWith('## ') && !trimmed.startsWith('### ')) {
       flushParagraph();
-      content.push({
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 2 },
+        content: parseInlineMarks(trimmed.slice(3))
+      });
+      else blockContent.push({
         type: 'heading',
         attrs: { level: 2 },
         content: parseInlineMarks(trimmed.slice(3))
@@ -64,10 +138,27 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
+    // Heading H3 (PHB red style)
+    if (trimmed.startsWith('### ')) {
+      flushParagraph();
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 3 },
+        content: parseInlineMarks(trimmed.slice(4))
+      });
+      else blockContent.push({
+        type: 'heading',
+        attrs: { level: 3 },
+        content: parseInlineMarks(trimmed.slice(4))
+      });
+      continue;
+    }
+
     // Horizontal rule
     if (trimmed === '---' || trimmed === '***' || trimmed === '___') {
       flushParagraph();
-      content.push({ type: 'horizontalRule' });
+      if (!currentBlock) content.push({ type: 'horizontalRule' });
+      else blockContent.push({ type: 'horizontalRule' });
       continue;
     }
 
@@ -75,8 +166,9 @@ export function markdownToTiptap(markdown) {
     currentParagraph.push(line);
   }
 
-  // Flush any remaining paragraph
+  // Flush any remaining content
   flushParagraph();
+  flushBlock();
 
   // Ensure at least one node
   if (content.length === 0) {
@@ -87,7 +179,8 @@ export function markdownToTiptap(markdown) {
 }
 
 /**
- * Parse inline markdown marks (bold, italic) in text
+ * Parse inline marks: bold, italic, and Homebrewery macros
+ * Handles: **bold**, *italic*, \spell{}, \ability{}, \skill{}, \condition{}, \damage{}
  * Returns array of text nodes with marks
  */
 function parseInlineMarks(text) {
@@ -96,26 +189,24 @@ function parseInlineMarks(text) {
   const nodes = [];
   let remaining = text;
 
-  // Very simple parser - handles **bold** and *italic*
-  // This is NOT a complete markdown parser, just enough for basic formatting
-
   while (remaining) {
-    // Find next bold or italic
+    // Find next formatting:
+    // 1. Homebrewery macros: \spell{Fire Bolt}, \ability{Strength}, etc.
+    // 2. Bold: **text**
+    // 3. Italic: *text*
+
+    const macroMatch = remaining.match(/\\(spell|ability|skill|condition|damage)\{([^}]+)\}/);
     const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
-    const italicMatch = remaining.match(/\*([^*]+)\*/);
+    const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*/); // Avoid matching **
 
-    let nextMatch = null;
-    let type = null;
+    // Find earliest match
+    const matches = [
+      { match: macroMatch, type: 'macro' },
+      { match: boldMatch, type: 'bold' },
+      { match: italicMatch, type: 'italic' }
+    ].filter(m => m.match !== null);
 
-    if (boldMatch && (!italicMatch || boldMatch.index < italicMatch.index)) {
-      nextMatch = boldMatch;
-      type = 'bold';
-    } else if (italicMatch) {
-      nextMatch = italicMatch;
-      type = 'italic';
-    }
-
-    if (!nextMatch) {
+    if (matches.length === 0) {
       // No more formatting - add remaining text
       if (remaining) {
         nodes.push({ type: 'text', text: remaining });
@@ -123,21 +214,40 @@ function parseInlineMarks(text) {
       break;
     }
 
+    // Sort by position
+    matches.sort((a, b) => a.match.index - b.match.index);
+    const nextMatch = matches[0];
+
     // Add text before the match
-    if (nextMatch.index > 0) {
-      nodes.push({ type: 'text', text: remaining.slice(0, nextMatch.index) });
+    if (nextMatch.match.index > 0) {
+      nodes.push({ type: 'text', text: remaining.slice(0, nextMatch.match.index) });
     }
 
     // Add formatted text
-    const mark = type === 'bold' ? 'bold' : 'italic';
-    nodes.push({
-      type: 'text',
-      text: nextMatch[1],
-      marks: [{ type: mark }]
-    });
+    if (nextMatch.type === 'macro') {
+      // \spell{Fire Bolt} → text with spellMark
+      const markType = nextMatch.match[1] + 'Mark'; // spellMark, abilityMark, etc.
+      nodes.push({
+        type: 'text',
+        text: nextMatch.match[2], // Content inside {}
+        marks: [{ type: markType }]
+      });
+    } else if (nextMatch.type === 'bold') {
+      nodes.push({
+        type: 'text',
+        text: nextMatch.match[1],
+        marks: [{ type: 'bold' }]
+      });
+    } else if (nextMatch.type === 'italic') {
+      nodes.push({
+        type: 'text',
+        text: nextMatch.match[1],
+        marks: [{ type: 'italic' }]
+      });
+    }
 
     // Continue with remaining text
-    remaining = remaining.slice(nextMatch.index + nextMatch[0].length);
+    remaining = remaining.slice(nextMatch.match.index + nextMatch.match[0].length);
   }
 
   return nodes.length > 0 ? nodes : [{ type: 'text', text: '' }];

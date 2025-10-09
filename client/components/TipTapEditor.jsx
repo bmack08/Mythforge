@@ -154,6 +154,9 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
         <button onClick={() => editor.chain().focus().toggleBold().run()} title='Bold'><strong>B</strong></button>
         <button onClick={() => editor.chain().focus().toggleItalic().run()} title='Italic'><em>I</em></button>
         <button onClick={() => editor.chain().focus().setHorizontalRule().run()} title='HR'>---</button>
+        <span style={{borderLeft: '1px solid #ccc', margin: '0 4px'}} />
+        <button onClick={() => editor.chain().focus().setPageBreak().run()} title='Insert Page Break (\\page)'>📄 Page</button>
+        <button onClick={() => editor.chain().focus().setColumnBreak().run()} title='Insert Column Break (\\column)'>⫼ Column</button>
       </div>
       <EditorContent editor={editor} />
     </div>

@@ -14,6 +14,9 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
 
+// Custom heading with auto-ID for anchor links (D&D Beyond style)
+import HeadingWithId from './HeadingWithId.js';
+
 // Block extensions - D&D 5e PHB content blocks
 import QuoteBlock from './QuoteBlock.js';
 import SidebarBlock from './SidebarBlock.js';
@@ -53,12 +56,17 @@ import DamageMark from './DamageMark.js';
 const configuredExtensions = [
   // Core TipTap extensions
   StarterKit.configure({
-    heading: { levels: [1, 2, 3, 4, 5, 6] },
+    heading: false, // Disable default heading, we'll use HeadingWithId instead
     horizontalRule: true,
     bulletList: true,
     orderedList: true,
     blockquote: true,
     codeBlock: true,
+  }),
+
+  // Custom heading with auto-generated IDs for anchor links
+  HeadingWithId.configure({
+    levels: [1, 2, 3, 4, 5, 6],
   }),
   
   // Media & Styling

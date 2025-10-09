@@ -73,26 +73,67 @@
     margin: 1em 0;
   }
   
-  // Page break styling
+  // Page break styling (TipTap editor view)
   hr.page-break,
   hr[data-type="pageBreak"] {
     border: none;
-    border-top: 2px dashed #999;
-    margin: 2rem 0;
+    border-top: 3px dashed #9C2B1B; // Maroon color (PHB style)
+    margin: 3rem 0;
     page-break-after: always;
     position: relative;
+    cursor: pointer;
     
     &::after {
-      content: "Page Break";
+      content: "\\page";
       position: absolute;
-      top: -10px;
+      top: -12px;
       left: 50%;
       transform: translateX(-50%);
       background: white;
-      padding: 0 8px;
-      font-size: 10px;
-      color: #999;
-      text-transform: uppercase;
+      padding: 2px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      color: #9C2B1B;
+      border: 1px solid #9C2B1B;
+      border-radius: 4px;
+    }
+    
+    &:hover::after {
+      background: #FDF1DC;
+    }
+  }
+  
+  // Column break styling (TipTap editor view)
+  div.column-break,
+  div[data-type="columnBreak"] {
+    border: none;
+    border-top: 2px dashed #C0AD6A; // Gold color (PHB style)
+    margin: 2rem 0;
+    height: 2px;
+    column-break-after: always;
+    -webkit-column-break-after: always;
+    position: relative;
+    cursor: pointer;
+    
+    &::after {
+      content: "\\column";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 2px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      color: #C0AD6A;
+      border: 1px solid #C0AD6A;
+      border-radius: 4px;
+    }
+    
+    &:hover::after {
+      background: #FDF1DC;
     }
   }
   

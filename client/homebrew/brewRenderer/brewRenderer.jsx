@@ -25,6 +25,42 @@ const PAGEBREAK_REGEX_LEGACY = /\\page(?:break)?/m;
 const COLUMNBREAK_REGEX_LEGACY = /\\column(:?break)?/m;
 const PAGE_HEIGHT = 1056;
 
+/**
+ * Split TipTap JSON document by pageBreak nodes
+ * @param {object} doc - TipTap JSON document
+ * @returns {array} - Array of page objects (each page is a TipTap doc fragment)
+ */
+const splitTipTapPages = (doc) => {
+	if (!doc || !doc.content || !Array.isArray(doc.content)) {
+		return [doc]; // Return single page if invalid
+	}
+
+	const pages = [];
+	let currentPage = { type: 'doc', content: [] };
+
+	doc.content.forEach((node) => {
+		// Check if this node is a pageBreak
+		if (node.type === 'pageBreak') {
+			// Save current page and start new one
+			if (currentPage.content.length > 0) {
+				pages.push(currentPage);
+			}
+			currentPage = { type: 'doc', content: [] };
+		} else {
+			// Add node to current page
+			currentPage.content.push(node);
+		}
+	});
+
+	// Add final page if it has content
+	if (currentPage.content.length > 0) {
+		pages.push(currentPage);
+	}
+
+	// Return at least one empty page if document is empty
+	return pages.length > 0 ? pages : [{ type: 'doc', content: [] }];
+};
+
 // Dynamic initial content will be set in the component
 const getInitialContent = (renderer = 'V3', theme = '5ePHB') => dedent`
 	<!DOCTYPE html><html><head>
@@ -134,11 +170,10 @@ const BrewRenderer = (props)=>{
 	const mainRef  = useRef(null);
 	const pagesRef = useRef(null);
 
-	// Handle TipTap JSON content - for now, render as single page
-	// TODO: Implement proper page breaking for TipTap JSON
+	// Handle TipTap JSON content - split by pageBreak nodes
 	if (props.text && typeof props.text === 'object') {
-		// TipTap JSON - render entire document as one page for now
-		rawPages = [props.text];
+		// TipTap JSON - split document by pageBreak nodes
+		rawPages = splitTipTapPages(props.text);
 	} else {
 		// Legacy string-based content
 		const textContent = typeof props.text === 'string' ? props.text : '';
