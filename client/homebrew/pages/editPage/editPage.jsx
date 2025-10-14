@@ -68,7 +68,8 @@ const EditPage = createClass({
 			currentEditorCursorPageNum : 1,
 			currentBrewRendererPageNum : 1,
 			displayLockMessage         : this.props.brew.lock || false,
-			themeBundle                : {}
+			themeBundle                : {},
+			_loadingBrew               : false
 		};
 	},
 
@@ -151,13 +152,34 @@ const EditPage = createClass({
 
 		this.savedBrew = JSON.parse(JSON.stringify(this.props.brew)); //Deep copy
 
-		this.setState({ autoSave: JSON.parse(localStorage.getItem('AUTOSAVE_ON')) ?? true }, ()=>{
-			if(this.state.autoSave){
-				this.trySave();
-			} else {
-				this.setState({ autoSaveWarning: true });
-			}
-		});
+		// In dev mode (Vite), /edit/:id loads client-only. Ensure we fetch the brew before autosave triggers.
+		const pathMatch = window.location.pathname.match(/^\/edit\/([^/]+)$/);
+		if (pathMatch && (!this.props.brew || !this.props.brew.editId)) {
+			const editId = pathMatch[1];
+			this.setState({ _loadingBrew: true });
+			request.get(`/api/brews/${editId}`)
+				.then((res)=>{
+					if (res && res.body && res.body.success && res.body.brew) {
+						this.savedBrew = JSON.parse(JSON.stringify(res.body.brew));
+						this.setState({ brew: res.body.brew, _loadingBrew: false }, ()=>{
+							this.initializeAutosave();
+							fetchThemeBundle(this, res.body.brew.renderer, res.body.brew.theme);
+						});
+					} else {
+						this.setState({ _loadingBrew: false }, ()=>{
+							this.initializeAutosave();
+						});
+					}
+				})
+				.catch((err)=>{
+					console.error('Failed to fetch brew for edit:', err);
+					this.setState({ _loadingBrew: false }, ()=>{
+						this.initializeAutosave();
+					});
+				});
+		}
+
+		this.initializeAutosave();
 
 		window.onbeforeunload = ()=>{
 			if(this.state.isSaving || this.state.unsavedChanges){
@@ -173,6 +195,18 @@ const EditPage = createClass({
 		fetchThemeBundle(this, this.props.brew.renderer, this.props.brew.theme);
 
 		document.addEventListener('keydown', this.handleControlKeys);
+	},
+
+	initializeAutosave: function(){
+		this.setState({ autoSave: JSON.parse(localStorage.getItem('AUTOSAVE_ON')) ?? true }, ()=>{
+			if(this.state.autoSave){
+				// Only attempt a save if we already have an editId or id
+				const brewId = this.state.brew?.editId || this.state.brew?._id || this.state.brew?.id;
+				if (brewId) this.trySave();
+			} else {
+				this.setState({ autoSaveWarning: true });
+			}
+		});
 	},
 	componentWillUnmount : function() {
 		window.onbeforeunload = function(){};
@@ -273,6 +307,7 @@ const EditPage = createClass({
 	},
 
 	trySave : function(immediate=false){
+		if (this.state._loadingBrew) return; // do nothing while loading
 		if(!this.debounceSave) this.debounceSave = _.debounce(this.save, SAVE_TIMEOUT);
 		if(this.state.isSaving)
 			return;
@@ -323,6 +358,11 @@ const EditPage = createClass({
 	save : async function(){
 		if(this.debounceSave && this.debounceSave.cancel) this.debounceSave.cancel();
 
+		if (this.state._loadingBrew) {
+			console.warn('[Save] Blocked while brew is loading.');
+			return;
+		}
+
 		const brewState       = this.state.brew; // freeze the current state
 		const preSaveSnapshot = { ...brewState };
 
@@ -339,11 +379,19 @@ const EditPage = createClass({
 		// Get the brewId - prefer editId, fallback to _id
 		const brewId = brewState.editId || brewState._id || brewState.id;
 		
-		// If no brewId exists, this is a new brew (e.g., homepage)
+		// If no brewId exists, only allow create when not already on /edit/:id
 		if (!brewId) {
 			console.log('[Save] No brewId - creating new brew');
 			console.log('[Save] brewState.text:', brewState.text);
 			console.log('[Save] brewState.text type:', typeof brewState.text);
+
+			const isEditRoute = /^\/edit\//.test(window.location.pathname);
+			if (isEditRoute) {
+				console.warn('[Save] Refusing to create a new brew while on /edit route with missing id.');
+				try { window.NCToast?.show?.({ message: 'Cannot save yet—loading project…', type: 'error', duration: 2500 }); } catch(_) {}
+				this.setState({ isSaving: false });
+				return;
+			}
 			
 			const payload = {
 				title: brewState.title || 'Untitled Brew',

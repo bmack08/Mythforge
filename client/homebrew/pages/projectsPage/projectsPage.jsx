@@ -56,7 +56,7 @@ const ProjectsPage = createClass({
 					<h3 className="project-title">{project.title}</h3>
 					<div className="project-meta">
 						<span className="project-date">Created: {this.formatDate(project.createdAt)}</span>
-						<span className="project-views">{project.views} views</span>
+						<span className="project-views">{project.views ?? 0} views</span>
 					</div>
 				</div>
 				{project.description && (
@@ -71,7 +71,7 @@ const ProjectsPage = createClass({
 					</a>
 					<button 
 						className="btn btn-danger" 
-						onClick={() => this.deleteProject(project.editId)}
+						onClick={() => this.deleteProject(project.editId || project.id)}
 					>
 						<i className="fas fa-trash"></i> Delete
 					</button>
@@ -82,12 +82,17 @@ const ProjectsPage = createClass({
 
 	deleteProject: function(editId) {
 		if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-			fetch(`/api/remove/${editId}`, { method: 'GET' })
+			fetch(`/api/brews/${encodeURIComponent(editId)}`, { method: 'DELETE' })
 				.then(response => {
 					if (response.ok) {
-						this.loadProjects(); // Reload the list
+						// Optimistic removal from local state
+						this.setState(prev => ({
+							projects: prev.projects.filter(p => (p.editId || p.id) !== editId)
+						}));
 					} else {
-						alert('Failed to delete project');
+						response.json().then(body => {
+							alert(body?.error || 'Failed to delete project');
+						}).catch(() => alert('Failed to delete project'));
 					}
 				})
 				.catch(error => {
@@ -101,8 +106,9 @@ const ProjectsPage = createClass({
 		const { projects, loading, error } = this.state;
 
 		return (
-			<div className='projectsPage sitePage'>
+			<div className='projectsPage sitePage listPage'>
 				<Navbar />
+				<div className="content">
 				<div className="projects-container">
 					<div className="projects-header">
 						<h1><i className="fas fa-folder-open"></i> My Projects</h1>
@@ -146,6 +152,7 @@ const ProjectsPage = createClass({
 							{projects.map(this.renderProject)}
 						</div>
 					)}
+				</div>
 				</div>
 			</div>
 		);

@@ -39,6 +39,7 @@ router.post('/api/story-ide', asyncHandler((req, res) => api.storyAssistant(req,
 router.post('/api/brews',           asyncHandler((req, res) => api.newBrew(req, res)));
 router.put('/api/brews/:brewId',    asyncHandler((req, res) => api.updateBrew(req, res)));
 router.delete('/api/brews/:brewId', asyncHandler((req, res) => api.deleteBrew(req, res)));
+router.get('/api/brews/:brewId',    asyncHandler((req, res) => api.getBrewJson(req, res)));
 router.post('/api/search/:brewId',  asyncHandler((req, res) => api.searchProject(req, res)));
 router.get('/api/graph/:brewId',    asyncHandler((req, res) => api.getProjectGraph(req, res)));
 // Versioning (Phase 1)
@@ -69,6 +70,54 @@ const isStaticTheme = (renderer, themeName)=>{
 };
 
 const api = {
+	// Fetch a single brew by editId or primary key and return JSON
+	getBrewJson: async (req, res) => {
+		try {
+			const { brewId } = req.params;
+			const { Homebrew } = await getModels();
+			// Try editId first, then fallback to primary key
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			if (!brew) {
+				try { brew = await Homebrew.findByPk(brewId); } catch (_) { /* noop */ }
+			}
+			if (!brew) {
+				return res.status(404).json({ success: false, error: 'Brew not found' });
+			}
+
+			// Normalize legacy string text to TipTap JSON if needed
+			let text = brew.text;
+			if (typeof text === 'string') {
+				try {
+					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+					text = markdownToTiptap(text);
+				} catch (e) {
+					// Fallback: wrap as a simple paragraph
+					text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text: brew.text || '' } ] } ] };
+				}
+			}
+
+			return res.json({
+				success: true,
+				brew: {
+					_id: brew.id,
+					title: brew.title,
+					text: text,
+					style: brew.style || '',
+					snippets: brew.snippets || '',
+					renderer: brew.renderer,
+					theme: brew.theme || '5ePHB',
+					shareId: brew.shareId,
+					editId: brew.editId,
+					description: brew.description || '',
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}
+			});
+		} catch (error) {
+			console.error('getBrewJson error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to get brew' });
+		}
+	},
 	// --- Shared helpers for version/text reconstruction ---
 	getCurrentBrewText: async (brewId)=>{
 		const { Homebrew } = await getModels();
@@ -503,9 +552,43 @@ const api = {
 	deleteBrew : async (req, res)=>{
 		try {
 			const { brewId } = req.params;
-			const { Homebrew } = await getModels();
-			await Homebrew.destroy({ where: { id: brewId } });
-			res.json({ success: true });
+			const { Homebrew, StoryVersion, StoryChunk } = await getModels();
+
+			// Find by editId first, then fallback to PK
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			if (!brew) {
+				try { brew = await Homebrew.findByPk(brewId); } catch(_) {}
+			}
+			if (!brew) {
+				return res.status(404).json({ success: false, error: 'Brew not found' });
+			}
+
+			const editId = brew.editId;
+			const pkId   = brew.id;
+
+			// Delete Homebrew row via instance to ensure hooks fire
+			const deletedBrew = { id: pkId, editId };
+			const deletedBrewCount = await (async () => { try { await brew.destroy(); return 1; } catch (e) { console.error('brew.destroy failed, fallback to destroy where:', e.message); return await Homebrew.destroy({ where: { id: pkId } }); } })();
+
+			// Best-effort cascade cleanup for versions/chunks keyed by editId
+			let deletedVersions = 0, deletedChunks = 0;
+			try {
+				if (StoryVersion) {
+					deletedVersions = await StoryVersion.destroy({ where: { brewId: editId } });
+				}
+			} catch(e) { console.warn('Delete StoryVersion failed:', e.message); }
+			try {
+				if (StoryChunk) {
+					deletedChunks = await StoryChunk.destroy({ where: { brewId: editId } });
+				}
+			} catch(e) { console.warn('Delete StoryChunk failed:', e.message); }
+
+			if (!deletedBrewCount) {
+				// Should not happen because we found it, but guard anyway
+				return res.status(500).json({ success: false, error: 'Failed to delete brew' });
+			}
+
+			return res.json({ success: true, deleted: { brew: deletedBrewCount, versions: deletedVersions, chunks: deletedChunks }, brew: deletedBrew });
 		} catch (error) {
 			console.error('Delete brew error:', error);
 			res.status(500).json({
