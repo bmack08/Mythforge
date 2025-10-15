@@ -81,23 +81,22 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   useEffect(() => {
     if (!editor) return;
     
-    const editorElement = document.querySelector('.ProseMirror');
+    const editorElement = document.querySelector('.tiptap-editor__content');
     if (!editorElement) return;
     
     const handleScroll = () => {
       try {
         const brewRendererFrame = window.frames['BrewRenderer'];
         if (!brewRendererFrame || !brewRendererFrame.contentDocument) return;
-        
+
         const previewElement = brewRendererFrame.contentDocument.querySelector('.brewRenderer');
         if (!previewElement) return;
-        
-        // Calculate scroll ratio
-        const scrollRatio = editorElement.scrollTop / (editorElement.scrollHeight - editorElement.clientHeight);
-        
-        // Apply same ratio to preview (if not NaN)
+
+        // Calculate scroll ratio from the container that actually scrolls
+        const scrollRatio = editorElement.scrollTop / Math.max(1, (editorElement.scrollHeight - editorElement.clientHeight));
+
         if (!isNaN(scrollRatio)) {
-          const targetScroll = scrollRatio * (previewElement.scrollHeight - previewElement.clientHeight);
+          const targetScroll = scrollRatio * Math.max(1, (previewElement.scrollHeight - previewElement.clientHeight));
           previewElement.scrollTop = targetScroll;
         }
       } catch (e) {
@@ -158,7 +157,9 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
         <button onClick={() => editor.chain().focus().setPageBreak().run()} title='Insert Page Break (\\page)'>📄 Page</button>
         <button onClick={() => editor.chain().focus().setColumnBreak().run()} title='Insert Column Break (\\column)'>⫼ Column</button>
       </div>
-      <EditorContent editor={editor} />
+      <div className='tiptap-editor__content'>
+        <EditorContent editor={editor} />
+      </div>
     </div>
   );
 });

@@ -7,6 +7,8 @@
   flex-direction: column;
   height: 100%;
   background: white;
+  position: relative;
+  overflow: hidden; // prevent outer container from scrolling
 }
 
 // Toolbar with formatting buttons
@@ -17,6 +19,10 @@
   border-bottom: 1px solid #ccc;
   background: #f9f9f9;
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05);
   
   button {
     background: #f7f7f7;
@@ -38,7 +44,7 @@
 // Editor content wrapper (contains ProseMirror)
 .tiptap-editor__content {
   flex: 1;
-  overflow: auto;
+  overflow: auto; // the only scrollable area
   background: white;
 }
 
@@ -111,8 +117,7 @@
     border-top: 2px dashed #C0AD6A; // Gold color (PHB style)
     margin: 2rem 0;
     height: 2px;
-    column-break-after: always;
-    -webkit-column-break-after: always;
+  break-after: column;
     position: relative;
     cursor: pointer;
     

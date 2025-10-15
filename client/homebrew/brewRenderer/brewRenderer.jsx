@@ -350,6 +350,18 @@ const BrewRenderer = (props)=>{
 	}
 
 	const renderedStyle = useMemo(()=>renderStyle(), [props.style, props.themeBundle]);
+
+	// Inline fallback container styles to ensure scroll works even if CSS isn't injected
+	const containerStyle = useMemo(()=>({
+		height: '100vh',
+		paddingTop: 60,
+		paddingBottom: 80,
+		overflowY: 'auto',
+		overflowX: 'hidden',
+		boxSizing: 'border-box',
+		overscrollBehavior: 'contain',
+		...styleObject
+	}), [styleObject]);
 	renderedPages = useMemo(()=>renderPages(), [props.text, displayOptions]);
 
 	return (
@@ -373,14 +385,14 @@ const BrewRenderer = (props)=>{
 
 			{/*render in iFrame so broken code doesn't crash the site.*/}
 			<Frame id='BrewRenderer' initialContent={getInitialContent(props.renderer, props.theme)}
-				style={{ width: '100%', height: '100%', visibility: state.visibility }}
+				style={{ width: '100%', height: '100%', minHeight: '0', visibility: state.visibility }}
 				contentDidMount={frameDidMount}
 				onClick={()=>{emitClick();}}
 			>
 				<div className={`brewRenderer ${global.config.deployment && 'deployment'}`}
 					onKeyDown={handleControlKeys}
 					tabIndex={-1}
-					style={ styleObject }
+					style={ containerStyle }
 				>
 
 					{/* Apply CSS from Style tab and render pages from Markdown tab */}

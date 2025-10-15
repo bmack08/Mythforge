@@ -3,9 +3,15 @@
 .brewRenderer {
 	height        : 100vh;
 	padding-top   : 60px;
-	overflow-y    : scroll;
+	padding-bottom: 80px; // ensure you can scroll past the last page footer
+	overflow-y    : auto; // allow scrolling when content exceeds viewport
+	overflow-x    : hidden;
+	box-sizing    : border-box;
+	overscroll-behavior: contain; // keep mouse wheel from bubbling out of the iframe
 	will-change   : transform;
 	&:has(.facing, .flow) { padding : 60px 30px; }
+	&:has(.facing, .flow) { padding : 60px 30px 80px; } // preserve extra bottom space in facing/flow modes
+	scrollbar-gutter: stable; // prevent layout shift when scrollbar appears
 	&.deployment { background-color : darkred; }
 	:where(.pages) {
 		&.facing {

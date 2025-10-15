@@ -553,40 +553,65 @@ const api = {
 		try {
 			const { brewId } = req.params;
 			const { Homebrew, StoryVersion, StoryChunk } = await getModels();
+			console.log(`[deleteBrew] Received DELETE for brewId param: ${brewId}`);
 
 			// Find by editId first, then fallback to PK
 			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			let foundBy = 'editId';
 			if (!brew) {
 				try { brew = await Homebrew.findByPk(brewId); } catch(_) {}
+				if (brew) foundBy = 'pk';
 			}
 			if (!brew) {
+				console.warn(`[deleteBrew] Brew not found for id/editId: ${brewId}`);
 				return res.status(404).json({ success: false, error: 'Brew not found' });
 			}
 
 			const editId = brew.editId;
 			const pkId   = brew.id;
+			console.log(`[deleteBrew] Found brew (${foundBy}). pkId=${pkId} editId=${editId}`);
 
 			// Delete Homebrew row via instance to ensure hooks fire
 			const deletedBrew = { id: pkId, editId };
-			const deletedBrewCount = await (async () => { try { await brew.destroy(); return 1; } catch (e) { console.error('brew.destroy failed, fallback to destroy where:', e.message); return await Homebrew.destroy({ where: { id: pkId } }); } })();
+			const deletedBrewCount = await (async () => { 
+				try { 
+					await brew.destroy(); 
+					console.log(`[deleteBrew] brew.destroy() succeeded for pkId=${pkId}`);
+					return 1; 
+				} catch (e) { 
+					console.error('[deleteBrew] brew.destroy failed, fallback to destroy where:', e.message); 
+					const c = await Homebrew.destroy({ where: { id: pkId } }); 
+					console.log(`[deleteBrew] Fallback destroy where id=${pkId} affected ${c}`);
+					return c; 
+				} 
+			})();
 
 			// Best-effort cascade cleanup for versions/chunks keyed by editId
 			let deletedVersions = 0, deletedChunks = 0;
 			try {
 				if (StoryVersion) {
 					deletedVersions = await StoryVersion.destroy({ where: { brewId: editId } });
+					console.log(`[deleteBrew] Deleted StoryVersion rows: ${deletedVersions} for brewId=${editId}`);
 				}
 			} catch(e) { console.warn('Delete StoryVersion failed:', e.message); }
 			try {
 				if (StoryChunk) {
 					deletedChunks = await StoryChunk.destroy({ where: { brewId: editId } });
+					console.log(`[deleteBrew] Deleted StoryChunk rows: ${deletedChunks} for brewId=${editId}`);
 				}
 			} catch(e) { console.warn('Delete StoryChunk failed:', e.message); }
 
 			if (!deletedBrewCount) {
 				// Should not happen because we found it, but guard anyway
+				console.error(`[deleteBrew] No brew rows deleted for pkId=${pkId}, editId=${editId}`);
 				return res.status(500).json({ success: false, error: 'Failed to delete brew' });
 			}
+
+			// Post-delete verification
+			try {
+				const check = await Homebrew.findByPk(pkId);
+				console.log(`[deleteBrew] Post-delete verification findByPk(${pkId}) =>`, check ? 'STILL EXISTS (unexpected)' : 'OK (gone)');
+			} catch(_) {}
 
 			return res.json({ success: true, deleted: { brew: deletedBrewCount, versions: deletedVersions, chunks: deletedChunks }, brew: deletedBrew });
 		} catch (error) {
