@@ -90,6 +90,61 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
+    // Start of wide block: {{wide
+    if (trimmed.startsWith('{{wide')) {
+      flushParagraph();
+      flushBlock();
+      currentBlock = { type: 'wideBlock', attrs: {} };
+      continue;
+    }
+
+    // Start of header block: {{header
+    if (trimmed.startsWith('{{header')) {
+      flushParagraph();
+      flushBlock();
+      currentBlock = { type: 'header', attrs: {} };
+      continue;
+    }
+
+    // Start of footer block: {{footer
+    if (trimmed.startsWith('{{footer')) {
+      flushParagraph();
+      flushBlock();
+      currentBlock = { type: 'footer', attrs: {} };
+      continue;
+    }
+
+    // Page number: {{pagenumber}}
+    if (trimmed === '{{pagenumber}}') {
+      flushParagraph();
+      if (!currentBlock) {
+        content.push({ type: 'pageNumber', attrs: { auto: true } });
+      } else {
+        blockContent.push({ type: 'pageNumber', attrs: { auto: true } });
+      }
+      continue;
+    }
+
+    // Column break: {{columnbreak}}
+    if (trimmed === '{{columnbreak}}') {
+      flushParagraph();
+      if (!currentBlock) {
+        content.push({ type: 'columnBreak' });
+      } else {
+        blockContent.push({ type: 'columnBreak' });
+      }
+      continue;
+    }
+
+    // Column container: {column-count:2}
+    const columnCountMatch = trimmed.match(/^\{column-count:(\d+)\}$/);
+    if (columnCountMatch) {
+      flushParagraph();
+      flushBlock();
+      currentBlock = { type: 'columnContainer', attrs: { count: parseInt(columnCountMatch[1], 10) } };
+      continue;
+    }
+
     // Attribution in quote: {{attribution
     if (trimmed.startsWith('{{attribution ')) {
       const attribution = trimmed.slice(14).replace(/}}$/, '').trim();
@@ -192,16 +247,22 @@ function parseInlineMarks(text) {
   while (remaining) {
     // Find next formatting:
     // 1. Homebrewery macros: \spell{Fire Bolt}, \ability{Strength}, etc.
-    // 2. Bold: **text**
-    // 3. Italic: *text*
+    // 2. Icons: :fa-dragon:, :far-smile:, :fab-github:
+    // 3. Emoji: :ei_barbarian_reckless_attack:
+    // 4. Bold: **text**
+    // 5. Italic: *text*
 
     const macroMatch = remaining.match(/\\(spell|ability|skill|condition|damage)\{([^}]+)\}/);
+    const iconMatch = remaining.match(/:(fa[rb]?-[a-zA-Z0-9-]+):/);
+    const emojiMatch = remaining.match(/:ei_[a-zA-Z0-9_]+:/);
     const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
     const italicMatch = remaining.match(/(?<!\*)\*([^*]+)\*/); // Avoid matching **
 
     // Find earliest match
     const matches = [
       { match: macroMatch, type: 'macro' },
+      { match: iconMatch, type: 'icon' },
+      { match: emojiMatch, type: 'emoji' },
       { match: boldMatch, type: 'bold' },
       { match: italicMatch, type: 'italic' }
     ].filter(m => m.match !== null);
@@ -231,6 +292,20 @@ function parseInlineMarks(text) {
         type: 'text',
         text: nextMatch.match[2], // Content inside {}
         marks: [{ type: markType }]
+      });
+    } else if (nextMatch.type === 'icon') {
+      // :fa-dragon: → iconMark node
+      const iconName = nextMatch.match[1];
+      nodes.push({
+        type: 'iconMark',
+        attrs: { name: iconName }
+      });
+    } else if (nextMatch.type === 'emoji') {
+      // :ei_barbarian_reckless_attack: → emoji node
+      const emojiName = nextMatch.match[0].slice(4, -1); // Remove :ei_ and trailing :
+      nodes.push({
+        type: 'emoji',
+        attrs: { name: emojiName, set: 'ei' }
       });
     } else if (nextMatch.type === 'bold') {
       nodes.push({

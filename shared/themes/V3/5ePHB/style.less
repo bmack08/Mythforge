@@ -38,6 +38,18 @@
 	-webkit-column-gap   : 0.9cm;
 	-moz-column-gap      : 0.9cm;
 }
+
+// Blueprint EPIC C: Multi-column container mixin
+.useColumnsExplicit(@count : 2, @fillMode: auto) {
+	column-count         : @count;
+	column-fill          : @fillMode;
+	column-gap           : 0.9cm;
+	column-width         : auto;
+	-webkit-column-count : @count;
+	-moz-column-count    : @count;
+	-webkit-column-gap   : 0.9cm;
+	-moz-column-gap      : 0.9cm;
+}
 .page {
 	.useColumns();
 	font-family      : 'BookInsanityRemake';
@@ -140,7 +152,14 @@
 	// *****************************
 	// *          TABLE
 	// *****************************/
-	table {
+
+	// PHB Table Wrapper (Blueprint EPIC A parity)
+	.phb-table {
+		margin-bottom : 0.325cm;
+		& + * { margin-top : 0.325cm; }
+	}
+
+	table, .phb-table > table {
 		.useSansSerif();
 		line-height : 16px;
 		& + * { margin-top : 0.325cm; }
@@ -164,6 +183,15 @@
 				&:nth-child(odd) { background-color : var(--HB_Color_Accent); }
 			}
 		}
+	}
+
+	// Ensure phb and table--compact classes don't conflict
+	table.phb, .phb-table > table.phb {
+		// PHB class maintains existing styling
+	}
+
+	table.table--compact, .phb-table > table.table--compact {
+		// Compact variant (same as default for now)
 	}
 	// *****************************
 	// *          QUOTE
@@ -889,6 +917,126 @@
 .page h1 + * { margin-top : 0; }
 
 .page .descriptive.wide + * { margin-top : 0; }
+
+// *****************************
+// *     COLUMN CONTAINERS
+// *     (Blueprint EPIC C)
+// *****************************/
+.page .phb-cols {
+	margin-bottom : 0.325cm;
+	& + * { margin-top : 0.325cm; }
+}
+
+.page .phb-col-2 {
+	.useColumnsExplicit(2);
+}
+
+.page .phb-col-3 {
+	.useColumnsExplicit(3);
+}
+
+.page .phb-col-4 {
+	.useColumnsExplicit(4);
+}
+
+// Column break styling
+.page .column-break {
+	visibility       : hidden;
+	column-span      : all;
+	-webkit-column-span : all;
+	-moz-column-span : all;
+}
+
+// *****************************
+// *     PAGE CHROME
+// *     (Blueprint EPIC E)
+// *****************************/
+.phb-header {
+	position   : absolute;
+	top        : 0.4cm;
+	left       : 1.4cm;
+	right      : 1.4cm;
+	text-align : center;
+	font-size  : 0.28cm;
+	color      : var(--HB_Color_CaptionText);
+
+	@media print {
+		position : running(header);
+	}
+}
+
+.phb-footer {
+	position   : absolute;
+	bottom     : 1cm;
+	left       : 1.4cm;
+	right      : 1.4cm;
+	text-align : center;
+	font-size  : 0.28cm;
+	color      : var(--HB_Color_CaptionText);
+
+	@media print {
+		position : running(footer);
+	}
+}
+
+.phb-page-number, .pageNumber {
+	position   : absolute;
+	bottom     : 22px;
+	z-index    : 150;
+	font-family : 'BookInsanityRemake';
+	font-size  : 0.34cm;
+	font-weight : bold;
+	color      : var(--HB_Color_Footnotes);
+}
+
+// *****************************
+// *   IMAGES WITH ATTRIBUTES
+// *   (Blueprint EPIC F)
+// *****************************/
+.phb-image {
+	display : block;
+	margin  : 0.325cm auto;
+	z-index : -1;
+
+	&.wrapLeft {
+		float        : left;
+		margin-right : 0.5cm;
+		margin-bottom: 0.5cm;
+	}
+
+	&.wrapRight {
+		float       : right;
+		margin-left : 0.5cm;
+		margin-bottom: 0.5cm;
+	}
+}
+
+// *****************************
+// *    ICONS & EMOJI
+// *    (Blueprint EPIC G)
+// *****************************/
+.phb-icon {
+	display        : inline;
+	vertical-align : baseline;
+	font-size      : 1em;
+	line-height    : 1;
+}
+
+.phb-emoji {
+	display        : inline-block;
+	vertical-align : baseline;
+	width          : 1.2em;
+	height         : 1.2em;
+	font-size      : 1em;
+	line-height    : 1;
+
+	// Elderberry Inn emoji sprites
+	&.ei {
+		background-size : contain;
+		background-repeat : no-repeat;
+		background-position : center;
+	}
+}
 
 //*****************************
 // *       RUNE TABLE

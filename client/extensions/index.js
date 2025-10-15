@@ -6,7 +6,7 @@
 
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
-import { Table } from '@tiptap/extension-table';
+import ImageWithAttributes from './ImageWithAttributes.js';
 import { TableRow } from '@tiptap/extension-table-row';
 import { TableCell } from '@tiptap/extension-table-cell';
 import { TableHeader } from '@tiptap/extension-table-header';
@@ -24,6 +24,10 @@ import NoteBlock from './NoteBlock.js';
 import WideBlock from './WideBlock.js';
 import PageBreak from './PageBreak.js';
 import ColumnBreak from './ColumnBreak.js';
+import ColumnContainer from './ColumnContainer.js';
+import Header from './Header.js';
+import Footer from './Footer.js';
+import PageNumber from './PageNumber.js';
 import FootnoteBlock from './FootnoteBlock.js';
 import CoverBlock from './CoverBlock.js';
 import CreditsBlock from './CreditsBlock.js';
@@ -38,11 +42,12 @@ import ClassFeature from './ClassFeature.js';
 import Spell from './Spell.js';
 import SpellList from './SpellList.js';
 
-// Table extension (PHB-styled)
+// Table extension (PHB-styled, extends base Tiptap Table)
 import TableBlock from './TableBlock.js';
 
 // Inline marks - D&D reference marks
 import IconMark from './IconMark.js';
+import Emoji from './Emoji.js';
 import SpellMark from './SpellMark.js';
 import AbilityMark from './AbilityMark.js';
 import SkillMark from './SkillMark.js';
@@ -71,7 +76,8 @@ const configuredExtensions = [
   
   // Media & Styling
   Image,
-  Table.configure({ resizable: true }),
+  ImageWithAttributes,
+  TableBlock.configure({ resizable: true }), // Custom PHB-styled table (extends Tiptap Table)
   TableRow,
   TableCell,
   TableHeader,
@@ -82,7 +88,11 @@ const configuredExtensions = [
   // Layout & Structure
   PageBreak,
   ColumnBreak,
+  ColumnContainer,
   WideBlock,
+  Header,
+  Footer,
+  PageNumber,
   
   // PHB Content Blocks
   QuoteBlock,
@@ -91,7 +101,7 @@ const configuredExtensions = [
   FootnoteBlock,
   CoverBlock,
   CreditsBlock,
-  
+
   // D&D Specific Blocks
   SpellBlock,
   FeatureBlock,
@@ -100,11 +110,9 @@ const configuredExtensions = [
   Spell,
   SpellList,
   
-  // Custom table styling
-  TableBlock,
-  
   // Inline Marks & Nodes
   IconMark,
+  Emoji,
   SpellMark,
   AbilityMark,
   SkillMark,
@@ -127,7 +135,8 @@ export {
   // Core
   StarterKit,
   Image,
-  Table,
+  ImageWithAttributes,
+  TableBlock, // PHB-styled table extension
   TableRow,
   TableCell,
   TableHeader,
@@ -138,7 +147,11 @@ export {
   // Layout
   PageBreak,
   ColumnBreak,
+  ColumnContainer,
   WideBlock,
+  Header,
+  Footer,
+  PageNumber,
   
   // Content Blocks
   QuoteBlock,
@@ -155,10 +168,10 @@ export {
   ClassFeature,
   Spell,
   SpellList,
-  TableBlock,
-  
+
   // Inline Marks
   IconMark,
+  Emoji,
   SpellMark,
   AbilityMark,
   SkillMark,

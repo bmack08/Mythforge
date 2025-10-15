@@ -13,6 +13,7 @@ import ErrorPage   from './pages/errorPage/errorPage.jsx';
 import VaultPage   from './pages/vaultPage/vaultPage.jsx';
 import AccountPage from './pages/accountPage/accountPage.jsx';
 import ProjectsPage from './pages/projectsPage/projectsPage.jsx';
+import PreviewPage from './pages/previewPage/previewPage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -58,6 +59,7 @@ const Homebrew = (props)=>{
 					<Route path='/new/:id' element={<WithRoute el={NewPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/new' element={<WithRoute el={NewPage} userThemes={userThemes}/> } />
 					<Route path='/projects' element={<WithRoute el={ProjectsPage}/>} />
+					<Route path='/preview' element={<WithRoute el={PreviewPage}/>} />
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>
 					<Route path='/changelog' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />

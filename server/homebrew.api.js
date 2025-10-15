@@ -16,7 +16,6 @@ import OpenAI                        from 'openai';
 import { splitTextStyleAndMetadata, 
 		 brewSnippetsToJSON, debugTextMismatch }        from '../shared/helpers.js';
 import checkClientVersion            from './middleware/check-client-version.js';
-import KnowledgeGraph                from './services/story-ide/knowledge-graph.js';
 
 const router = express.Router();
 
@@ -70,6 +69,69 @@ const isStaticTheme = (renderer, themeName)=>{
 };
 
 const api = {
+	// Normalize a Homebrew row's text field into TipTap JSON.
+	// - If text is stored in legacy binary (textBin), decompress it.
+	// - If text is a legacy markdown string, convert to TipTap JSON.
+	// - Optionally persist migrated text back to DB and clear textBin.
+	normalizeAndMigrateBrewText: async (brew, { persist = true } = {}) => {
+		if (!brew) return { json: { type: 'doc', content: [] }, migrated: false };
+
+		let migrated = false;
+		let textVal = brew.text;
+
+		// If text is empty object or falsy and textBin exists, try to inflate legacy payload
+		const isEmptyDoc = (v) => !!v && typeof v === 'object' && v.type === 'doc' && Array.isArray(v.content) && v.content.length === 0;
+		if ((!textVal || isEmptyDoc(textVal)) && brew.textBin && brew.textBin.length > 0) {
+			try {
+				const unzipped = zlib.inflateRawSync(brew.textBin);
+				textVal = unzipped.toString(); // legacy string (markdown or serialized json)
+				migrated = true;
+			} catch (e) {
+				console.warn('[normalize] Failed to inflate textBin:', e.message);
+			}
+		}
+
+		// If string, convert to TipTap JSON (could be JSON string or markdown)
+		if (typeof textVal === 'string') {
+			try {
+				const maybe = JSON.parse(textVal);
+				if (maybe && typeof maybe === 'object' && maybe.type === 'doc' && Array.isArray(maybe.content)) {
+					textVal = maybe;
+				} else {
+					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+					textVal = markdownToTiptap(textVal);
+				}
+				migrated = true;
+			} catch (_) {
+				try {
+					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+					textVal = markdownToTiptap(textVal);
+					migrated = true;
+				} catch (e2) {
+					console.warn('[normalize] markdownToTiptap failed, wrapping as paragraph:', e2.message);
+					textVal = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text: String(textVal||'') } ] } ] };
+					migrated = true;
+				}
+			}
+		}
+
+		// If still not a doc, coerce to empty doc
+		if (!textVal || typeof textVal !== 'object' || textVal.type !== 'doc' || !Array.isArray(textVal.content)) {
+			textVal = { type: 'doc', content: [] };
+		}
+
+		// Persist migration back to DB to avoid doing this repeatedly
+		if (persist && migrated) {
+			try {
+				await brew.update({ text: textVal, textBin: null });
+				console.log(`[normalize] Persisted migrated text for brew id=${brew.id} editId=${brew.editId}`);
+			} catch (e) {
+				console.warn('[normalize] Failed to persist migrated text:', e.message);
+			}
+		}
+
+		return { json: textVal, migrated };
+	},
 	// Fetch a single brew by editId or primary key and return JSON
 	getBrewJson: async (req, res) => {
 		try {
@@ -83,18 +145,8 @@ const api = {
 			if (!brew) {
 				return res.status(404).json({ success: false, error: 'Brew not found' });
 			}
-
-			// Normalize legacy string text to TipTap JSON if needed
-			let text = brew.text;
-			if (typeof text === 'string') {
-				try {
-					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
-					text = markdownToTiptap(text);
-				} catch (e) {
-					// Fallback: wrap as a simple paragraph
-					text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text: brew.text || '' } ] } ] };
-				}
-			}
+			// Normalize/migrate text from legacy storage into TipTap JSON
+			const { json: text } = await api.normalizeAndMigrateBrewText(brew, { persist: true });
 
 			return res.json({
 				success: true,
@@ -124,7 +176,16 @@ const api = {
 		// brewId may be editId or pk id. Try editId first.
 		let brew = await Homebrew.findOne({ where: { editId: brewId } });
 		if (!brew) brew = await Homebrew.findByPk(brewId);
-		return brew?.text || '';
+		if (!brew) return '';
+		// Ensure we have normalized text; do not persist here to keep it lightweight
+		const { json } = await api.normalizeAndMigrateBrewText(brew, { persist: false });
+		try {
+			const { toPlainText } = await import('../shared/contentAdapter.js');
+			return toPlainText(json);
+		} catch (_) {
+			// Fallback: naive join if adapter unavailable
+			return typeof brew.text === 'string' ? brew.text : '';
+		}
 	},
 
 	// === Phases 5–7 minimal endpoints (env-gated) ===
@@ -1471,6 +1532,7 @@ ${requestText}`;
 			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
 			const text = fullText || await api.reconstructCurrentText(brewId);
 			if (!text) return res.status(400).json({ success: false, error: 'No text to process' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
 			const KG = new KnowledgeGraph();
 			await KG.ensureReady();
 			const result = await KG.processBrewDocument(brewId, title, text);
@@ -1485,6 +1547,7 @@ ${requestText}`;
 		try {
 			const { brewId } = req.params;
 			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
 			const KG = new KnowledgeGraph();
 			await KG.ensureReady();
 			const proj = await KG.getProjectByBrewId(brewId);
@@ -1501,6 +1564,7 @@ ${requestText}`;
 		try {
 			const { brewId } = req.params;
 			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
 			const KG = new KnowledgeGraph();
 			await KG.ensureReady();
 			const proj = await KG.getProjectByBrewId(brewId);

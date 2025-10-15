@@ -81,9 +81,12 @@ export default Heading.extend({
 		const level = node.attrs.level;
 		const id = node.attrs.id || slugify(node.textContent);
 
+		// Add PHB class for levels 1-3 per Blueprint EPIC D
+		const phbClass = level <= 3 ? `phb-h${level}` : '';
+
 		return [
 			`h${level}`,
-			mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { id }),
+			mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { id, class: phbClass }),
 			0
 		];
 	},

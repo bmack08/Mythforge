@@ -51,6 +51,17 @@
 			margin-bottom : 30px;
 			margin-left   : auto;
 			box-shadow    : 1px 4px 14px #000000;
+			// Enforce two-column layout within each page and prevent phantom third columns
+			// The inner .columnWrapper is where page content is injected
+			& > .columnWrapper {
+				height        : 100%;
+				box-sizing    : border-box;
+				column-count  : 2;             // hard limit to two columns
+				column-gap    : 22px;          // match typical theme spacing
+				column-fill   : auto;          // fill top-to-bottom then next column
+				overflow      : hidden;        // clip content that would spill to a third column
+				position      : relative;
+			}
 		}
 		*[id] { scroll-margin-top : 100px; }
 	}

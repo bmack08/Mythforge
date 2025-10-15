@@ -1,10 +1,6 @@
 // SQLite database configuration and connection using Sequelize
 import { Sequelize } from 'sequelize';
 import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Database configuration
 const getDatabasePath = (config = null) => {
@@ -12,7 +8,8 @@ const getDatabasePath = (config = null) => {
 	if (nodeEnv === 'test') {
 		return ':memory:'; // Use in-memory database for tests
 	}
-	return path.join(__dirname, '..', 'mythwright.sqlite');
+	// Use project root to resolve DB file to avoid relying on import.meta.url in test runners
+	return path.join(process.cwd(), 'mythwright.sqlite');
 };
 
 let sequelize = null;

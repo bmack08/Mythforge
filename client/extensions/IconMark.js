@@ -44,24 +44,30 @@ export default Node.create({
 
   renderHTML({ node }) {
     const name = node.attrs.name || '';
-    
-    // FontAwesome icons: :fa-dragon: → <i class="fa fa-dragon"></i>
-    if (name.startsWith('fa-')) {
+
+    // Determine icon set from prefix
+    let iconSet = 'fas'; // default solid
+    if (name.includes('far-')) iconSet = 'far'; // regular
+    if (name.includes('fab-')) iconSet = 'fab'; // brands
+
+    // FontAwesome icons: :fa-dragon: → <i class="phb-icon fas fa-dragon"></i>
+    if (name.startsWith('fa-') || name.startsWith('far-') || name.startsWith('fab-')) {
+      const iconName = name.replace(/^(fa|far|fab)-/, 'fa-');
       return [
         'i',
         {
-          class: `fa ${name}`,
+          class: `phb-icon ${iconSet} ${iconName}`,
           'data-icon': name,
         },
       ];
     }
-    
+
     // Legacy emoji/game icons: :ei_name: or :gi_name:
     return [
       'span',
       {
         'data-icon': name,
-        class: `icon ${name.replace(/_/g, '-')}`,
+        class: `phb-icon icon ${name.replace(/_/g, '-')}`,
       },
     ];
   },

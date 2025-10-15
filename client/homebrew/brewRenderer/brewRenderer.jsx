@@ -23,7 +23,7 @@ import { safeHTML } from './safeHTML.js';
 const PAGEBREAK_REGEX_V3 = /^(?=\\page(?:break)?(?: *{[^\n{}]*})?$)/m;
 const PAGEBREAK_REGEX_LEGACY = /\\page(?:break)?/m;
 const COLUMNBREAK_REGEX_LEGACY = /\\column(:?break)?/m;
-const PAGE_HEIGHT = 1056;
+const PAGE_HEIGHT = 1056; // Fallback only; we measure actual height at runtime
 
 /**
  * Split TipTap JSON document by pageBreak nodes
@@ -147,7 +147,7 @@ const BrewRenderer = (props)=>{
 		isMounted    : false,
 		visibility   : 'hidden',
 		visiblePages : [],
-		centerPage   : 1
+			centerPage   : 1
 	});
 
 	const [displayOptions, setDisplayOptions] = useState({
@@ -155,8 +155,8 @@ const BrewRenderer = (props)=>{
 		spread       : 'single',
 		startOnRight : true,
 		pageShadows  : true,
-		rowGap       : 5,
-		columnGap    : 10,
+			rowGap       : 5,
+			columnGap    : 10,
 	});
 
 	//useEffect to store or gather toolbar state from storage
@@ -167,14 +167,20 @@ const BrewRenderer = (props)=>{
 
 	const [headerState, setHeaderState] = useState(false);
 
-	const mainRef  = useRef(null);
-	const pagesRef = useRef(null);
+		const mainRef      = useRef(null);
+		const pagesRef     = useRef(null);
+		const measureRef   = useRef(null); // hidden measurement container inside the iframe
+		const [docPages, setDocPages] = useState([]); // auto-paginated TipTap pages
+		const [paginationVersion, setPaginationVersion] = useState(0);
 
-	// Handle TipTap JSON content - split by pageBreak nodes
-	if (props.text && typeof props.text === 'object') {
-		// TipTap JSON - split document by pageBreak nodes
-		rawPages = splitTipTapPages(props.text);
-	} else {
+		const autoPaginate = true; // enable auto-pagination for TipTap JSON
+
+			// Handle TipTap JSON content - prefer auto-pagination; fallback to manual pageBreak split
+			if (props.text && typeof props.text === 'object') {
+				rawPages = (autoPaginate && docPages.length > 0)
+					? docPages
+					: splitTipTapPages(props.text);
+			} else {
 		// Legacy string-based content
 		const textContent = typeof props.text === 'string' ? props.text : '';
 		if(props.renderer == 'legacy') {
@@ -183,6 +189,163 @@ const BrewRenderer = (props)=>{
 			rawPages = textContent.split(PAGEBREAK_REGEX_V3);
 		}
 	}
+
+		// --- Auto-pagination engine (TipTap JSON) ---
+		const computePageMetrics = useCallback(()=>{
+			// Measure page content height and single-column width inside the iframe
+			const frameDoc = document.getElementById('BrewRenderer')?.contentDocument;
+			if (!frameDoc || !measureRef.current) return null;
+
+			// Create a temp page to measure width/height/padding using current styles
+			const pageEl = frameDoc.createElement('div');
+			pageEl.className = 'page phb';
+			pageEl.style.visibility = 'hidden';
+			pageEl.style.position = 'absolute';
+			pageEl.style.left = '-99999px';
+			pageEl.style.top = '-99999px';
+
+			const wrapper = frameDoc.createElement('div');
+			wrapper.className = 'columnWrapper';
+			// For measurement, force one column at half-width
+			wrapper.style.columnCount = '1';
+			pageEl.appendChild(wrapper);
+			measureRef.current.appendChild(pageEl);
+
+			// Compute sizes
+			const pageRect = pageEl.getBoundingClientRect();
+			const cs = frameDoc.defaultView.getComputedStyle(pageEl);
+			const padL = parseFloat(cs.paddingLeft || '0');
+			const padR = parseFloat(cs.paddingRight || '0');
+			const contentWidth = pageRect.width - padL - padR;
+			const gap = Number(displayOptions?.columnGap ?? 10);
+			const singleColWidth = (contentWidth - gap) / 2;
+			const contentHeight = pageRect.height; // full interior height; assume wrapper spans it
+
+			// Apply the single column width for measurement blocks
+			wrapper.style.width = `${singleColWidth}px`;
+
+			// Cleanup
+			measureRef.current.removeChild(pageEl);
+
+			return { singleColWidth, contentHeight, gap };
+		}, [displayOptions]);
+
+		const measureBlockHeight = useCallback((html)=>{
+			const frameDoc = document.getElementById('BrewRenderer')?.contentDocument;
+			if (!frameDoc || !measureRef.current) return 0;
+			const metrics = computePageMetrics();
+			if (!metrics) return 0;
+			const { singleColWidth } = metrics;
+
+			const pageEl = frameDoc.createElement('div');
+			pageEl.className = 'page phb';
+			pageEl.style.visibility = 'hidden';
+			pageEl.style.position = 'absolute';
+			pageEl.style.left = '-99999px';
+			pageEl.style.top = '-99999px';
+
+			const wrapper = frameDoc.createElement('div');
+			wrapper.className = 'columnWrapper';
+			wrapper.style.columnCount = '1';
+			wrapper.style.width = `${singleColWidth}px`;
+			wrapper.innerHTML = html;
+			pageEl.appendChild(wrapper);
+			measureRef.current.appendChild(pageEl);
+
+			// Force layout
+			const h = wrapper.getBoundingClientRect().height;
+
+			measureRef.current.removeChild(pageEl);
+			return Math.ceil(h);
+		}, [computePageMetrics]);
+
+			const paginateTipTapDoc = useCallback((doc)=>{
+			if (!doc || !Array.isArray(doc.content)) return [doc];
+			const frameDoc = document.getElementById('BrewRenderer')?.contentDocument;
+			if (!frameDoc || !measureRef.current) return [doc];
+			const metrics = computePageMetrics();
+			if (!metrics) return [doc];
+			const { contentHeight } = metrics;
+
+				// Segment the document at explicit pageBreak nodes so manual breaks are honored
+				const segments = [];
+				let seg = [];
+				for (const node of doc.content) {
+					if (node?.type === 'pageBreak') {
+						// push current segment (may be empty) and start a new one
+						segments.push(seg);
+						seg = [];
+					} else {
+						seg.push(node);
+					}
+				}
+				// push last segment
+				segments.push(seg);
+
+				const paginateNodes = (nodes)=>{
+					const pages = [];
+					let currentNodes = [];
+					let colHeights = [0, 0];
+
+					const flushPage = ()=>{
+						pages.push({ type: 'doc', content: currentNodes });
+						currentNodes = [];
+						colHeights = [0, 0];
+					};
+
+					// Empty segment results in a blank page to reflect a deliberate manual break
+					if (!nodes || nodes.length === 0) {
+						pages.push({ type: 'doc', content: [] });
+						return pages;
+					}
+
+					for (const node of nodes) {
+						const html = toHTML({ type:'doc', content:[node] });
+						const blockH = Math.max(1, measureBlockHeight(html));
+
+						if (colHeights[0] + blockH <= contentHeight) {
+							currentNodes.push(node);
+							colHeights[0] += blockH;
+						} else if (colHeights[1] + blockH <= contentHeight) {
+							currentNodes.push(node);
+							colHeights[1] += blockH;
+						} else {
+							if (currentNodes.length) flushPage();
+							// place on fresh page (left column) even if taller than a column
+							currentNodes.push(node);
+							colHeights[0] = Math.min(contentHeight, blockH);
+							colHeights[1] = 0;
+						}
+					}
+					if (currentNodes.length) flushPage();
+					return pages;
+				};
+
+				// Paginate each segment independently and concatenate
+				const allPages = [];
+				for (const s of segments) {
+					const p = paginateNodes(s);
+					allPages.push(...p);
+				}
+				return allPages.length ? allPages : [doc];
+		}, [computePageMetrics, measureBlockHeight]);
+
+		// Recompute auto-pagination when doc or display options change
+		useEffect(()=>{
+			if (!state.isMounted) return;
+			if (!(props.text && typeof props.text === 'object')) return;
+			if (!autoPaginate) return;
+
+			try {
+				const pages = paginateTipTapDoc(props.text);
+				setDocPages(pages);
+				setPaginationVersion(v => v + 1);
+			} catch (e) {
+				// Fallback silently
+				setDocPages([]);
+			}
+			// eslint-disable-next-line react-hooks/exhaustive-deps
+		}, [props.text, displayOptions, state.isMounted]);
 
 	const handlePageVisibilityChange = (pageNum, isVisible, isCenter)=>{
 		setState((prevState)=>{
@@ -400,6 +563,8 @@ const BrewRenderer = (props)=>{
 						&&
 						<>
 							{renderedStyle}
+									{/* Hidden measurement container used for auto-pagination */}
+									<div ref={measureRef} style={{ position:'absolute', visibility:'hidden', pointerEvents:'none', left:-99999, top:-99999 }} />
 							<div className={`pages ${displayOptions.startOnRight ? 'recto' : 'verso'}	${displayOptions.spread}`} lang={`${props.lang || 'en'}`} style={pagesStyle} ref={pagesRef}>
 								{renderedPages}
 							</div>
