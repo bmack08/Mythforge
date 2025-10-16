@@ -1,3 +1,5 @@
+import { stringifyStyleTags } from './legacyStyleTags.js';
+
 // Convert TipTap JSON to markdown-like text for rendering and validation
 export function tiptapToMarkdown(doc) {
 	if (!doc || typeof doc !== 'object') return '';
@@ -17,6 +19,37 @@ function nodeToMarkdown(node) {
 			const level = node.attrs?.level || 1;
 			const text = contentToText(node.content || []);
 			return level === 1 ? `# ${text}` : `## ${text}`;
+
+		case 'mustacheSpan': {
+			const tags = stringifyStyleTags(node.attrs || {});
+			const inner = contentToText(node.content || []);
+			const prefix = tags ? `${tags} ` : '';
+			return `{{${prefix}${inner}}}`;
+		}
+
+		case 'mustacheBlock': {
+			const tags = stringifyStyleTags(node.attrs || {});
+			const inner = (node.content || [])
+				.map((child)=>nodeToMarkdown(child))
+				.join('\n').trim();
+			const opening = tags ? `{{${tags}` : '{{';
+			return `${opening}\n${inner ? `${inner}\n` : ''}}}`;
+		}
+
+		case 'footnoteBlock': {
+			const inner = contentToText(node.content || []);
+			return `{{footnote ${inner.trim()}}}`;
+		}
+
+		case 'pageBreak': {
+			const tags = stringifyStyleTags(node.attrs || {});
+			return tags ? `\\page{${tags}}` : '\\page';
+		}
+
+		case 'columnBreak': {
+			const tags = stringifyStyleTags(node.attrs || {});
+			return tags ? `\\column{${tags}}` : '\\column';
+		}
 
 		case 'horizontalRule':
 			return '---';

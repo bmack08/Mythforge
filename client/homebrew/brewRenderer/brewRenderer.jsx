@@ -32,33 +32,43 @@ const PAGE_HEIGHT = 1056; // Fallback only; we measure actual height at runtime
  */
 const splitTipTapPages = (doc) => {
 	if (!doc || !doc.content || !Array.isArray(doc.content)) {
-		return [doc]; // Return single page if invalid
+		return [{ doc, attrs: null }]; // Return single page if invalid
 	}
 
 	const pages = [];
-	let currentPage = { type: 'doc', content: [] };
+	let currentPage = { doc: { type: 'doc', content: [] }, attrs: null };
 
 	doc.content.forEach((node) => {
-		// Check if this node is a pageBreak
 		if (node.type === 'pageBreak') {
-			// Save current page and start new one
-			if (currentPage.content.length > 0) {
+			if (currentPage.doc.content.length > 0 || pages.length > 0 || currentPage.attrs) {
 				pages.push(currentPage);
 			}
-			currentPage = { type: 'doc', content: [] };
+
+			currentPage = {
+				doc   : { type: 'doc', content: [] },
+				attrs : node.attrs || null
+			};
 		} else {
-			// Add node to current page
-			currentPage.content.push(node);
+			currentPage.doc.content.push(node);
 		}
 	});
 
-	// Add final page if it has content
-	if (currentPage.content.length > 0) {
+	if (currentPage.doc.content.length > 0 || currentPage.attrs || pages.length === 0) {
 		pages.push(currentPage);
 	}
 
-	// Return at least one empty page if document is empty
-	return pages.length > 0 ? pages : [{ type: 'doc', content: [] }];
+	return pages;
+};
+
+const toReactStyle = (styles = {})=>{
+	return Object.entries(styles || {}).reduce((acc, [key, value])=>{
+		if(key.startsWith('--')) {
+			acc[key] = value;
+		} else {
+			acc[key.replace(/-([a-z])/g, (_match, char)=>char.toUpperCase())] = value;
+		}
+		return acc;
+	}, {});
 };
 
 // Dynamic initial content will be set in the component
@@ -173,7 +183,7 @@ const BrewRenderer = (props)=>{
 		const [docPages, setDocPages] = useState([]); // auto-paginated TipTap pages
 		const [paginationVersion, setPaginationVersion] = useState(0);
 
-		const autoPaginate = true; // enable auto-pagination for TipTap JSON
+		const autoPaginate = false; // temporarily disable auto-pagination until parity features are stable
 
 			// Handle TipTap JSON content - prefer auto-pagination; fallback to manual pageBreak split
 			if (props.text && typeof props.text === 'object') {
@@ -260,27 +270,14 @@ const BrewRenderer = (props)=>{
 		}, [computePageMetrics]);
 
 			const paginateTipTapDoc = useCallback((doc)=>{
-			if (!doc || !Array.isArray(doc.content)) return [doc];
+			if (!doc || !Array.isArray(doc.content)) return [{ doc, attrs: null }];
 			const frameDoc = document.getElementById('BrewRenderer')?.contentDocument;
-			if (!frameDoc || !measureRef.current) return [doc];
+			if (!frameDoc || !measureRef.current) return [{ doc, attrs: null }];
 			const metrics = computePageMetrics();
-			if (!metrics) return [doc];
+			if (!metrics) return [{ doc, attrs: null }];
 			const { contentHeight } = metrics;
 
-				// Segment the document at explicit pageBreak nodes so manual breaks are honored
-				const segments = [];
-				let seg = [];
-				for (const node of doc.content) {
-					if (node?.type === 'pageBreak') {
-						// push current segment (may be empty) and start a new one
-						segments.push(seg);
-						seg = [];
-					} else {
-						seg.push(node);
-					}
-				}
-				// push last segment
-				segments.push(seg);
+				const segments = splitTipTapPages(doc);
 
 				const paginateNodes = (nodes)=>{
 					const pages = [];
@@ -323,11 +320,24 @@ const BrewRenderer = (props)=>{
 
 				// Paginate each segment independently and concatenate
 				const allPages = [];
-				for (const s of segments) {
-					const p = paginateNodes(s);
-					allPages.push(...p);
+				for (const segment of segments) {
+					const nodes = segment.doc?.content ?? [];
+					const attrs = segment.attrs || null;
+					const paginatedDocs = paginateNodes(nodes);
+
+					if (!paginatedDocs.length) {
+						allPages.push({ doc: { type: 'doc', content: [] }, attrs });
+						continue;
+					}
+
+					paginatedDocs.forEach((pageDoc, idx)=>{
+						allPages.push({
+							doc   : pageDoc,
+							attrs : idx === 0 ? attrs : null
+						});
+					});
 				}
-				return allPages.length ? allPages : [doc];
+				return allPages.length ? allPages : [{ doc, attrs: null }];
 		}, [computePageMetrics, measureBlockHeight]);
 
 		// Recompute auto-pagination when doc or display options change
@@ -393,15 +403,35 @@ const BrewRenderer = (props)=>{
 
 		let styles = {
 			...(!displayOptions.pageShadows ? { boxShadow: 'none' } : {})
-			// Add more conditions as needed
 		};
-		let classes    = 'page';
+		const classList = ['page', 'phb'];
 		let attributes = {};
 
-		// Handle TipTap JSON content
-		if (pageText && typeof pageText === 'object') {
-			const html = toHTML(pageText);
-			return <BrewPage className='page phb' index={index} key={index} contents={html} style={styles} onVisibilityChange={handlePageVisibilityChange} />;
+		// Handle TipTap JSON content with metadata
+		if (pageText && typeof pageText === 'object' && pageText.doc) {
+			const html = toHTML(pageText.doc);
+			const pageAttrs = pageText.attrs || {};
+
+			if(pageAttrs.classes) {
+				classList.push(...pageAttrs.classes.split(' ').filter(Boolean));
+			}
+			if(pageAttrs.styles) {
+				styles = {
+					...styles,
+					...toReactStyle(pageAttrs.styles)
+				};
+			}
+			if(pageAttrs.attributes) {
+				attributes = {
+					...attributes,
+					...pageAttrs.attributes
+				};
+			}
+			if(pageAttrs.id) {
+				attributes.id = pageAttrs.id;
+			}
+
+			return <BrewPage className={classList.join(' ')} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 		}
 		
 		// Legacy renderer
@@ -425,7 +455,7 @@ const BrewRenderer = (props)=>{
 		const jsonDoc = ensureJson(pageText);
 		const html = toHTML(jsonDoc);
 
-		return <BrewPage className={classes} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
+		return <BrewPage className={classList.join(' ')} index={index} key={index} contents={html} style={styles} attributes={attributes} onVisibilityChange={handlePageVisibilityChange} />;
 	};
 
 	const renderPages = ()=>{

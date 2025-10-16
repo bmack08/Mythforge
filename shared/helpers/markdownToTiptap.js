@@ -1,3 +1,5 @@
+import { parseStyleTags } from './legacyStyleTags.js';
+
 /**
  * Convert Homebrewery markdown to TipTap JSON structure
  * 
@@ -9,6 +11,7 @@
  * - Bold (**text**), Italic (*text*)
  * - Inline macros (\spell{}, \ability{}, etc.)
  * - Paragraphs
+ * - Mustache inline/block styling ({{class text}}, {{\nclass\n...\n}})
  */
 
 export function markdownToTiptap(markdown) {
@@ -46,9 +49,10 @@ export function markdownToTiptap(markdown) {
 
   const flushBlock = () => {
     if (currentBlock) {
+      const attrs = currentBlock.attrs || {};
       content.push({
         type: currentBlock.type,
-        attrs: currentBlock.attrs,
+        attrs: attrs,
         content: blockContent.length > 0 ? blockContent : [{ type: 'paragraph' }]
       });
       currentBlock = null;
@@ -66,19 +70,40 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
-    // Page break: \page
-    if (trimmed === '\\page') {
+    // Page break: \page, \pagebreak, with optional style tags
+    const pageMatch = trimmed.match(/^\\page(?:break)?(?:\s*{([^}]*)})?$/);
+    if (pageMatch) {
       flushParagraph();
       flushBlock();
-      content.push({ type: 'pageBreak' });
+      const tagString = pageMatch[1] ? pageMatch[1].trim() : '';
+      content.push({ type: 'pageBreak', attrs: parseStyleTags(tagString) });
       continue;
     }
 
-    // Column break: \column
-    if (trimmed === '\\column') {
+    // Column break: \column, \columnbreak with optional style tags
+    const columnMatch = trimmed.match(/^\\column(?:break)?(?:\s*{([^}]*)})?$/);
+    if (columnMatch) {
       flushParagraph();
       flushBlock();
-      content.push({ type: 'columnBreak' });
+      const tagString = columnMatch[1] ? columnMatch[1].trim() : '';
+      content.push({ type: 'columnBreak', attrs: parseStyleTags(tagString) });
+      continue;
+    }
+
+    // Footnote block: {{footnote ...}}
+    const footnoteMatch = trimmed.match(/^{{footnote\s+(.*)}}$/s);
+    if (footnoteMatch) {
+      flushParagraph();
+      flushBlock();
+      const footnoteText = footnoteMatch[1].trim();
+      const innerContent = parseInlineMarks(footnoteText);
+      content.push({
+        type    : 'footnoteBlock',
+        content : [{
+          type    : 'paragraph',
+          content : innerContent.length ? innerContent : [{ type: 'text', text: '' }]
+        }]
+      });
       continue;
     }
 
@@ -151,6 +176,18 @@ export function markdownToTiptap(markdown) {
       if (currentBlock && currentBlock.type === 'quoteBlock') {
         currentBlock.attrs.attribution = attribution;
       }
+      continue;
+    }
+
+    // Generic mustache block start (e.g. {{class,id attr}} on its own line)
+    if (trimmed.startsWith('{{') && !trimmed.endsWith('}}')) {
+      flushParagraph();
+      flushBlock();
+      const tagString = trimmed.slice(2).trim();
+      currentBlock = {
+        type  : 'mustacheBlock',
+        attrs : parseStyleTags(tagString)
+      };
       continue;
     }
 
@@ -239,6 +276,34 @@ export function markdownToTiptap(markdown) {
  * Returns array of text nodes with marks
  */
 function parseInlineMarks(text) {
+    if (!text) return [];
+
+  const nodes = [];
+  const segments = splitMustacheSegments(text);
+
+  for (const segment of segments) {
+    if(segment.type === 'mustache') {
+      const { tags, innerContent } = splitMustacheInline(segment.value);
+      const attrs = parseStyleTags(tags || '');
+      const innerNodes = parseInlineMarks(innerContent);
+      nodes.push({
+        type    : 'mustacheSpan',
+        attrs   : attrs,
+        content : innerNodes.length ? innerNodes : [{ type: 'text', text: '' }]
+      });
+      continue;
+    }
+
+    nodes.push(...parseSimpleInlineMarks(segment.value));
+  }
+
+  return nodes.length > 0 ? nodes : [{ type: 'text', text: '' }];
+}
+
+/**
+ * Original parser for non-mustache inline decorations.
+ */
+function parseSimpleInlineMarks(text) {
   if (!text) return [];
 
   const nodes = [];
@@ -326,6 +391,68 @@ function parseInlineMarks(text) {
   }
 
   return nodes.length > 0 ? nodes : [{ type: 'text', text: '' }];
+}
+
+function splitMustacheSegments(text) {
+  const segments = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    const start = text.indexOf('{{', cursor);
+    if(start === -1) {
+      segments.push({ type: 'text', value: text.slice(cursor) });
+      break;
+    }
+
+    if(start > cursor) {
+      segments.push({ type: 'text', value: text.slice(cursor, start) });
+    }
+
+    const end = text.indexOf('}}', start + 2);
+    if(end === -1) {
+      segments.push({ type: 'text', value: text.slice(start) });
+      break;
+    }
+
+    const inner = text.slice(start + 2, end);
+    segments.push({ type: 'mustache', value: inner });
+    cursor = end + 2;
+  }
+
+  if(segments.length === 0) {
+    segments.push({ type: 'text', value: text });
+  }
+
+  return segments.filter((segment)=>segment.value !== '');
+}
+
+function splitMustacheInline(inner) {
+  let inQuotes = false;
+  let splitIndex = -1;
+
+  for (let i = 0; i < inner.length; i++) {
+    const char = inner[i];
+    if(char === '"' && inner[i - 1] !== '\\') {
+      inQuotes = !inQuotes;
+      continue;
+    }
+    if(!inQuotes && /\s/.test(char)) {
+      splitIndex = i;
+      break;
+    }
+  }
+
+  if(splitIndex === -1) {
+    return {
+      tags         : inner.trim(),
+      innerContent : ''
+    };
+  }
+
+  return {
+    tags         : inner.slice(0, splitIndex).trim(),
+    innerContent : inner.slice(splitIndex).trim()
+  };
 }
 
 export default markdownToTiptap;

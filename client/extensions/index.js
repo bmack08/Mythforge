@@ -31,6 +31,8 @@ import PageNumber from './PageNumber.js';
 import FootnoteBlock from './FootnoteBlock.js';
 import CoverBlock from './CoverBlock.js';
 import CreditsBlock from './CreditsBlock.js';
+import MustacheSpan from './MustacheSpan.js';
+import MustacheBlock from './MustacheBlock.js';
 
 // D&D content blocks
 import SpellBlock from './SpellBlock.js';
@@ -93,6 +95,8 @@ const configuredExtensions = [
   Header,
   Footer,
   PageNumber,
+  MustacheSpan,
+  MustacheBlock,
   
   // PHB Content Blocks
   QuoteBlock,
@@ -152,6 +156,8 @@ export {
   Header,
   Footer,
   PageNumber,
+  MustacheSpan,
+  MustacheBlock,
   
   // Content Blocks
   QuoteBlock,

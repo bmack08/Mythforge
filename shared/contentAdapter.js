@@ -10,6 +10,7 @@
 
 import { generateHTML } from '@tiptap/html';
 import extensions from '../client/extensions/index.js';
+import { normalizeTipTapDoc } from './helpers/normalizeDoc.js';
 
 /**
  * Ensures content is in TipTap JSON format
@@ -23,7 +24,7 @@ export function ensureJson(docOrString) {
   
   // Already JSON
   if (typeof docOrString === 'object' && docOrString.type === 'doc') {
-    return docOrString;
+    return normalizeTipTapDoc(docOrString);
   }
   
   // Legacy string - wrap in paragraph
@@ -34,7 +35,7 @@ export function ensureJson(docOrString) {
     }
     
     // Wrap in paragraph node
-    return {
+    return normalizeTipTapDoc({
       type: 'doc',
       content: [{
         type: 'paragraph',
@@ -43,7 +44,7 @@ export function ensureJson(docOrString) {
           text: docOrString
         }]
       }]
-    };
+    });
   }
   
   // Fallback
