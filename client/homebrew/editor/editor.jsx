@@ -157,6 +157,7 @@ const Editor = createClass({
 	},
 
 	handleInject : function(injectText){
+		console.log('[handleInject] Received text:', injectText);
 		// For TipTap text editor, use the editor's insertContent method
 		if (this.state.view === 'text' && this.tipTapEditor.current) {
 			this.tipTapEditor.current.insertContent(injectText);

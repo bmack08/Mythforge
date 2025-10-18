@@ -46,13 +46,14 @@
   flex: 1;
   overflow: auto; // the only scrollable area
   background: white;
+  position: relative;
 }
 
 // Style the actual ProseMirror editor content
 .ProseMirror {
   min-height: 100%;
   background: white;
-  padding: 16px;
+  padding: 16px 16px 16px 38px; // space for 30px gutter + some margin
   outline: none;
   
   // Make content editable and cursor visible
@@ -202,4 +203,61 @@
   
   // Show cursor/caret
   caret-color: black;
+  
+  // Definition lists (for spell stats)
+  dl {
+    margin: 1em 0;
+    line-height: 1.25em;
+  }
+  
+  dt {
+    font-weight: bold;
+    margin-top: 0.5em;
+  }
+  
+  dd {
+    margin-left: 2em;
+    margin-bottom: 0.5em;
+  }
 }
+
+// CodeMirror-style gutter (matching Homebrewery)
+.CodeMirror-gutters {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30px;
+  background-color: #f7f7f7;
+  border-right: 1px solid #ddd;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.CodeMirror-gutter {
+  white-space: normal;
+  height: 100%;
+  display: inline-block;
+  vertical-align: top;
+  margin-bottom: -30px;
+}
+
+.CodeMirror-linenumbers {
+  width: 30px;
+}
+
+.CodeMirror-linenumber {
+  position: absolute;
+  padding: 0 3px 0 5px;
+  min-width: 20px;
+  text-align: right;
+  color: #999;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  user-select: none;
+  cursor: default;
+}
+

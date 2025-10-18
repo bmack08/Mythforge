@@ -19,6 +19,8 @@ export function markdownToTiptap(markdown) {
     return { type: 'doc', content: [{ type: 'paragraph' }] };
   }
 
+  console.log('[markdownToTiptap] Processing markdown:', markdown.slice(0, 200));
+
   const lines = markdown.split('\n');
   const content = [];
   let currentParagraph = [];
@@ -254,6 +256,40 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
+    // Definition list: **Term:** :: Definition
+    const defMatch = trimmed.match(/^(.*?)\s*::\s*(.*)$/);
+    if (defMatch) {
+      console.log('[markdownToTiptap] Found definition list line:', line);
+      console.log('[markdownToTiptap] Term:', defMatch[1], 'Description:', defMatch[2]);
+      flushParagraph();
+      const term = defMatch[1].trim();
+      const description = defMatch[2].trim();
+      
+      // Check if there's already a definition list to append to
+      const target = currentBlock ? blockContent : content;
+      const lastNode = target[target.length - 1];
+      
+      if (lastNode && lastNode.type === 'definitionList') {
+        // Append to existing list
+        lastNode.content.push(
+          { type: 'definitionTerm', content: parseInlineMarks(term) },
+          { type: 'definitionDescription', content: parseInlineMarks(description) }
+        );
+      } else {
+        // Create new list
+        const dlNode = {
+          type: 'definitionList',
+          content: [
+            { type: 'definitionTerm', content: parseInlineMarks(term) },
+            { type: 'definitionDescription', content: parseInlineMarks(description) }
+          ]
+        };
+        if (currentBlock) blockContent.push(dlNode);
+        else content.push(dlNode);
+      }
+      continue;
+    }
+
     // Regular line - add to current paragraph
     currentParagraph.push(line);
   }
@@ -267,7 +303,9 @@ export function markdownToTiptap(markdown) {
     content.push({ type: 'paragraph' });
   }
 
-  return { type: 'doc', content };
+  const result = { type: 'doc', content };
+  console.log('[markdownToTiptap] Final JSON:', JSON.stringify(result, null, 2));
+  return result;
 }
 
 /**

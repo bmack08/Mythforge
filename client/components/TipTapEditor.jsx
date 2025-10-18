@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import React, { useEffect, useState, useImperativeHandle, forwardRef, useRef } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import './tiptap.less';
 import extensions from 'client/extensions/index.js';
 import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
 import { normalizeTipTapDoc } from 'shared/helpers/normalizeDoc.js';
+// Line numbers now provided by TipTap LineNumbers extension
 
 
 // value: TipTap JSON doc OR legacy markdown string
@@ -57,6 +58,16 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     },
   }, []); // Empty dependency array ensures editor is only created once
 
+  // Refs to wire the gutter
+  const contentRef = useRef(null);
+  const [showLineNumbers, setShowLineNumbers] = useState(true);
+
+  // Capture ProseMirror root once the editor is ready
+  useEffect(()=>{
+    if (!editor) return;
+    editor.commands.setLineNumbersEnabled(showLineNumbers);
+  }, [editor, showLineNumbers]);
+
   // Hydrate when external value changes (JSON or markdown string)
   useEffect(() => {
     if (!editor) return;
@@ -82,7 +93,7 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   useEffect(() => {
     if (!editor) return;
     
-    const editorElement = document.querySelector('.tiptap-editor__content');
+  const editorElement = contentRef.current || document.querySelector('.tiptap-editor__content');
     if (!editorElement) return;
     
     const handleScroll = () => {
@@ -141,7 +152,7 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     return (
       <div className='tiptap-editor'>
         <div className='tiptap-editor__toolbar' />
-        <div className='tiptap-editor__content' />
+        <div className='tiptap-editor__content' ref={contentRef} />
       </div>
     );
   }
@@ -158,8 +169,10 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
         <button onClick={() => editor.chain().focus().setPageBreak().run()} title='Insert Page Break (\\page)'>📄 Page</button>
         <button onClick={() => editor.chain().focus().setColumnBreak().run()} title='Insert Column Break (\\column)'>⫼ Column</button>
         <button onClick={() => editor.chain().focus().insertFootnote().run()} title='Insert Footnote ({{footnote}})'>📝 Footnote</button>
+        <span style={{borderLeft: '1px solid #ccc', margin: '0 4px'}} />
+  <button onClick={() => setShowLineNumbers(v => !v)} title='Toggle line numbers'>#</button>
       </div>
-      <div className='tiptap-editor__content'>
+      <div className='tiptap-editor__content' ref={contentRef}>
         <EditorContent editor={editor} />
       </div>
     </div>

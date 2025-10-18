@@ -401,9 +401,10 @@ const BrewRenderer = (props)=>{
 
 	const renderPage = (pageText, index)=>{
 
-		let styles = {
-			...(!displayOptions.pageShadows ? { boxShadow: 'none' } : {})
-		};
+	    let styles = {
+		    // If page shadows are disabled, also add a subtle border so page edges remain visible
+		    ...(!displayOptions.pageShadows ? { boxShadow: 'none', border: '1px solid rgba(0,0,0,0.14)' } : {})
+	    };
 		const classList = ['page', 'phb'];
 		let attributes = {};
 
@@ -543,18 +544,6 @@ const BrewRenderer = (props)=>{
 	}
 
 	const renderedStyle = useMemo(()=>renderStyle(), [props.style, props.themeBundle]);
-
-	// Inline fallback container styles to ensure scroll works even if CSS isn't injected
-	const containerStyle = useMemo(()=>({
-		height: '100vh',
-		paddingTop: 60,
-		paddingBottom: 80,
-		overflowY: 'auto',
-		overflowX: 'hidden',
-		boxSizing: 'border-box',
-		overscrollBehavior: 'contain',
-		...styleObject
-	}), [styleObject]);
 	renderedPages = useMemo(()=>renderPages(), [props.text, displayOptions]);
 
 	return (
@@ -585,7 +574,7 @@ const BrewRenderer = (props)=>{
 				<div className={`brewRenderer ${global.config.deployment && 'deployment'}`}
 					onKeyDown={handleControlKeys}
 					tabIndex={-1}
-					style={ containerStyle }
+					style={ styleObject }
 				>
 
 					{/* Apply CSS from Style tab and render pages from Markdown tab */}

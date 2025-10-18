@@ -55,12 +55,16 @@ import AbilityMark from './AbilityMark.js';
 import SkillMark from './SkillMark.js';
 import ConditionMark from './ConditionMark.js';
 import DamageMark from './DamageMark.js';
+import LineNumbers from './LineNumbers.js';
+
+// Definition lists for spell stats
+import { DefinitionList, DefinitionTerm, DefinitionDescription } from './DefinitionList.js';
 
 /**
  * Extension Configuration
  * Configure StarterKit and other core extensions
  */
-const configuredExtensions = [
+const baseExtensions = [
   // Core TipTap extensions
   StarterKit.configure({
     heading: false, // Disable default heading, we'll use HeadingWithId instead
@@ -86,6 +90,7 @@ const configuredExtensions = [
   TextStyle,
   Color,
   Highlight.configure({ multicolor: true }),
+  LineNumbers.configure({ enabled: true, width: 30 }),
   
   // Layout & Structure
   PageBreak,
@@ -122,7 +127,26 @@ const configuredExtensions = [
   SkillMark,
   ConditionMark,
   DamageMark,
+  
+  // Definition lists (for spell stats)
+  DefinitionList,
+  DefinitionTerm,
+  DefinitionDescription,
 ];
+
+// Deduplicate by extension name to avoid duplicate plugin keys or warnings
+const dedupeByName = (list) => {
+  const seen = new Set();
+  return list.filter((ext) => {
+    const name = ext && ext.name;
+    if (!name) return true;
+    if (seen.has(name)) return false;
+    seen.add(name);
+    return true;
+  });
+};
+
+const configuredExtensions = dedupeByName(baseExtensions);
 
 /**
  * Export as default for easy import
@@ -183,4 +207,9 @@ export {
   SkillMark,
   ConditionMark,
   DamageMark,
+  
+  // Definition Lists
+  DefinitionList,
+  DefinitionTerm,
+  DefinitionDescription,
 };
