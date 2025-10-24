@@ -1,0 +1,172 @@
+{
+  "headings": {
+    "h1": "ALL CAPS, large decorative font (chapter/part headers) - often with decorative underline",
+    "h2": "Title Case, medium font with small-caps styling (major section headers)",
+    "h3": "Title Case, normal font weight (subsection headers)",
+    "h4": "**Bold**, normal font (minor headers and feature names)",
+    "h5": "***Bold Italics***, normal font (callout titles, adventure hooks)",
+    "h6": "Small caps, normal font (flavor text headers, variant rules)"
+  },
+  "statBlocks": {
+    "order": [
+      "name",
+      "size_type_alignment", 
+      "armor_class",
+      "hit_points",
+      "speed",
+      "ability_scores_table",
+      "saving_throws",
+      "skills",
+      "damage_vulnerabilities",
+      "damage_resistances", 
+      "damage_immunities",
+      "condition_immunities",
+      "senses",
+      "languages",
+      "challenge_rating",
+      "proficiency_bonus",
+      "traits",
+      "actions",
+      "bonus_actions",
+      "reactions",
+      "legendary_actions",
+      "legendary_resistance",
+      "lair_actions",
+      "regional_effects"
+    ],
+    "format": {
+      "name": "**Large Bold Name** - creature type header",
+      "size_type_alignment": "*Size type (subtype), alignment* - italicized descriptor line",
+      "standard_fields": "**Bold Label** value format (e.g., **Armor Class** 15)",
+      "ability_scores": "Six-column table: STR | DEX | CON | INT | WIS | CHA with modifiers",
+      "challenge": "**Challenge** X (Y XP) {{bonus **Proficiency Bonus** +Z}}",
+      "traits": "**Trait Name.** Description text (recharge noted as Recharge 5-6)",
+      "actions": "**Action Name.** *Attack type:* details with damage notation",
+      "spellcasting": "**Spellcasting.** Full spell list with save DCs and attack bonuses",
+      "legendary_actions": "Takes 3 legendary actions, choosing from options below"
+    },
+    "combat_stats": {
+      "damage_notation": "dice notation (e.g., 2d6 + 3) followed by damage type",
+      "save_dc": "DC X format where X is the save difficulty",
+      "attack_bonus": "+X to hit format",
+      "conditions": "Links to condition definitions where appropriate"
+    }
+  },
+  "spells": {
+    "format": {
+      "header": "***Spell Name***",
+      "level_school": "*Level school* (ritual if applicable)",
+      "casting_details": "**Casting Time:** X\n**Range:** Y\n**Components:** V, S, M (materials)\n**Duration:** Z",
+      "description": "Spell description with **At Higher Levels** section if applicable"
+    }
+  },
+  "callouts": {
+    "note": "{{note}} blocks with **Bold Title** followed by informational content",
+    "descriptive": "{{descriptive}} blocks for boxed read-aloud text and scene descriptions",
+    "adventure_hooks": "**Adventure Hooks** as section header with bullet-pointed plot seeds",
+    "sidebar": "Themed callout boxes (Variant Rules, Optional Rules, etc.) with bold titles",
+    "quote": "{{quote}} blocks with attribution for flavor text and in-world quotes",
+    "dm_notes": "**DM Notes** or **Behind the Scenes** for meta-game information",
+    "variant_rules": "**Variant:** or **Optional Rule:** prefixed callouts",
+    "level_advancement": "{{note}} blocks explaining milestone progression",
+    "history_background": "Separate background sections with historical context",
+    "character_illusions": "Special notes for supernatural NPCs and their true nature"
+  },
+  "layout": {
+    "columns": "Two-column layout as standard with appropriate column breaks",
+    "page_breaks": "\\page command between chapters and major sections",
+    "spacing": "Single line between paragraphs, double line before major headers",
+    "column_breaks": "{{break}} or content positioning to balance columns",
+    "margins": "Consistent margins with proper text flow around images and callouts"
+  },
+  "tables": {
+    "style": "Markdown table format with proper alignment and consistent spacing",
+    "borders": "Frame borders for important tables ({{table,frame}})",
+    "class_tables": "{{classTable,frame,decoration,wide}} for character progression",
+    "random_tables": "d4, d6, d8, d10, d12, d20, d100 tables with proper dice notation",
+    "alignment": "Left-align text, center-align numbers, right-align dice results",
+    "headers": "Bold header rows with appropriate column widths"
+  },
+  "covers": {
+    "front": "{{frontCover}} with title, subtitle, {{logo}}, {{banner}}, background art, {{footnote}}",
+    "inside": "{{insideCover}} with credits, copyright, title repetition, {{logo}}",
+    "part": "{{partCover}} for major story divisions with decorative elements",
+    "back": "{{backCover}} with summary, marketing copy, logos, and branding",
+    "spine_text": "Title and publisher information for book spine"
+  },
+  "typography": {
+    "emphasis": "**Bold** for game terms, mechanics, and important concepts",
+    "flavor": "*Italics* for flavor text, quotes, and descriptive elements",
+    "small_caps": "First paragraph after chapter headers uses small-caps for opening words",
+    "drop_caps": "Large decorative first letter on chapter and major section openings",
+    "font_hierarchy": "Consistent font sizing with proper information hierarchy",
+    "game_terms": "**Bold** for first instance of important game terminology"
+  },
+  "lists": {
+    "bullets": "• Standard bullet points with proper indentation",
+    "numbered": "Sequential numbering for procedures and ordered content",
+    "nested": "Consistent indentation hierarchy (bullets → dashes → circles)",
+    "definition_lists": "**Term:** Definition format for glossaries and rules",
+    "spell_lists": "Organized by level with proper spell name formatting"
+  },
+  "adventures": {
+    "structure": "Background → Synopsis → Adventure Hooks → Areas/Encounters → Conclusion → Appendices",
+    "encounters": "**Area Name.** Description with stat blocks, DCs, and treasure",
+    "npcs": "Brief stat blocks or references to full blocks in appendices",
+    "treasure": "Individual items listed with appropriate rarity and descriptions",
+    "scaling": "Notes for different party levels and sizes where appropriate",
+    "milestone_leveling": "Level advancement tied to story goals rather than XP",
+    "read_aloud_text": "{{descriptive}} blocks for boxed text that DM reads to players",
+    "area_numbering": "Sequential area numbering (area 1A, area 21, etc.)",
+    "background_lore": "Historical context explaining current situation",
+    "hooks_integration": "Multiple adventure hooks that can lead into main campaign"
+  },
+  "mechanics": {
+    "ability_checks": "DC X format with ability specified (DC 15 Perception)",
+    "saving_throws": "DC X [Ability] saving throw format",
+    "damage": "dice + modifier (damage type) notation consistently",
+    "conditions": "Proper linking to appendix definitions",
+    "spell_attacks": "+X to hit, reach/range, damage notation",
+    "area_effects": "Consistent geometric descriptions (15-foot cone, 20-foot radius)"
+  },
+  "artwork": {
+    "placement": "Strategic art placement to enhance reading flow",
+    "captions": "Descriptive captions when needed for context",
+    "sizing": "Appropriate scaling relative to content importance",
+    "style": "Consistent artistic style matching D&D aesthetic",
+    "positioning": "Proper text wrapping and margin management"
+  },
+  "narrative": {
+    "dialog": {
+      "format": "\"Quoted speech,\" Character Name said with appropriate attribution",
+      "style": "Character-specific voice patterns and speech mannerisms",
+      "punctuation": "Proper dialog punctuation with actions in narrative",
+      "attribution": "Clear speaker identification without overuse of 'said'"
+    },
+    "descriptions": {
+      "sensory": "Engage multiple senses (sight, sound, smell, touch, taste)",
+      "pacing": "Vary sentence length for rhythm and tension",
+      "active_voice": "Prefer active voice over passive constructions",
+      "specificity": "Use concrete details over vague generalities"
+    },
+    "tone": {
+      "consistency": "Maintain appropriate tone for adventure theme",
+      "character_voice": "Distinct personality in NPC speech patterns",
+      "mood_setting": "Environmental descriptions that support atmosphere",
+      "tension_building": "Escalating language for dramatic moments"
+    },
+    "readability": {
+      "paragraph_length": "Keep paragraphs focused and digestible",
+      "sentence_variety": "Mix simple, compound, and complex sentences",
+      "transitions": "Smooth flow between scenes and sections",
+      "clarity": "Clear communication of game mechanics within narrative"
+    }
+  },
+  "game_integration": {
+    "mechanics_in_narrative": "Seamlessly weave dice rolls and stats into story flow",
+    "player_agency": "Present choices and consequences clearly",
+    "npc_motivations": "Clear character goals and believable reactions",
+    "world_consistency": "Maintain internal logic and established lore",
+    "pacing": "Balance roleplay, exploration, and combat encounters"
+  }
+}

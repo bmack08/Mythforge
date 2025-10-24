@@ -1,0 +1,1685 @@
+/* eslint-disable max-lines */
+import _                             from 'lodash';
+import { getModels } from './models/index.js';
+import express                       from 'express';
+import zlib                          from 'zlib';
+import GoogleActions                 from './googleActions.js';
+// Removed: import Markdown from '../shared/naturalcrit/markdown.js'; (no longer used)
+import yaml                          from 'js-yaml';
+import asyncHandler                  from 'express-async-handler';
+import { nanoid }                    from 'nanoid';
+import {makePatches, applyPatches, stringifyPatches, parsePatch} from '@sanity/diff-match-patch';
+import fs                            from 'fs';
+import { join }                      from 'path';
+import { md5 }                       from 'hash-wasm';
+import OpenAI                        from 'openai';
+import { splitTextStyleAndMetadata, 
+		 brewSnippetsToJSON, debugTextMismatch }        from '../shared/helpers.js';
+import checkClientVersion            from './middleware/check-client-version.js';
+
+const router = express.Router();
+
+// Lazy singleton OpenAI client to avoid import-time failures in dev
+let __openaiClient = null;
+export const getOpenAI = () => {
+	const key = (process.env.OPENAI_API_KEY || '').trim();
+	if (!key) return null; // Avoid crashing during dev import; handler will respond gracefully
+	if (__openaiClient) return __openaiClient;
+	__openaiClient = new OpenAI({ apiKey: key });
+	return __openaiClient;
+};
+
+// Add theme bundle route
+// --- ROUTES ---
+router.get('/api/theme/:renderer/:id', asyncHandler((req, res) => api.getThemeBundle(req, res)));
+// Story IDE (main assistant endpoint)
+router.post('/api/story-ide', asyncHandler((req, res) => api.storyAssistant(req, res)));
+// (Optional) wire up other endpoints already implemented
+router.post('/api/brews',           asyncHandler((req, res) => api.newBrew(req, res)));
+router.put('/api/brews/:brewId',    asyncHandler((req, res) => api.updateBrew(req, res)));
+router.delete('/api/brews/:brewId', asyncHandler((req, res) => api.deleteBrew(req, res)));
+router.get('/api/brews/:brewId',    asyncHandler((req, res) => api.getBrewJson(req, res)));
+router.post('/api/search/:brewId',  asyncHandler((req, res) => api.searchProject(req, res)));
+router.get('/api/graph/:brewId',    asyncHandler((req, res) => api.getProjectGraph(req, res)));
+// Versioning (Phase 1)
+router.post('/api/story/version/:brewId', asyncHandler((req, res) => api.createStoryVersion(req, res)));
+router.post('/api/story/undo/:brewId',    asyncHandler((req, res) => api.undoStoryVersion(req, res)));
+router.post('/api/story/redo/:brewId',    asyncHandler((req, res) => api.redoStoryVersion(req, res)));
+router.get('/api/story/version/:brewId/active', asyncHandler((req, res) => api.getActiveStoryVersionEndpoint(req, res)));
+// Phase 2: Index and Retrieval
+router.post('/api/story/index/:brewId', asyncHandler((req, res) => api.indexStoryChunks(req, res)));
+router.post('/api/story/retrieve/:brewId', asyncHandler((req, res) => api.retrieveStoryChunks(req, res)));
+// Phase 6: Orchestrated flow (cursor-aware)
+router.post('/api/story/orchestrate/:brewId', asyncHandler((req, res) => api.orchestrateStoryEdit(req, res)));
+// Phase 5–7: env-gated feature endpoints
+router.post('/api/phase5/budget/compute', asyncHandler((req, res) => api.computeBudget(req, res)));
+router.post('/api/phase6/encounter/build', asyncHandler((req, res) => api.buildEncounter(req, res)));
+router.post('/api/phase6/npc/generate', asyncHandler((req, res) => api.generateNpc(req, res)));
+router.post('/api/phase7/validate/content', asyncHandler((req, res) => api.validateContent(req, res)));
+// Phase 3: Knowledge Graph processing and canon checks
+router.post('/api/story/graph/process/:brewId', asyncHandler((req, res) => api.processKnowledgeGraph(req, res)));
+router.get('/api/story/graph/:brewId', asyncHandler((req, res) => api.getKnowledgeGraph(req, res)));
+router.get('/api/story/graph/:brewId/canon', asyncHandler((req, res) => api.getCanonChecks(req, res)));
+
+import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
+import Themes from '../themes/themes.json' with { type: 'json' };
+
+const isStaticTheme = (renderer, themeName)=>{
+	return renderer === 'PHB' && themeName === '5ePHB';
+};
+
+const api = {
+	// Normalize a Homebrew row's text field into TipTap JSON.
+	// - If text is stored in legacy binary (textBin), decompress it.
+	// - If text is a legacy markdown string, convert to TipTap JSON.
+	// - Optionally persist migrated text back to DB and clear textBin.
+	normalizeAndMigrateBrewText: async (brew, { persist = true } = {}) => {
+		if (!brew) return { json: { type: 'doc', content: [] }, migrated: false };
+
+		let migrated = false;
+		let textVal = brew.text;
+
+		// If text is empty object or falsy and textBin exists, try to inflate legacy payload
+		const isEmptyDoc = (v) => !!v && typeof v === 'object' && v.type === 'doc' && Array.isArray(v.content) && v.content.length === 0;
+		if ((!textVal || isEmptyDoc(textVal)) && brew.textBin && brew.textBin.length > 0) {
+			try {
+				const unzipped = zlib.inflateRawSync(brew.textBin);
+				textVal = unzipped.toString(); // legacy string (markdown or serialized json)
+				migrated = true;
+			} catch (e) {
+				console.warn('[normalize] Failed to inflate textBin:', e.message);
+			}
+		}
+
+		// If string, convert to TipTap JSON (could be JSON string or markdown)
+		if (typeof textVal === 'string') {
+			try {
+				const maybe = JSON.parse(textVal);
+				if (maybe && typeof maybe === 'object' && maybe.type === 'doc' && Array.isArray(maybe.content)) {
+					textVal = maybe;
+				} else {
+					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+					textVal = markdownToTiptap(textVal);
+				}
+				migrated = true;
+			} catch (_) {
+				try {
+					const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+					textVal = markdownToTiptap(textVal);
+					migrated = true;
+				} catch (e2) {
+					console.warn('[normalize] markdownToTiptap failed, wrapping as paragraph:', e2.message);
+					textVal = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text: String(textVal||'') } ] } ] };
+					migrated = true;
+				}
+			}
+		}
+
+		// If still not a doc, coerce to empty doc
+		if (!textVal || typeof textVal !== 'object' || textVal.type !== 'doc' || !Array.isArray(textVal.content)) {
+			textVal = { type: 'doc', content: [] };
+		}
+
+		// Persist migration back to DB to avoid doing this repeatedly
+		if (persist && migrated) {
+			try {
+				await brew.update({ text: textVal, textBin: null });
+				console.log(`[normalize] Persisted migrated text for brew id=${brew.id} editId=${brew.editId}`);
+			} catch (e) {
+				console.warn('[normalize] Failed to persist migrated text:', e.message);
+			}
+		}
+
+		return { json: textVal, migrated };
+	},
+	// Fetch a single brew by editId or primary key and return JSON
+	getBrewJson: async (req, res) => {
+		try {
+			const { brewId } = req.params;
+			const { Homebrew } = await getModels();
+			// Try editId first, then fallback to primary key
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			if (!brew) {
+				try { brew = await Homebrew.findByPk(brewId); } catch (_) { /* noop */ }
+			}
+			if (!brew) {
+				return res.status(404).json({ success: false, error: 'Brew not found' });
+			}
+			// Normalize/migrate text from legacy storage into TipTap JSON
+			const { json: text } = await api.normalizeAndMigrateBrewText(brew, { persist: true });
+
+			return res.json({
+				success: true,
+				brew: {
+					_id: brew.id,
+					title: brew.title,
+					text: text,
+					style: brew.style || '',
+					snippets: brew.snippets || '',
+					renderer: brew.renderer,
+					theme: brew.theme || '5ePHB',
+					shareId: brew.shareId,
+					editId: brew.editId,
+					description: brew.description || '',
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}
+			});
+		} catch (error) {
+			console.error('getBrewJson error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to get brew' });
+		}
+	},
+	// --- Shared helpers for version/text reconstruction ---
+	getCurrentBrewText: async (brewId)=>{
+		const { Homebrew } = await getModels();
+		// brewId may be editId or pk id. Try editId first.
+		let brew = await Homebrew.findOne({ where: { editId: brewId } });
+		if (!brew) brew = await Homebrew.findByPk(brewId);
+		if (!brew) return '';
+		// Ensure we have normalized text; do not persist here to keep it lightweight
+		const { json } = await api.normalizeAndMigrateBrewText(brew, { persist: false });
+		try {
+			const { toPlainText } = await import('../shared/contentAdapter.js');
+			return toPlainText(json);
+		} catch (_) {
+			// Fallback: naive join if adapter unavailable
+			return typeof brew.text === 'string' ? brew.text : '';
+		}
+	},
+
+	// === Phases 5–7 minimal endpoints (env-gated) ===
+	computeBudget: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE5_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 5 disabled' });
+			const { partySize=4, partyLevel=5, difficulty='medium', restFrequency='standard', combatWeight=0.4, explorationWeight=0.3, socialWeight=0.3 } = req.body || {};
+			const { default: xpCalc } = await import('./services/budget/encounter-xp-calculator.ts');
+			const { default: treasure } = await import('./services/budget/treasure-allocation-system.ts');
+			const { default: pacing } = await import('./services/budget/pacing-engine.ts');
+			const { default: attrition } = await import('./services/budget/resource-attrition-calculator.ts');
+			const xpBudget = xpCalc.computeEncounterBudget({ partySize, partyLevel, difficulty });
+			const treasurePlan = treasure.planTreasure({ partyLevel, partySize });
+			const pacingPlan = pacing.planPacing({ partyLevel, restFrequency, weights: { combat: combatWeight, exploration: explorationWeight, social: socialWeight } });
+			const attritionPlan = attrition.compute({ partySize, partyLevel, restFrequency });
+			return res.json({ success: true, budget: { xpBudget, treasurePlan, pacingPlan, attritionPlan } });
+		} catch (e) {
+			console.error('computeBudget error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	buildEncounter: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE6_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 6 disabled' });
+			const { spec } = req.body || {};
+			const { default: builder } = await import('./services/encounter/comprehensive-encounter-builder.ts');
+			const result = await builder.build(spec || {});
+			return res.json({ success: true, encounter: result });
+		} catch (e) {
+			console.error('buildEncounter error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	generateNpc: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE6_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 6 disabled' });
+			const { prompt } = req.body || {};
+			const { default: npcMgr } = await import('./services/npc/comprehensive-npc-manager.ts');
+			const npc = await npcMgr.generate(prompt || '');
+			return res.json({ success: true, npc });
+		} catch (e) {
+			console.error('generateNpc error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	validateContent: async (req, res)=>{
+		try {
+			if (process.env.MW_PHASE7_ENABLED !== '1') return res.status(404).json({ success: false, error: 'Phase 7 disabled' });
+			const { content, checks } = req.body || {};
+			const { default: qa } = await import('./services/validation/content-quality-assurance.ts');
+			const result = await qa.validate(content || '', checks || {});
+			return res.json({ success: true, result });
+		} catch (e) {
+			console.error('validateContent error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	// === Phase 4: Tool registry execution ===
+	executeStoryTools: async (tools, ctx)=>{
+		const results = [];
+		for (const t of tools) {
+			const name = t?.name; const args = t?.args || {};
+			if (name === 'create_section') {
+				const title = String(args.title || 'New Section').trim();
+				const content = String(args.content || '').trim();
+				const patch = `@@\n+\n# ${title}\n\n${content}\n`;
+				results.push({ tool: name, ok: true, patch });
+			} else if (name === 'add_encounter') {
+				// Minimal encounter block
+				const title = String(args.title || 'Encounter').trim();
+				const enemies = Array.isArray(args.enemies) ? args.enemies : [];
+				const lines = [
+					`### Encounter: ${title}`,
+					'',
+					'| Creature | CR | Count |',
+					'| --- | --- | --- |',
+					...enemies.map(e=>`| ${e.name||'Unknown'} | ${e.cr||'?'} | ${e.count||1} |`),
+					''
+				];
+				results.push({ tool: name, ok: true, insert: lines.join('\n') });
+			} else if (name === 'generate_statblock') {
+				const npc = String(args.npc || 'Unnamed NPC');
+				const cr = String(args.cr || '1');
+				const block = [
+					`### ${npc} (CR ${cr})`,
+					'',
+					':::statblock',
+					'Name: '+npc,
+					'CR: '+cr,
+					'AC: 12 | HP: 11 (2d8+2) | Speed: 30 ft.',
+					'STR 10 DEX 12 CON 12 INT 10 WIS 10 CHA 10',
+					'Traits: ...',
+					'Actions: ...',
+					':::',
+					''
+				].join('\n');
+				results.push({ tool: name, ok: true, insert: block });
+			} else if (name === 'add_trap') {
+				const dc = args.dc ?? 13;
+				const trigger = String(args.trigger || 'Pressure plate');
+				const effect = String(args.effect || '1d6 piercing damage');
+				const trap = [
+					'### Trap',
+					'',
+					`Trigger: ${trigger}`,
+					`Check: DC ${dc} Perception to notice; DC ${dc} Thieves\' Tools to disarm`,
+					`Effect: ${effect}`,
+					''
+				].join('\n');
+				results.push({ tool: name, ok: true, insert: trap });
+			} else if (name === 'timeline_update') {
+				const when = String(args.when || 'Unknown date');
+				const what = String(args.what || 'Event');
+				const who = String(args.who || 'Unknown');
+				const line = `- ${when}: ${what} (${who})`;
+				results.push({ tool: name, ok: true, timeline: line });
+			} else if (name === 'apply_patch') {
+				results.push({ tool: name, ok: true, note: 'Client should apply patch locally, then POST /api/story/version with fullText.' });
+			} else {
+				results.push({ tool: name || 'unknown', ok: false, error: 'Unsupported tool' });
+			}
+		}
+		return results;
+	},
+
+	// Apply insertions/updates into a section (by heading)
+	insertIntoSection: (fullText, sectionHint, insertText)=>{
+		const text = (fullText||'');
+		const lines = text.replace(/\r/g,'\n').split('\n');
+		const idx = lines.findIndex(l=>/^#\s+/.test(l) && l.toLowerCase().includes(String(sectionHint||'').toLowerCase()));
+		if (idx === -1) {
+			// Append at end if section not found
+			return text + (text.endsWith('\n')?'':'\n') + '\n' + insertText + '\n';
+		}
+		// Find next heading to insert before it (end of this section)
+		let j = idx + 1;
+		for (; j < lines.length; j++) {
+			if (/^#\s+/.test(lines[j])) break;
+		}
+		const before = lines.slice(0, j).join('\n');
+		const after = lines.slice(j).join('\n');
+		return `${before}\n\n${insertText}\n\n${after}`;
+	},
+
+	upsertTimeline: (fullText, timelineLine)=>{
+		const text = (fullText||'');
+		const lines = text.replace(/\r/g,'\n').split('\n');
+		let idx = lines.findIndex(l=>/^##\s+timeline/i.test(l));
+		if (idx === -1) {
+			// Create a Timeline section at the end
+			return `${text}\n\n## Timeline\n\n${timelineLine}\n`;
+		}
+		// Insert after the heading and contiguous bullet list
+		let j = idx + 1;
+		while (j < lines.length && lines[j].trim().startsWith('-')) j++;
+		const before = lines.slice(0, j).join('\n');
+		const after = lines.slice(j).join('\n');
+		return `${before}\n${timelineLine}\n${after}`;
+	},
+
+	reconstructCurrentText: async (brewId)=>{
+		// Prefer active StoryVersion snapshot; fallback to Homebrew text
+		try {
+			const active = await api.getActiveStoryVersion(brewId);
+			if (active?.fullText) return active.fullText;
+		} catch(_) {}
+		return await api.getCurrentBrewText(brewId);
+	},
+
+	// --- Phase 1: Versioning helpers ---
+	createStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { patch, fullText, author = 'ai', summary } = req.body || {};
+			if (!brewId || !fullText) {
+				return res.status(400).json({ success: false, error: 'brewId and fullText are required' });
+			}
+			const { StoryVersion } = await getModels();
+			// Find current active version to set parent and deactivate it
+			const current = await StoryVersion.findOne({ where: { brewId, isActive: true }, order: [['createdAt', 'DESC']] });
+			const crypto = await import('crypto');
+			const fullTextHash = crypto.createHash('sha256').update(fullText).digest('hex');
+			const version = await StoryVersion.create({
+				brewId,
+				parentId: current?.id || null,
+				author,
+				patch: patch || null,
+				fullText,
+				fullTextHash,
+				isActive: true,
+				summary: summary || null
+			});
+			if (current) {
+				await current.update({ isActive: false });
+			}
+			// Optional Phase 2: auto-index for RAG
+			try {
+				if (process.env.STORY_IDE_AUTOINDEX === '1') {
+					await api.indexStoryChunks({ params: { brewId }, body: { fullText } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+				}
+			} catch (e) { console.warn('Auto-index error:', e.message); }
+			// Optional Phase 3: auto-process knowledge graph
+			try {
+				if (process.env.STORY_IDE_AUTOGRAPH === '1') {
+					await api.processKnowledgeGraph({ params: { brewId }, body: { fullText, title: req.body?.title || '' } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+				}
+			} catch (e) { console.warn('Auto-graph error:', e.message); }
+			return res.json({ success: true, version });
+		} catch (error) {
+			console.error('createStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to create version' });
+		}
+	},
+
+	getActiveStoryVersion : async (brewId)=>{
+		const { StoryVersion } = await getModels();
+		return await StoryVersion.findOne({ where: { brewId, isActive: true }, order: [['createdAt', 'DESC']] });
+	},
+
+	getActiveStoryVersionEndpoint : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const version = await api.getActiveStoryVersion(brewId);
+			if (!version) return res.status(404).json({ success: false, error: 'No active version' });
+			return res.json({ success: true, version });
+		} catch (error) {
+			console.error('getActiveStoryVersionEndpoint error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to get active version' });
+		}
+	},
+
+	undoStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { StoryVersion } = await getModels();
+			const current = await api.getActiveStoryVersion(brewId);
+			if (!current) return res.status(404).json({ success: false, error: 'No current version' });
+			if (!current.parentId) return res.status(400).json({ success: false, error: 'No parent to undo to' });
+			const parent = await StoryVersion.findByPk(current.parentId);
+			if (!parent) return res.status(404).json({ success: false, error: 'Parent version not found' });
+			await current.update({ isActive: false });
+			await parent.update({ isActive: true });
+			return res.json({ success: true, version: parent });
+		} catch (error) {
+			console.error('undoStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to undo' });
+		}
+	},
+
+	redoStoryVersion : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { StoryVersion } = await getModels();
+			// Find a child of the current inactive-parent chain newer than active
+			const active = await api.getActiveStoryVersion(brewId);
+			if (!active) return res.status(404).json({ success: false, error: 'No active version to base redo on' });
+			const child = await StoryVersion.findOne({ where: { parentId: active.id }, order: [['createdAt','ASC']] });
+			if (!child) return res.status(400).json({ success: false, error: 'No redo available' });
+			await active.update({ isActive: false });
+			await child.update({ isActive: true });
+			return res.json({ success: true, version: child });
+		} catch (error) {
+			console.error('redoStoryVersion error:', error);
+			return res.status(500).json({ success: false, error: 'Failed to redo' });
+		}
+	},
+
+	// Create new brew
+	newBrew : async (req, res)=>{
+		try {
+			console.log('[newBrew] Incoming body raw:', req.body);
+			const { title, text: rawText, renderer, theme, style, description } = req.body || {};
+
+			// ---- TipTap doc validation & normalization ----
+			const defaultDoc = { type: 'doc', content: [] };
+			function isTipTapDoc(val){
+				return !!val && typeof val === 'object' && val.type === 'doc' && Array.isArray(val.content);
+			}
+			let text = rawText;
+			if(typeof text === 'string'){
+				// Could be legacy markdown or serialized JSON
+				try {
+					const maybe = JSON.parse(text);
+					if(isTipTapDoc(maybe)){
+						text = maybe;
+						console.log('[newBrew] Parsed stringified JSON doc.');
+					} else {
+						console.log('[newBrew] String provided but not TipTap doc shape; wrapping in paragraph.');
+						text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text } ] } ] };
+					}
+				} catch(e){
+					// Treat as legacy plain text
+					text = { type: 'doc', content: [ { type: 'paragraph', content: [ { type: 'text', text } ] } ] };
+					console.log('[newBrew] Converted legacy string -> TipTap paragraph.');
+				}
+			}
+			if(!isTipTapDoc(text)){
+				console.warn('[newBrew] Provided text not valid TipTap doc, falling back to empty doc. Received:', text);
+				text = defaultDoc;
+			}
+
+			console.log('[newBrew] Normalized text summary:', {
+				type: typeof text,
+				keys: Object.keys(text||{}),
+				contentLength: Array.isArray(text?.content) ? text.content.length : null
+			});
+
+			const { Homebrew } = await getModels();
+			let brew;
+			try {
+				brew = await Homebrew.create({
+					title: title || 'Untitled Brew',
+					text: text || defaultDoc,
+					style: style || '',
+					renderer: renderer || 'V3',
+					theme: theme || '5ePHB',
+					description: description || '',
+					shareId: nanoid(8),
+					editId: nanoid(8)
+				});
+			} catch(dbErr){
+				console.error('[newBrew] Sequelize create failed. Payload snapshot:', {
+					title: title || 'Untitled Brew',
+					textType: typeof text,
+					textStringHead: JSON.stringify(text).slice(0,200)
+				});
+				throw dbErr; // handled by outer catch
+			}
+
+			console.log('[newBrew] Brew created successfully:', brew.id);
+
+			res.json({
+				success: true,
+				brew: {
+					_id: brew.id,
+					title: brew.title,
+					text: brew.text,
+					style: brew.style,
+					renderer: brew.renderer,
+					theme: brew.theme,
+					description: brew.description,
+					shareId: brew.shareId,
+					editId: brew.editId,
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}
+			});
+		} catch (error) {
+			console.error('New brew error:', error);
+			console.error('Error stack:', error.stack);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to create new brew',
+				details: error.message
+			});
+		}
+	},
+
+	// Update existing brew
+	updateBrew : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { title, text, renderer, theme, style, description } = req.body;
+
+			const { Homebrew } = await getModels();
+			// Accept either editId (preferred) or numeric id
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			if (!brew) {
+				// Fall back to primary key if brewId looks like a numeric id
+				try {
+					brew = await Homebrew.findByPk(brewId);
+				} catch(_) {}
+			}
+			if (!brew) {
+				console.warn(`[updateBrew] Brew not found for id/editId: ${brewId}`);
+			}
+			
+			if (!brew) {
+				return res.status(404).json({
+					success: false,
+					error: 'Brew not found'
+				});
+			}
+			
+			await brew.update({
+				title: title !== undefined ? title : brew.title,
+				text: text !== undefined ? text : brew.text,
+				style: style !== undefined ? style : brew.style,
+				renderer: renderer !== undefined ? renderer : brew.renderer,
+				theme: theme !== undefined ? theme : brew.theme,
+				description: description !== undefined ? description : brew.description
+			});
+
+			res.json({
+				success: true,
+				brew: {
+					_id: brew.id,
+					title: brew.title,
+					text: brew.text,
+					style: brew.style,
+					renderer: brew.renderer,
+					theme: brew.theme,
+					description: brew.description,
+					shareId: brew.shareId,
+					editId: brew.editId,
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}
+			});
+		} catch (error) {
+			console.error('Update brew error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to update brew',
+				details: error.message
+			});
+		}
+	},
+
+	// Delete brew
+	deleteBrew : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { Homebrew, StoryVersion, StoryChunk } = await getModels();
+			console.log(`[deleteBrew] Received DELETE for brewId param: ${brewId}`);
+
+			// Find by editId first, then fallback to PK
+			let brew = await Homebrew.findOne({ where: { editId: brewId } });
+			let foundBy = 'editId';
+			if (!brew) {
+				try { brew = await Homebrew.findByPk(brewId); } catch(_) {}
+				if (brew) foundBy = 'pk';
+			}
+			if (!brew) {
+				console.warn(`[deleteBrew] Brew not found for id/editId: ${brewId}`);
+				return res.status(404).json({ success: false, error: 'Brew not found' });
+			}
+
+			const editId = brew.editId;
+			const pkId   = brew.id;
+			console.log(`[deleteBrew] Found brew (${foundBy}). pkId=${pkId} editId=${editId}`);
+
+			// Delete Homebrew row via instance to ensure hooks fire
+			const deletedBrew = { id: pkId, editId };
+			const deletedBrewCount = await (async () => { 
+				try { 
+					await brew.destroy(); 
+					console.log(`[deleteBrew] brew.destroy() succeeded for pkId=${pkId}`);
+					return 1; 
+				} catch (e) { 
+					console.error('[deleteBrew] brew.destroy failed, fallback to destroy where:', e.message); 
+					const c = await Homebrew.destroy({ where: { id: pkId } }); 
+					console.log(`[deleteBrew] Fallback destroy where id=${pkId} affected ${c}`);
+					return c; 
+				} 
+			})();
+
+			// Best-effort cascade cleanup for versions/chunks keyed by editId
+			let deletedVersions = 0, deletedChunks = 0;
+			try {
+				if (StoryVersion) {
+					deletedVersions = await StoryVersion.destroy({ where: { brewId: editId } });
+					console.log(`[deleteBrew] Deleted StoryVersion rows: ${deletedVersions} for brewId=${editId}`);
+				}
+			} catch(e) { console.warn('Delete StoryVersion failed:', e.message); }
+			try {
+				if (StoryChunk) {
+					deletedChunks = await StoryChunk.destroy({ where: { brewId: editId } });
+					console.log(`[deleteBrew] Deleted StoryChunk rows: ${deletedChunks} for brewId=${editId}`);
+				}
+			} catch(e) { console.warn('Delete StoryChunk failed:', e.message); }
+
+			if (!deletedBrewCount) {
+				// Should not happen because we found it, but guard anyway
+				console.error(`[deleteBrew] No brew rows deleted for pkId=${pkId}, editId=${editId}`);
+				return res.status(500).json({ success: false, error: 'Failed to delete brew' });
+			}
+
+			// Post-delete verification
+			try {
+				const check = await Homebrew.findByPk(pkId);
+				console.log(`[deleteBrew] Post-delete verification findByPk(${pkId}) =>`, check ? 'STILL EXISTS (unexpected)' : 'OK (gone)');
+			} catch(_) {}
+
+			return res.json({ success: true, deleted: { brew: deletedBrewCount, versions: deletedVersions, chunks: deletedChunks }, brew: deletedBrew });
+		} catch (error) {
+			console.error('Delete brew error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to delete brew',
+				details: error.message
+			});
+		}
+	},
+
+	// Get theme bundle (normalized + snippet identifiers)
+	getThemeBundle : async (req, res)=>{
+		/*	getThemeBundle: Collects the theme and all parent themes
+		 *	and returns them as a single CSS string. This allows themes
+		 *	to extend other themes and only load what's needed.
+		 *	Also includes snippet identifiers for the client SnippetBar.
+		 */
+		const { renderer: rendererParam, id: themeName } = req.params;
+		const normalizeRenderer = (r)=>{
+			const rl = String(r || '').toLowerCase();
+			if(rl === 'legacy' || rl === 'phb') return 'Legacy';
+			if(rl === 'v3') return 'V3';
+			return r;
+		};
+		const renderer = normalizeRenderer(rendererParam);
+		console.log(`🎨 getThemeBundle: Requesting ${renderer}/${themeName} (raw: ${rendererParam}/${themeName})`);
+		
+		if (!Themes || !Themes[renderer] || !Themes[renderer][themeName]) {
+			console.log(`❌ getThemeBundle: Theme not found ${renderer}/${themeName}`);
+			return res.status(404).json({ error: 'Theme not found' });
+		}
+
+		const themeConfig = Themes[renderer][themeName];
+		const bundle = {
+			name     : themeName,
+			renderer : renderer,
+			styles   : [],
+			snippets : []
+		};
+
+		try {
+			const cssPath = join(process.cwd(), 'build', 'themes', renderer, themeName, 'style.css');
+			if (fs.existsSync(cssPath)) {
+				const css = fs.readFileSync(cssPath, 'utf8');
+				bundle.styles.push(css);
+				console.log(`✅ getThemeBundle: Loaded CSS from ${cssPath} (${css.length} chars)`);
+			} else {
+				console.log(`❌ getThemeBundle: CSS file not found: ${cssPath}`);
+			}
+
+			if (themeConfig.baseTheme && themeConfig.baseTheme !== false) {
+				const baseThemePath = join(process.cwd(), 'build', 'themes', renderer, themeConfig.baseTheme, 'style.css');
+				if (fs.existsSync(baseThemePath)) {
+					const baseCss = fs.readFileSync(baseThemePath, 'utf8');
+					bundle.styles.unshift(baseCss);
+					console.log(`✅ getThemeBundle: Loaded base theme from ${baseThemePath} (${baseCss.length} chars)`);
+				}
+			}
+
+			const rendererPrefix = `${renderer}_`;
+			const snippetIds = [];
+			if (renderer === 'Legacy') {
+				snippetIds.push(`${rendererPrefix}${themeName}`);
+			} else if (renderer === 'V3') {
+				if (themeConfig.baseSnippets && themeConfig.baseSnippets !== false) {
+					snippetIds.push(`${rendererPrefix}${themeConfig.baseSnippets}`);
+				}
+				snippetIds.push(`${rendererPrefix}${themeName}`);
+			}
+			bundle.snippets = snippetIds;
+
+			console.log(`✅ getThemeBundle: Bundle complete with ${bundle.styles.length} style(s), ${bundle.snippets.length} snippet source(s)`);
+			res.json(bundle);
+		} catch (error) {
+			console.error('❌ getThemeBundle: Error loading theme:', error);
+			res.status(500).json({ error: 'Failed to load theme bundle' });
+		}
+	},
+
+	// Get user projects
+	getUserProjects : async (req, res)=>{
+		try {
+			const { Homebrew } = await getModels();
+			const brews = await Homebrew.findAll({
+				order: [['updatedAt', 'DESC']],
+				limit: 50
+			});
+			
+			res.json({
+				success: true,
+				brews: brews.map(brew => ({
+					_id: brew.id,
+					title: brew.title,
+					text: brew.text,
+					renderer: brew.renderer,
+					theme: brew.theme,
+					shareId: brew.shareId,
+					editId: brew.editId,
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}))
+			});
+		} catch (error) {
+			console.error('Get user projects error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to get projects',
+				details: error.message
+			});
+		}
+	},
+
+	// Get projects (alias for getUserProjects)
+	getProjects : async (req, res)=>{
+		try {
+			const { Homebrew } = await getModels();
+			const brews = await Homebrew.findAll({
+				order: [['updatedAt', 'DESC']],
+				limit: 50
+			});
+			
+			res.json({
+				success: true,
+				projects: brews.map(brew => ({
+					id: brew.id,
+					title: brew.title,
+					text: brew.text,
+					renderer: brew.renderer,
+					theme: brew.theme,
+					shareId: brew.shareId,
+					editId: brew.editId,
+					url: `/edit/${brew.editId}`,
+					createdAt: brew.createdAt,
+					updatedAt: brew.updatedAt
+				}))
+			});
+		} catch (error) {
+			console.error('Get projects error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to get projects',
+				details: error.message
+			});
+		}
+	},
+
+	// Story IDE endpoint - Patch-based system with PDF reading
+		storyAssistant : async (req, res)=>{
+		try {
+			console.log(`[Story Assistant] OPENAI_API_KEY loaded: ${process.env.OPENAI_API_KEY ? 'YES' : 'NO'}`);
+			if (process.env.OPENAI_API_KEY) {
+				console.log(`[Story Assistant] API Key starts with: ${process.env.OPENAI_API_KEY.substring(0, 20)}...`);
+			}
+
+			const {
+				message,
+				documentText = '', // legacy plain text
+				document,          // TipTap JSON (optional)
+				documentPlain,     // new normalized plain text (preferred)
+				metadata = {},
+				chatHistory = [],
+				references = [],
+				storyState = {}
+			} = req.body;
+
+			// Normalize document content
+			let workingDoc = document;
+			if (workingDoc && typeof workingDoc === 'string') {
+				try { workingDoc = JSON.parse(workingDoc); } catch { workingDoc = null; }
+			}
+			// Import adapter lazily to avoid circular deps at module load
+			let plainFromJson = '';
+			if (workingDoc && typeof workingDoc === 'object' && workingDoc.type === 'doc') {
+				try {
+					const { toPlainText } = await import('../shared/helpers/../contentAdapter.js').catch(()=>({ toPlainText: null }));
+					if (toPlainText) plainFromJson = toPlainText(workingDoc).slice(0, 12000);
+				} catch {}
+			}
+			const basePlain = (documentPlain && typeof documentPlain === 'string') ? documentPlain : documentText;
+			let normalizedPlain = (basePlain && typeof basePlain === 'string' ? basePlain : '') || plainFromJson;
+			if (normalizedPlain.length > 16000) normalizedPlain = normalizedPlain.slice(0, 16000); // hard cap
+			const docSummary = `Document length: ${normalizedPlain.length} chars`;
+
+			if (!message || !message.trim()) {
+				return res.status(400).json({
+					success: false,
+					error: 'Message is required'
+				});
+			}
+
+			const requestText = message.trim();
+			console.log('[Story IDE] Request: "' + requestText.substring(0, 100) + '"');
+			console.log('[Story IDE] ' + docSummary);
+
+			if (!process.env.OPENAI_API_KEY) {
+				console.error("❌ OPENAI_API_KEY not found in environment");
+				return res.status(500).json({ success: false, error: "OpenAI API key not configured" });
+			}
+
+			// Check if this is a PDF-related request
+			const isPDFRequest = /(?:\bpdf\b|\bfile\b|\bupload\b)/i.test(requestText);
+
+			let pdfContext = '';
+			if (references && references.length > 0) {
+				try {
+					console.log(`[Story IDE] Processing ${references.length} uploaded files...`);
+					
+					const PDFProcessor = (await import('./services/story-ide/pdf-processor.js')).PDFProcessor;
+					const pdfProcessor = new PDFProcessor();
+					
+					// Process uploaded PDF files from references
+					const pdfFiles = references.filter(ref => 
+						ref.mimeType === 'application/pdf' || 
+						ref.name.toLowerCase().endsWith('.pdf')
+					);
+					
+					if (pdfFiles.length > 0) {
+						console.log(`[Story IDE] Found ${pdfFiles.length} PDF files to process`);
+						pdfContext = '\n[PDF CONTENT FOUND]\n';
+						
+						for (const pdfFile of pdfFiles) {
+							try {
+								console.log(`[Story IDE] Processing ${pdfFile.name}...`);
+								
+								// Convert base64 to buffer for PDF processing
+								let pdfBuffer;
+								if (pdfFile.encoding === 'base64') {
+									pdfBuffer = Buffer.from(pdfFile.content, 'base64');
+								} else {
+									console.warn(`[Story IDE] Unsupported encoding: ${pdfFile.encoding} for ${pdfFile.name}`);
+									continue;
+								}
+								
+								// Extract text from the PDF
+								const extractedText = await pdfProcessor.extractPDFText(pdfBuffer);
+								
+								if (extractedText && extractedText.trim()) {
+									console.log(`[Story IDE] Extracted ${extractedText.length} characters from ${pdfFile.name}`);
+									pdfContext += `From ${pdfFile.name}:\n${extractedText.substring(0, 3000)}\n\n`;
+								} else {
+									console.warn(`[Story IDE] No text extracted from ${pdfFile.name}`);
+								}
+								
+							} catch (fileError) {
+								console.error(`[Story IDE] Error processing ${pdfFile.name}:`, fileError.message);
+								pdfContext += `Error processing ${pdfFile.name}: ${fileError.message}\n\n`;
+							}
+						}
+					}
+					
+					// Also search any local PDF content if this is a PDF-related request
+					// (do not redeclare isPDFRequest)
+					
+					if (isPDFRequest) {
+						const searchTerms = api.extractSearchTerms(requestText);
+						console.log(`[Story IDE] Also searching local PDFs for: ${searchTerms.join(', ')}`);
+						
+						const localResults = await pdfProcessor.searchPDFContent(searchTerms.join(' '), 10);
+						
+						if (localResults.length > 0) {
+							pdfContext += '\n[LOCAL PDF CONTENT FOUND]\n';
+							localResults.forEach(result => {
+								pdfContext += `From ${result.source}: ${result.content}\n`;
+							});
+							pdfContext += '\n';
+						}
+					}
+					
+				} catch (error) {
+					console.warn('[Story IDE] PDF processing failed:', error.message);
+					pdfContext += `\n[PDF PROCESSING ERROR: ${error.message}]\n`;
+				}
+			}
+			
+            // Use top-level OpenAI client (configured at import time)
+
+			// Build system prompt: general guidance first, optionally add PDF-specific guidance only when relevant
+			const hasPdfContext = !!(pdfContext && pdfContext.trim().length);
+			const baseSystemPrompt = `You are TaleForge Story IDE, an in-editor assistant for D&D sourcebooks.
+
+OBJECTIVES:
+- Read the user's draft and any provided reference material
+- When asked to create or edit content, propose a patch (unified diff)
+- Answer questions with grounded, concise explanations when not editing
+
+OUTPUT MODES:
+1) chat: Short explanation
+2) patch: Unified diff for content changes
+
+RESPONSE FORMAT:
+For chat: [MODE: chat] followed by explanation
+For patches: [MODE: patch] followed by explanation, then a single fenced diff block
+
+RULES:
+- Make patches idempotent using @@ context hunks
+- Do not invent content outside of the provided context
+`;
+
+			let pdfGuidance = '';
+			if (hasPdfContext) {
+				pdfGuidance = `PDF GUIDANCE:
+- When PDF content is included in the context, ground any citations or factual claims in that content.
+- Do not invent facts that aren't present in the PDFs.
+- Do not mention that PDFs were used unless the user asked about PDFs.`;
+			} else if (isPDFRequest) {
+				pdfGuidance = `PDF GUIDANCE:
+- The user asked about PDFs, but no readable PDF content is provided in the context.
+- Say once: "No PDF content was provided." Then proceed using the current document and conversation context without blocking.`;
+			}
+
+			const systemPrompt = [baseSystemPrompt, pdfGuidance].filter(Boolean).join('\n\n');
+
+			// Build context with normalized plain doc + optional PDF context
+			const docContext = documentText || 'No document content';
+			const metaInfo = `Title: ${metadata?.title || 'Untitled'}\nURL: ${metadata?.url || ''}\nEditId: ${metadata?.editId || ''}`;
+			
+			console.log(`[Story IDE] Document context length: ${documentText?.length || 0} chars`);
+			console.log(`[Story IDE] Sent context (first 200 chars): ${docContext.substring(0, 200)}`);
+			console.log(`[Story IDE] Metadata:`, metaInfo);
+			
+			let contextBlock = `[DOCUMENT METADATA]
+${metaInfo}
+
+[CURRENT DOCUMENT]
+${docContext}`;
+			if (hasPdfContext) {
+				contextBlock += `\n${pdfContext}`;
+			}
+
+			// Optional: RAG retrieval for additional grounded context
+			let ragBlock = '';
+			try {
+				if (process.env.STORY_IDE_USE_RAG === '1') {
+					const brewId = metadata?.editId || null;
+					if (brewId) {
+						const rag = await api.retrieveContextForRequest(brewId, requestText, 8);
+						if (rag && rag.length) {
+							const joined = rag.map(r => `- ${r.section ? r.section + ': ' : ''}${r.text}`).join('\n');
+							const clipped = joined.slice(0, 2000);
+							ragBlock = `\n[RETRIEVED CONTEXT]\n${clipped}\n`;
+						}
+					}
+				}
+			} catch (e) {
+				console.warn('[RAG] Skipping retrieval:', e.message);
+			}
+
+			const userPrompt = `${contextBlock}${ragBlock}
+[USER REQUEST]
+${requestText}`;
+
+			console.log(`[Story Assistant] Making OpenAI API call...`);
+			
+			// Acquire OpenAI client lazily
+			let openai;
+			try {
+				openai = getOpenAI();
+			} catch (clientErr) {
+				console.error('❌ OpenAI client initialization failed:', clientErr.message);
+				return res.status(500).json({ success: false, error: clientErr.message });
+			}
+
+			const model = process.env.STORY_IDE_MODEL || "gpt-5-mini";
+			// Determine correct token parameter and sampling support based on model family
+			const usesMaxCompletion = (() => {
+				const m = (model || '').toLowerCase();
+				return m.startsWith('gpt-5') || m.startsWith('gpt-4.1') || m.startsWith('gpt-4o') || m.startsWith('o');
+			})();
+			const defaultSamplingOnly = usesMaxCompletion; // these families often lock sampling params
+			console.log(`[Story Assistant] Model: ${model} | Token param: ${usesMaxCompletion ? 'max_completion_tokens' : 'max_tokens'} | Sampling params: ${defaultSamplingOnly ? 'default-only' : 'custom'}`);
+
+			const basePayload = {
+				model,
+				messages: [
+					{ role: "system", content: systemPrompt },
+					{ role: "user", content: userPrompt },
+				]
+			};
+			// Only include sampling params if model supports them
+			if (!defaultSamplingOnly) {
+				const temp = process.env.STORY_IDE_TEMPERATURE ? Number(process.env.STORY_IDE_TEMPERATURE) : 0.2;
+				const topP = process.env.STORY_IDE_TOP_P ? Number(process.env.STORY_IDE_TOP_P) : 0.9;
+				// Guard NaN
+				if (!Number.isNaN(temp)) basePayload.temperature = temp;
+				if (!Number.isNaN(topP)) basePayload.top_p = topP;
+			}
+			// Use the correct token limit parameter based on model family
+			if (usesMaxCompletion) {
+				basePayload.max_completion_tokens = 1800;
+			} else {
+				basePayload.max_tokens = 1800;
+			}
+			// Note: Some newer models ignore or reject presence/frequency penalties; we intentionally omit them here.
+			// Phase 4: Attempt JSON/tool-calling first when enabled
+			let toolResult = null;
+			if (process.env.STORY_IDE_JSON_MODE === '1') {
+				try {
+					const jsonSystem = `${systemPrompt}\n\nWhen appropriate, reply ONLY with strict JSON of shape {\n  \"mode\": \"chat\"|\"patch\"|\"tools\",\n  \"message\"?: string,\n  \"patch\"?: string,\n  \"tools\"?: Array<{name: string, args: object}>\n}.`;
+					const jsonPayload = { ...basePayload, messages: [ { role: 'system', content: jsonSystem }, { role: 'user', content: userPrompt } ] };
+					const jsonCompletion = await openai.chat.completions.create(jsonPayload);
+					const jsonText = (jsonCompletion.choices?.[0]?.message?.content || '').trim();
+					try {
+						const parsed = JSON.parse(jsonText);
+						if (parsed && parsed.mode === 'tools' && Array.isArray(parsed.tools)) {
+							toolResult = await api.executeStoryTools(parsed.tools, { documentText, metadata });
+						} else if (parsed && parsed.mode === 'patch' && parsed.patch) {
+							return res.status(200).json({ success: true, mode: 'patch', patch: parsed.patch, explanation: parsed.message || '', raw: jsonText });
+						} else if (parsed && parsed.mode === 'chat') {
+							return res.status(200).json({ success: true, mode: 'chat', message: parsed.message || '', raw: jsonText });
+						}
+					} catch (_e) {
+						// Fall back to normal parsing below
+					}
+				} catch (jsonErr) {
+					console.warn('JSON mode failed, fallback to default parsing:', jsonErr.message);
+				}
+			}
+
+			const completion = await openai.chat.completions.create(basePayload);
+
+			console.log(`[Story Assistant] OpenAI response received`);
+			
+			const responseContent = completion.choices[0].message.content.trim();
+			console.log(`[Story Assistant] Raw response: ${responseContent.substring(0, 200)}...`);
+
+			// Parse response for mode (patch vs chat)
+			const { mode, patch, explanation } = api.parseStoryIDEResponse(responseContent);
+
+			if (toolResult) {
+				return res.status(200).json({ success: true, mode: 'tools', result: toolResult });
+			} else if (mode === 'patch' && patch) {
+				// Optional: immediately persist a StoryVersion snapshot for undo/redo if enabled
+				try {
+					if (process.env.STORY_IDE_AUTOVERSION === '1') {
+						const current = documentText || '';
+						// We don’t apply the patch on the server here; client applies then can POST fullText. This stores a pending record with patch only.
+						// To keep Phase 1 simple, we skip auto-create and let client call /api/story/version after apply with the new text.
+					}
+				} catch(err) { console.warn('Autoversion skipped:', err.message); }
+				return res.status(200).json({
+					success: true,
+					mode: 'patch',
+					patch: patch,
+					explanation: explanation,
+					hasMore: false,
+					raw: responseContent
+				});
+			} else {
+				// Extract actual response content, removing [MODE: chat] if present
+				let messageContent = explanation || responseContent;
+				if (messageContent.startsWith('[MODE: chat]')) {
+					messageContent = messageContent.substring('[MODE: chat]'.length).trim();
+				}
+				
+				return res.status(200).json({
+					success: true,
+					mode: 'chat',
+					message: messageContent,
+					hasMore: false,
+					raw: responseContent
+				});
+			}
+
+		} catch (error) {
+			console.error('Story IDE error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Story IDE request failed',
+				details: error.message
+			});
+		}
+	},
+
+	// === Phase 2: Index & Retrieval ===
+	chunkDocument: (fullText)=>{
+		const text = (fullText || '').replace(/\r/g, '\n');
+		// Split by top-level headings, keep simple grouping
+		const parts = text.split(/\n(?=# )/g).filter(Boolean);
+		const chunks = [];
+		for (let i = 0; i < parts.length; i++) {
+			const block = parts[i];
+			const lines = block.split('\n');
+			const titleLine = /^#\s+(.+)$/.exec(lines[0] || '');
+			let section = titleLine ? titleLine[1].trim() : `Section ${i+1}`;
+			// naive type detection
+			let type = undefined;
+			const low = block.toLowerCase();
+			if (low.includes('encounter')) type = 'encounter';
+			else if (low.includes('trap')) type = 'trap';
+			else if (low.includes('statblock') || low.includes(':::statblock')) type = 'statblock';
+			// extract candidate names (Proper Nouns)
+			const names = Array.from(new Set((block.match(/\b[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g) || []).slice(0, 10)));
+			let buf = [];
+			let wordCount = 0;
+			const emit = ()=>{
+				if (!buf.length) return;
+				chunks.push({ section, type, names, text: buf.join('\n') });
+				buf = []; wordCount = 0;
+			};
+			for (let j=0;j<lines.length;j++){
+				const line = lines[j];
+				buf.push(line);
+				wordCount += (line.trim().split(/\s+/).filter(Boolean).length);
+				if (wordCount >= 900) emit();
+			}
+			emit();
+		}
+		// Fallback if nothing
+		if (!chunks.length && text.trim()) chunks.push({ section: 'Document', type: undefined, names: [], text });
+		return chunks;
+	},
+
+	embedTexts: async (inputs)=>{
+		if (!process.env.OPENAI_API_KEY) throw new Error('Embedding model not configured');
+		const openai = getOpenAI();
+		const model = process.env.EMBED_MODEL || 'text-embedding-3-large';
+		const { data } = await openai.embeddings.create({ model, input: inputs });
+		return data.map(d => d.embedding);
+	},
+
+	indexStoryChunks : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			let { fullText } = req.body || {};
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId is required' });
+			if (!fullText || !fullText.trim()) {
+				fullText = await api.reconstructCurrentText(brewId);
+				if (!fullText || !fullText.trim()) return res.status(400).json({ success: false, error: 'No text available to index' });
+			}
+			const chunks = api.chunkDocument(fullText);
+			const texts = chunks.map(c => c.text);
+			const embeddings = await api.embedTexts(texts);
+			const { StoryChunk } = await getModels();
+			// Replace existing rows for this brewId
+			await StoryChunk.destroy({ where: { brewId } });
+			const rows = chunks.map((c, idx) => ({
+				brewId,
+				chunkId : `${brewId}_${idx}`,
+				section : c.section,
+				text    : c.text,
+				embedding: embeddings[idx]
+			}));
+			await StoryChunk.bulkCreate(rows);
+			return res.json({ success: true, count: rows.length });
+		} catch (error) {
+			console.error('indexStoryChunks error:', error);
+			return res.status(500).json({ success: false, error: error.message });
+		}
+	},
+
+	cosineSim: (a, b)=>{
+		let dot=0, na=0, nb=0;
+		const n = Math.min(a?.length||0, b?.length||0);
+		for (let i=0;i<n;i++){ const x=a[i], y=b[i]; dot+=x*y; na+=x*x; nb+=y*y; }
+		return dot / (Math.sqrt(na||1e-9) * Math.sqrt(nb||1e-9));
+	},
+
+	retrieveStoryChunks : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { query, k = 8 } = req.body || {};
+			if (!brewId || !query) return res.status(400).json({ success: false, error: 'brewId and query are required' });
+			const queryEmb = (await api.embedTexts([query]))[0];
+			const { StoryChunk } = await getModels();
+			const rows = await StoryChunk.findAll({ where: { brewId } });
+			const scored = rows.map(r => ({
+				section: r.section,
+				text: r.text,
+				score: api.cosineSim(queryEmb, r.embedding)
+			})).sort((a,b)=> b.score - a.score).slice(0, Math.max(1, Math.min(50, Number(k)||8)));
+			return res.json({ success: true, results: scored });
+		} catch (error) {
+			console.error('retrieveStoryChunks error:', error);
+			return res.status(500).json({ success: false, error: error.message });
+		}
+	},
+
+	retrieveContextForRequest : async (brewId, query, k=8, sectionHint)=>{
+		try {
+			const { results } = await (async ()=>{
+				// Reuse the same logic without HTTP
+				const queryEmb = (await api.embedTexts([query]))[0];
+				const { StoryChunk } = await getModels();
+				let rows = await StoryChunk.findAll({ where: { brewId } });
+				if (sectionHint) {
+					const hint = String(sectionHint).toLowerCase();
+					rows = rows.filter(r => (r.section||'').toLowerCase().includes(hint));
+				}
+				const scored = rows.map(r => ({ section: r.section, text: r.text, score: api.cosineSim(queryEmb, r.embedding) }))
+					.sort((a,b)=> b.score - a.score)
+					.slice(0, Math.max(1, Math.min(50, Number(k)||8)));
+				return { results: scored };
+			})();
+			return results;
+		} catch (e) {
+			console.warn('[RAG] retrieveContextForRequest failed:', e.message);
+			return [];
+		}
+	},
+
+	// === Phase 6: Orchestrated tool-calling flow ===
+	orchestrateStoryEdit: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { message, cursor = {}, limits = {} } = req.body || {};
+			if (!brewId || !message) return res.status(400).json({ success: false, error: 'brewId and message required' });
+			const sectionHint = cursor.sectionHint || '';
+			const current = await api.reconstructCurrentText(brewId);
+			// Retrieve context (prefer chunks matching sectionHint)
+			let ragBlock = '';
+			try {
+				const results = await api.retrieveContextForRequest(brewId, message, 8, sectionHint);
+				if (results && results.length) {
+					const joined = results.map(r => `- ${r.section ? r.section + ': ' : ''}${r.text}`).join('\n');
+					ragBlock = `\n[RETRIEVED CONTEXT]\n${joined.slice(0, 2000)}\n`;
+				}
+			} catch(e){ console.warn('Orchestrator RAG failed:', e.message); }
+
+			// JSON/tool-calling request
+			const systemPrompt = `You are Mythforge Story IDE. Reply ONLY with strict JSON of shape {\n  "mode": "tools",\n  "plan": string,\n  "tools": Array<{ name: string, args: object }>,\n  "notes"?: string\n}\nAllowed tools: [\n  {name: "add_encounter", args: {title: string, enemies: Array<{name:string, cr:string, count:number}>}},\n  {name: "generate_statblock", args: {npc: string, cr: string}},\n  {name: "add_trap", args: {dc:number, trigger:string, effect:string}},\n  {name: "timeline_update", args: {when:string, what:string, who:string}},\n  {name: "create_section", args: {title:string, content:string}}\n]\nNever output prose outside JSON.`;
+			const userPrompt = `Cursor section hint: ${sectionHint||'(none)'}\n${ragBlock}\n[USER REQUEST]\n${message}`;
+			const openai = getOpenAI();
+			if (!openai) return res.status(500).json({ success: false, error: 'OpenAI not configured' });
+			const model = process.env.STORY_IDE_MODEL || 'gpt-4o-mini';
+			let parsed = null;
+			try {
+				const payload = { model, messages: [ { role:'system', content: systemPrompt }, { role:'user', content: userPrompt } ], response_format: { type: 'json_object' } };
+				const cmp = await openai.chat.completions.create(payload);
+				const raw = (cmp.choices?.[0]?.message?.content||'').trim();
+				parsed = JSON.parse(raw);
+			} catch(e) { return res.status(502).json({ success:false, error: 'Model did not return valid JSON', detail: e.message }); }
+			if (!parsed || parsed.mode !== 'tools' || !Array.isArray(parsed.tools)) return res.status(400).json({ success:false, error:'No tools returned' });
+
+			// Execute tools server-side into current text
+			let newText = current;
+			const execResults = [];
+			for (const t of parsed.tools) {
+				const name = t?.name; const args = t?.args || {};
+				if (!['add_encounter','generate_statblock','add_trap','timeline_update','create_section'].includes(name)) {
+					execResults.push({ tool:name, ok:false, error:'Unsupported tool' }); continue;
+				}
+				if (name === 'timeline_update') {
+					const r = `- ${String(args.when||'Unknown')}: ${String(args.what||'Event')} (${String(args.who||'Unknown')})`;
+					newText = api.upsertTimeline(newText, r); execResults.push({ tool:name, ok:true }); continue;
+				}
+				// For section-targeted inserts, prefer sectionHint if provided
+				let insertBlock = '';
+				if (name === 'add_encounter') {
+					const title = String(args.title||'Encounter').trim();
+					const enemies = Array.isArray(args.enemies)?args.enemies:[];
+					const lines = [
+						`### Encounter: ${title}`, '',
+						'| Creature | CR | Count |',
+						'| --- | --- | --- |',
+						...enemies.map(e=>`| ${e.name||'Unknown'} | ${e.cr||'?'} | ${e.count||1} |`),
+						''
+					];
+					insertBlock = lines.join('\n');
+				} else if (name === 'generate_statblock') {
+					const npc = String(args.npc||'Unnamed NPC');
+					const cr = String(args.cr||'1');
+					insertBlock = [
+						`### ${npc} (CR ${cr})`, '',
+						':::statblock',
+						'Name: '+npc,
+						'CR: '+cr,
+						'AC: 12 | HP: 11 (2d8+2) | Speed: 30 ft.',
+						'STR 10 DEX 12 CON 12 INT 10 WIS 10 CHA 10',
+						'Traits: ...',
+						'Actions: ...',
+						':::',
+						''
+					].join('\n');
+				} else if (name === 'add_trap') {
+					const dc = args.dc ?? 13; const trigger=String(args.trigger||'Pressure plate'); const effect=String(args.effect||'1d6 piercing damage');
+					insertBlock = [ '### Trap', '', `Trigger: ${trigger}`, `Check: DC ${dc} Perception to notice; DC ${dc} Thieves' Tools to disarm`, `Effect: ${effect}`, '' ].join('\n');
+				} else if (name === 'create_section') {
+					insertBlock = `# ${String(args.title||'New Section')}\n\n${String(args.content||'')}`;
+				}
+				newText = api.insertIntoSection(newText, sectionHint, insertBlock);
+				execResults.push({ tool:name, ok:true });
+			}
+
+			// Persist a new StoryVersion with full text
+			try {
+				await api.createStoryVersion({ params: { brewId } , body: { fullText: newText, author: 'ai', summary: parsed.plan||'orchestrate' } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+			} catch (e) { console.warn('Versioning failed:', e.message); }
+
+			// Re-index to keep RAG fresh
+			try {
+				await api.indexStoryChunks({ params: { brewId }, body: { fullText: newText } }, { json: ()=>{}, status: ()=>({ json: ()=>{} }) });
+			} catch (e) { console.warn('Re-index failed:', e.message); }
+
+			return res.json({ success: true, applied: execResults.filter(r=>r.ok).length, results: execResults, notes: parsed.notes||null, fullText: newText });
+		} catch (error) {
+			console.error('orchestrateStoryEdit error:', error);
+			return res.status(500).json({ success:false, error: error.message });
+		}
+	},
+
+	// Extract search terms from natural language request
+	extractSearchTerms: (requestText) => {
+		// Remove common words and extract key terms
+		const stopWords = ['the', 'in', 'pdf', 'file', 'what', 'are', 'main', 'tell', 'me', 'about', 'can', 'you'];
+		const words = requestText.toLowerCase()
+			.split(/\s+/)
+			.filter(word => word.length > 2 && !stopWords.includes(word));
+		
+		return words.slice(0, 5); // Return top 5 key terms
+	},
+
+	// Parse Story IDE response for mode detection
+	parseStoryIDEResponse: (responseContent) => {
+		const lines = responseContent.split('\n');
+		const firstLine = lines[0].trim();
+		
+		if (firstLine.startsWith('[MODE: patch]')) {
+			// Extract explanation and patch
+			let explanation = '';
+			let diffStartIndex = -1;
+			
+			for (let i = 1; i < lines.length; i++) {
+				if (lines[i].trim().startsWith('```diff')) {
+					diffStartIndex = i;
+					break;
+				} else if (lines[i].trim() && !lines[i].startsWith('```')) {
+					explanation += lines[i] + '\n';
+				}
+			}
+			
+			let patch = '';
+			if (diffStartIndex !== -1) {
+				let diffEndIndex = lines.length;
+				for (let i = diffStartIndex + 1; i < lines.length; i++) {
+					if (lines[i].trim() === '```') {
+						diffEndIndex = i;
+						break;
+					}
+				}
+				patch = lines.slice(diffStartIndex + 1, diffEndIndex).join('\n');
+			}
+			
+			return {
+				mode: 'patch',
+				patch: patch,
+				explanation: explanation.trim()
+			};
+		} else if (firstLine.startsWith('[MODE: chat]')) {
+			return {
+				mode: 'chat',
+				explanation: lines.slice(1).join('\n').trim()
+			};
+		} else {
+			// Default to chat mode
+			return {
+				mode: 'chat',
+				explanation: responseContent
+			};
+		}
+	},
+
+	// Search project content
+	searchProject : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { query } = req.body;
+			
+			if (!brewId || !query) {
+				return res.status(400).json({
+					success: false,
+					error: 'Brew ID and query are required'
+				});
+			}
+
+			// Simple search for now - search in brew text
+			const { Homebrew } = await getModels();
+			const brew = await Homebrew.findByPk(brewId);
+			
+		if (!brew) {
+			return res.status(404).json({
+				success: false,
+				error: 'Brew not found'
+			});
+		}
+		
+		// Simple text search - handle both string and JSON text
+		let searchableText = '';
+		if (typeof brew.text === 'string') {
+			searchableText = brew.text;
+		} else if (typeof brew.text === 'object') {
+			// For TipTap JSON, extract plain text using contentAdapter
+			const { toPlainText } = await import('../shared/contentAdapter.js');
+			searchableText = toPlainText(brew.text);
+		}
+		
+		const results = searchableText.toLowerCase().includes(query.toLowerCase()) ? [{
+			id: brew.id,
+			title: brew.title,
+			text: searchableText.substring(0, 200) + '...',
+			score: 1.0
+		}] : [];
+		
+		res.json({
+			success: true,
+			results: results
+		});		} catch (error) {
+			console.error('Search project error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Search failed',
+				details: error.message
+			});
+		}
+	},
+
+	// Get project graph
+	getProjectGraph : async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { Homebrew } = await getModels();
+			const brew = await Homebrew.findByPk(brewId);
+			
+			if (!brew) {
+				return res.status(404).json({ error: 'Brew not found' });
+			}
+			
+			// Simple graph structure for now
+			const graph = {
+				nodes: [
+					{ id: 'root', type: 'document', title: brew.title || 'Untitled' }
+				],
+				edges: []
+			};
+			
+			res.json({
+				success: true,
+				graph: graph
+			});
+		} catch (error) {
+			console.error('Get project graph error:', error);
+			res.status(500).json({
+				success: false,
+				error: 'Failed to get project graph',
+				details: error.message
+			});
+		}
+	}
+	,
+
+	// === Phase 3: Knowledge Graph endpoints ===
+	processKnowledgeGraph: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			const { fullText, title = '' } = req.body || {};
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const text = fullText || await api.reconstructCurrentText(brewId);
+			if (!text) return res.status(400).json({ success: false, error: 'No text to process' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const result = await KG.processBrewDocument(brewId, title, text);
+			return res.json({ success: true, result });
+		} catch (e) {
+			console.error('processKnowledgeGraph error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	getKnowledgeGraph: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const proj = await KG.getProjectByBrewId(brewId);
+			if (!proj) return res.json({ success: true, graph: { nodes: [], edges: [] } });
+			const graph = await KG.getProjectGraph(proj.id);
+			return res.json({ success: true, graph });
+		} catch (e) {
+			console.error('getKnowledgeGraph error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	},
+
+	getCanonChecks: async (req, res)=>{
+		try {
+			const { brewId } = req.params;
+			if (!brewId) return res.status(400).json({ success: false, error: 'brewId required' });
+			const { default: KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
+			const KG = new KnowledgeGraph();
+			await KG.ensureReady();
+			const proj = await KG.getProjectByBrewId(brewId);
+			if (!proj) return res.json({ success: true, warnings: [] });
+			const { warnings } = await KG.runCanonChecks(proj.id);
+			return res.json({ success: true, warnings });
+		} catch (e) {
+			console.error('getCanonChecks error:', e);
+			return res.status(500).json({ success: false, error: e.message });
+		}
+	}
+};
+
+// Additional functions needed by server/app.js
+export const getBrew = (type = 'share', requireAuth = false) => {
+	return async (req, res, next) => {
+		try {
+			const { id } = req.params;
+			const { Homebrew } = await getModels();
+			
+			// Try to find by editId first, then by primary key
+			let brew = await Homebrew.findOne({ where: { editId: id } });
+			if (!brew) {
+				brew = await Homebrew.findByPk(id);
+			}
+			
+			if (!brew) {
+				return res.status(404).json({ error: 'Brew not found' });
+			}
+			
+			// Handle backward compatibility: if text is a string, convert to TipTap JSON
+			let text = brew.text;
+			if (typeof text === 'string') {
+				// Legacy markdown string - convert to TipTap JSON
+				const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+				text = markdownToTiptap(text);
+				console.log('[getBrew] Converted legacy markdown to TipTap JSON');
+			}
+			
+			// Add brew to request object for next middleware
+			req.brew = {
+				_id: brew.id,
+				title: brew.title,
+				text: text,
+				style: brew.style || '',
+				snippets: brew.snippets || '',
+				renderer: brew.renderer,
+				theme: brew.theme || '5ePHB',
+				shareId: brew.shareId,
+				editId: brew.editId,
+				createdAt: brew.createdAt,
+				updatedAt: brew.updatedAt,
+				description: brew.description || ''
+			};
+			
+			next();
+		} catch (error) {
+			console.error('Get brew error:', error);
+			res.status(500).json({ error: 'Failed to get brew' });
+		}
+	};
+};
+
+export const getUsersBrewThemes = async (username) => {
+	try {
+		const { Homebrew } = await getModels();
+		const brews = await Homebrew.findAll({
+			attributes: ['renderer'],
+			group: ['renderer']
+		});
+		return brews.map(brew => brew.renderer).filter(Boolean);
+	} catch (error) {
+		console.error('Get themes error:', error);
+		return [];
+	}
+};
+
+export const getCSS = async (req, res) => {
+	try {
+		const { themeName, renderer } = req.params;
+		const theme = Themes[themeName];
+		
+		if (!theme) {
+			return res.status(404).json({ error: 'Theme not found' });
+		}
+
+		let css = '';
+		
+		// Add parent theme styles
+		if (theme.parent) {
+			const parentTheme = Themes[theme.parent];
+			if (parentTheme && parentTheme.styles) {
+				css += parentTheme.styles.join('\n');
+			}
+		}
+		
+		// Add theme styles
+		if (theme.styles) {
+			css += '\n' + theme.styles.join('\n');
+		}
+		
+		// Add renderer styles
+		if (renderer && theme.renderers && theme.renderers[renderer]) {
+			css += '\n' + theme.renderers[renderer].join('\n');
+		}
+		
+		res.setHeader('Content-Type', 'text/css');
+		res.send(css);
+  } catch (error) {
+		console.error('Get CSS error:', error);
+		res.status(500).json({ error: 'Failed to get CSS' });
+	}
+};
+
+// Export the router for use in app.js
+export const homebrewApi = router;
+
+export default api;

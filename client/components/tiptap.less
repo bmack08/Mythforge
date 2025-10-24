@@ -1,0 +1,263 @@
+@import 'naturalcrit/styles/animations.less';
+@import 'naturalcrit/styles/colors.less';
+
+// Main TipTap editor container
+.tiptap-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: white;
+  position: relative;
+  overflow: hidden; // prevent outer container from scrolling
+}
+
+// Toolbar with formatting buttons
+.tiptap-editor__toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #ccc;
+  background: #f9f9f9;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+  
+  button {
+    background: #f7f7f7;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 8px;
+    cursor: pointer;
+    
+    &:hover {
+      background: #e0e0e0;
+    }
+    
+    &:active {
+      background: #d0d0d0;
+    }
+  }
+}
+
+// Editor content wrapper (contains ProseMirror)
+.tiptap-editor__content {
+  flex: 1;
+  overflow: auto; // the only scrollable area
+  background: white;
+  position: relative;
+}
+
+// Style the actual ProseMirror editor content
+.ProseMirror {
+  min-height: 100%;
+  background: white;
+  padding: 16px 16px 16px 38px; // space for 30px gutter + some margin
+  outline: none;
+  
+  // Make content editable and cursor visible
+  &:focus {
+    outline: none;
+  }
+  
+  // Ensure paragraphs have proper spacing
+  p {
+    margin: 0 0 1em 0;
+    min-height: 1em;
+  }
+  
+  // Headings
+  h1, h2, h3, h4, h5, h6 {
+    margin: 1em 0 0.5em 0;
+    line-height: 1.2;
+  }
+  
+  // Horizontal rule
+  hr {
+    border: none;
+    border-top: 2px solid #ddd;
+    margin: 1em 0;
+  }
+  
+  // Page break styling (TipTap editor view)
+  hr.page-break,
+  hr[data-type="pageBreak"] {
+    border: none;
+    border-top: 3px dashed #9C2B1B; // Maroon color (PHB style)
+    margin: 3rem 0;
+    page-break-after: always;
+    position: relative;
+    cursor: pointer;
+    
+    &::after {
+      content: "\\page";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 2px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      color: #9C2B1B;
+      border: 1px solid #9C2B1B;
+      border-radius: 4px;
+    }
+    
+    &:hover::after {
+      background: #FDF1DC;
+    }
+  }
+  
+  // Column break styling (TipTap editor view)
+  div.column-break,
+  div[data-type="columnBreak"] {
+    border: none;
+    border-top: 2px dashed #C0AD6A; // Gold color (PHB style)
+    margin: 2rem 0;
+    height: 2px;
+  break-after: column;
+    position: relative;
+    cursor: pointer;
+    
+    &::after {
+      content: "\\column";
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: white;
+      padding: 2px 12px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      font-weight: bold;
+      color: #C0AD6A;
+      border: 1px solid #C0AD6A;
+      border-radius: 4px;
+    }
+    
+    &:hover::after {
+      background: #FDF1DC;
+    }
+  }
+  
+  // D&D 5e PHB custom blocks
+  div.classFeature,
+  div[data-type="classFeature"] {
+    background: #faf7ea;
+    border: 1px solid #c9ad6a;
+    padding: 0.5em 1em;
+    margin: 1em 0;
+    border-radius: 4px;
+  }
+  
+  div.spell,
+  div[data-type="spell"] {
+    background: #f3f3f3;
+    border-left: 3px solid #58180d;
+    padding: 0.5em 1em;
+    margin: 1em 0;
+  }
+  
+  div.spellList,
+  div[data-type="spellList"] {
+    background: #fdf8f3;
+    border: 1px solid #c9ad6a;
+    padding: 0.5em;
+    margin: 1em 0;
+  }
+  
+  // Table styling
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1em 0;
+    
+    td, th {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: left;
+    }
+    
+    th {
+      background: #f3f3f3;
+      font-weight: bold;
+    }
+  }
+  
+  // Image styling
+  img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 1em 0;
+  }
+  
+  // Highlight colors
+  mark {
+    background-color: #ffeb3b;
+    padding: 2px 0;
+  }
+  
+  // Show cursor/caret
+  caret-color: black;
+  
+  // Definition lists (for spell stats)
+  dl {
+    margin: 1em 0;
+    line-height: 1.25em;
+  }
+  
+  dt {
+    font-weight: bold;
+    margin-top: 0.5em;
+  }
+  
+  dd {
+    margin-left: 2em;
+    margin-bottom: 0.5em;
+  }
+}
+
+// CodeMirror-style gutter (matching Homebrewery)
+.CodeMirror-gutters {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 30px;
+  background-color: #f7f7f7;
+  border-right: 1px solid #ddd;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.CodeMirror-gutter {
+  white-space: normal;
+  height: 100%;
+  display: inline-block;
+  vertical-align: top;
+  margin-bottom: -30px;
+}
+
+.CodeMirror-linenumbers {
+  width: 30px;
+}
+
+.CodeMirror-linenumber {
+  position: absolute;
+  padding: 0 3px 0 5px;
+  min-width: 20px;
+  text-align: right;
+  color: #999;
+  white-space: nowrap;
+  font-family: monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  user-select: none;
+  cursor: default;
+}
+

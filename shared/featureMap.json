@@ -1,0 +1,43 @@
+{
+  "wide": {
+    "node": "wideBlock",
+    "class": "phb-wide"
+  },
+  "column-count": {
+    "node": "columnContainer",
+    "attr": "count",
+    "classBase": "phb-col"
+  },
+  "pagebreak": {
+    "node": "pageBreak",
+    "class": "phb-pagebreak"
+  },
+  "header": {
+    "node": "header",
+    "class": "phb-header"
+  },
+  "footer": {
+    "node": "footer",
+    "class": "phb-footer"
+  },
+  "pagenumber": {
+    "node": "pageNumber",
+    "class": "phb-page-number"
+  },
+  "emoji": {
+    "mark": "emoji",
+    "class": "phb-emoji"
+  },
+  "icon": {
+    "mark": "iconMark",
+    "class": "phb-icon"
+  },
+  "image-attrs": {
+    "node": "imageWithAttributes",
+    "class": "phb-image"
+  },
+  "table": {
+    "node": "tableBlock",
+    "wrapper": "phb-table"
+  }
+}
