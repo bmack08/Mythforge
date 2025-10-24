@@ -55,7 +55,7 @@ import AbilityMark from './AbilityMark.js';
 import SkillMark from './SkillMark.js';
 import ConditionMark from './ConditionMark.js';
 import DamageMark from './DamageMark.js';
-import LineNumbers from './LineNumbers.js';
+// LineNumbers - Now using React component instead of ProseMirror plugin
 
 // Definition lists for spell stats
 import { DefinitionList, DefinitionTerm, DefinitionDescription } from './DefinitionList.js';
@@ -90,8 +90,8 @@ const baseExtensions = [
   TextStyle,
   Color,
   Highlight.configure({ multicolor: true }),
-  LineNumbers.configure({ enabled: true, width: 30 }),
-  
+  // LineNumbers removed - using React component instead
+
   // Layout & Structure
   PageBreak,
   ColumnBreak,

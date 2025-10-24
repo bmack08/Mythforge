@@ -53,6 +53,11 @@ export default Extension.create({
           const pmRoot = view.dom; // .ProseMirror element
           const container = pmRoot.parentElement; // .tiptap-editor__content (position: relative)
 
+          console.log('[LineNumbers] Initializing...');
+          console.log('[LineNumbers] ProseMirror root:', pmRoot);
+          console.log('[LineNumbers] Container:', container);
+          console.log('[LineNumbers] Container position:', container ? window.getComputedStyle(container).position : 'none');
+
           // Build gutter DOM
           const gutters = document.createElement('div');
           gutters.className = opts.classNames.gutters;
@@ -63,7 +68,12 @@ export default Extension.create({
           gutters.appendChild(gutter);
 
           // Append to container
-          if (container) container.appendChild(gutters);
+          if (container) {
+            container.appendChild(gutters);
+            console.log('[LineNumbers] Gutter appended to container');
+          } else {
+            console.warn('[LineNumbers] No container found - gutter not attached!');
+          }
 
           let ro = null;
           let mo = null;
@@ -74,36 +84,40 @@ export default Extension.create({
             const pluginState = LINE_NUMBERS_KEY.getState(view.state);
             if (!pluginState?.enabled) {
               gutters.style.display = 'none';
+              console.log('[LineNumbers] Disabled - hiding gutter');
               return;
             }
             gutters.style.display = '';
 
-            if (!scrollTarget) return;
-            const viewTop = scrollTarget.scrollTop;
-            const viewBottom = viewTop + scrollTarget.clientHeight;
+            if (!scrollTarget) {
+              console.warn('[LineNumbers] No scroll target');
+              return;
+            }
+            const viewTop = scrollTarget.scrollTop || 0;
+            const viewBottom = viewTop + (scrollTarget.clientHeight || 1000);
             const style = window.getComputedStyle(pmRoot);
             const paddingTop = parseFloat(style.paddingTop || '0');
 
             const blocks = Array.from(pmRoot.children || []);
+            console.log(`[LineNumbers] Recomputing ${blocks.length} blocks (viewTop: ${viewTop}, viewBottom: ${viewBottom})`);
 
-            // Build HTML for visible lines only
+            // Build HTML for all lines (simplified - no viewport culling for now)
             let html = '';
+            let visibleCount = 0;
             for (let i = 0; i < blocks.length; i++) {
               const block = blocks[i];
               if (!(block instanceof HTMLElement)) continue;
-              const rect = block.getBoundingClientRect();
-              const contRect = scrollTarget.getBoundingClientRect();
-              const blockTop = rect.top - contRect.top + viewTop;
-              const blockHeight = block.offsetHeight;
 
-              if (blockTop + blockHeight < viewTop - 100) continue;
-              if (blockTop > viewBottom + 100) break; // blocks are in order
+              // Calculate position relative to the container
+              const blockTop = block.offsetTop;
+              const top = blockTop + paddingTop;
 
-              const top = blockTop - viewTop + paddingTop;
               html += `<div class="${opts.classNames.linenumber}" style="top:${Math.round(top)}px">${i + 1}</div>`;
+              visibleCount++;
             }
 
             gutter.innerHTML = html;
+            console.log(`[LineNumbers] Generated ${visibleCount} line numbers from ${blocks.length} blocks`);
           };
 
           const onScroll = () => {

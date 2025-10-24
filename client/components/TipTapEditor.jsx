@@ -4,7 +4,7 @@ import './tiptap.less';
 import extensions from 'client/extensions/index.js';
 import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
 import { normalizeTipTapDoc } from 'shared/helpers/normalizeDoc.js';
-// Line numbers now provided by TipTap LineNumbers extension
+import LineNumberGutter from './LineNumberGutter.jsx';
 
 
 // value: TipTap JSON doc OR legacy markdown string
@@ -61,12 +61,25 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   // Refs to wire the gutter
   const contentRef = useRef(null);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
+  const [proseMirrorRoot, setProseMirrorRoot] = useState(null);
 
   // Capture ProseMirror root once the editor is ready
   useEffect(()=>{
     if (!editor) return;
-    editor.commands.setLineNumbersEnabled(showLineNumbers);
-  }, [editor, showLineNumbers]);
+
+    // Small delay to ensure the ProseMirror element is in the DOM
+    const timer = setTimeout(() => {
+      const pmElement = document.querySelector('.ProseMirror');
+      if (pmElement) {
+        console.log('[TipTap] Found ProseMirror element for line numbers:', pmElement);
+        setProseMirrorRoot(pmElement);
+      } else {
+        console.warn('[TipTap] ProseMirror element not found');
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [editor]);
 
   // Hydrate when external value changes (JSON or markdown string)
   useEffect(() => {
@@ -173,6 +186,11 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   <button onClick={() => setShowLineNumbers(v => !v)} title='Toggle line numbers'>#</button>
       </div>
       <div className='tiptap-editor__content' ref={contentRef}>
+        <LineNumberGutter
+          contentEl={contentRef.current}
+          editorRoot={proseMirrorRoot}
+          enabled={showLineNumbers}
+        />
         <EditorContent editor={editor} />
       </div>
     </div>
