@@ -18,7 +18,7 @@ const slugify = (text) => {
 };
 
 export default Heading.extend({
-	name: 'headingWithId',
+	name: 'heading',
 
 	addAttributes() {
 		return {

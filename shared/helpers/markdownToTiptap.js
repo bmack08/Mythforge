@@ -200,39 +200,56 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
-    // Heading H1
-    if (trimmed.startsWith('# ') && !trimmed.startsWith('## ')) {
+    // Headings - IMPORTANT: Check from longest to shortest to avoid matching substrings
+    // H6 (minor headers)
+    if (trimmed.startsWith('###### ')) {
       flushParagraph();
       if (!currentBlock) content.push({
         type: 'heading',
-        attrs: { level: 1 },
-        content: parseInlineMarks(trimmed.slice(2))
+        attrs: { level: 6 },
+        content: parseInlineMarks(trimmed.slice(7))
       });
       else blockContent.push({
         type: 'heading',
-        attrs: { level: 1 },
-        content: parseInlineMarks(trimmed.slice(2))
+        attrs: { level: 6 },
+        content: parseInlineMarks(trimmed.slice(7))
       });
       continue;
     }
 
-    // Heading H2
-    if (trimmed.startsWith('## ') && !trimmed.startsWith('### ')) {
+    // H5 (table headers, section titles)
+    if (trimmed.startsWith('##### ')) {
       flushParagraph();
       if (!currentBlock) content.push({
         type: 'heading',
-        attrs: { level: 2 },
-        content: parseInlineMarks(trimmed.slice(3))
+        attrs: { level: 5 },
+        content: parseInlineMarks(trimmed.slice(6))
       });
       else blockContent.push({
         type: 'heading',
-        attrs: { level: 2 },
-        content: parseInlineMarks(trimmed.slice(3))
+        attrs: { level: 5 },
+        content: parseInlineMarks(trimmed.slice(6))
       });
       continue;
     }
 
-    // Heading H3 (PHB red style)
+    // H4 (spell names, item names)
+    if (trimmed.startsWith('#### ')) {
+      flushParagraph();
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 4 },
+        content: parseInlineMarks(trimmed.slice(5))
+      });
+      else blockContent.push({
+        type: 'heading',
+        attrs: { level: 4 },
+        content: parseInlineMarks(trimmed.slice(5))
+      });
+      continue;
+    }
+
+    // H3 (PHB red style)
     if (trimmed.startsWith('### ')) {
       flushParagraph();
       if (!currentBlock) content.push({
@@ -244,6 +261,38 @@ export function markdownToTiptap(markdown) {
         type: 'heading',
         attrs: { level: 3 },
         content: parseInlineMarks(trimmed.slice(4))
+      });
+      continue;
+    }
+
+    // H2
+    if (trimmed.startsWith('## ')) {
+      flushParagraph();
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 2 },
+        content: parseInlineMarks(trimmed.slice(3))
+      });
+      else blockContent.push({
+        type: 'heading',
+        attrs: { level: 2 },
+        content: parseInlineMarks(trimmed.slice(3))
+      });
+      continue;
+    }
+
+    // H1
+    if (trimmed.startsWith('# ')) {
+      flushParagraph();
+      if (!currentBlock) content.push({
+        type: 'heading',
+        attrs: { level: 1 },
+        content: parseInlineMarks(trimmed.slice(2))
+      });
+      else blockContent.push({
+        type: 'heading',
+        attrs: { level: 1 },
+        content: parseInlineMarks(trimmed.slice(2))
       });
       continue;
     }

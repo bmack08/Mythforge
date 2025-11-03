@@ -482,21 +482,47 @@
 .page .spellList {
 	.useSansSerif();
 	column-count : 2;
-	ul + h5 { margin-top : 15px; }
+	column-gap   : 0.9cm;
+
+	h5 {
+		font-family   : 'ScalySansSmallCapsRemake';
+		font-size     : 0.423cm;
+		font-weight   : normal;
+		margin-top    : 0;
+		margin-bottom : 0.2cm;
+		line-height   : 1.2em;
+		break-after   : avoid;
+	}
+
+	ul + h5 {
+		margin-top : 0.4cm;
+	}
+
 	p, ul {
 		font-size   : 0.352cm;
 		line-height : 1.265em;
 	}
+
 	ul {
 		padding-left                : 1em;
+		margin-top                  : 0;
 		margin-bottom               : 0.5em;
 		text-indent                 : -1em;
 		list-style-type             : none;
 		-webkit-column-break-inside : auto;
 		page-break-inside           : auto;
 		break-inside                : auto;
+
+		li {
+			margin-bottom : 0;
+			line-height   : 1.3em;
+		}
 	}
-	&.wide { column-count : 4; }
+
+	&.wide {
+		column-count : 4;
+		column-gap   : 0.75cm;
+	}
 }
 
 // *****************************
@@ -884,8 +910,20 @@
 	}
 	p + dl { margin-top : 0.17cm; }
 	dt {
+		display      : inline;
 		margin-right : 5px;
-		margin-left  : -1em;
+		margin-left  : 0;
+		float        : left;
+		clear        : left;
+		// Note: Bold formatting comes from markdown **term:** syntax
+	}
+	dd {
+		display      : inline;
+		margin-left  : 0;
+		&::after {
+			content : '\a';
+			white-space : pre;
+		}
 	}
 }
 
