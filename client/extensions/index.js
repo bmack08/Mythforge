@@ -28,6 +28,9 @@ import ColumnContainer from './ColumnContainer.js';
 import Header from './Header.js';
 import Footer from './Footer.js';
 import PageNumber from './PageNumber.js';
+import VerticalSpacing from './VerticalSpacing.js';
+import SkipCounting from './SkipCounting.js';
+import ResetCounting from './ResetCounting.js';
 import FootnoteBlock from './FootnoteBlock.js';
 import CoverBlock from './CoverBlock.js';
 import CreditsBlock from './CreditsBlock.js';
@@ -100,6 +103,9 @@ const baseExtensions = [
   Header,
   Footer,
   PageNumber,
+  VerticalSpacing,
+  SkipCounting,
+  ResetCounting,
   MustacheSpan,
   MustacheBlock,
   
@@ -180,6 +186,9 @@ export {
   Header,
   Footer,
   PageNumber,
+  VerticalSpacing,
+  SkipCounting,
+  ResetCounting,
   MustacheSpan,
   MustacheBlock,
   

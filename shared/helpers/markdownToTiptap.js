@@ -19,6 +19,9 @@ export function markdownToTiptap(markdown) {
     return { type: 'doc', content: [{ type: 'paragraph' }] };
   }
 
+  // Strip HTML comments (<!-- comment -->) before processing
+  markdown = markdown.replace(/<!--[\s\S]*?-->/g, '');
+
   console.log('[markdownToTiptap] Processing markdown:', markdown.slice(0, 200));
 
   const lines = markdown.split('\n');
@@ -159,6 +162,39 @@ export function markdownToTiptap(markdown) {
         content.push({ type: 'columnBreak' });
       } else {
         blockContent.push({ type: 'columnBreak' });
+      }
+      continue;
+    }
+
+    // Skip page number counting: {{skipCounting}}
+    if (trimmed === '{{skipcounting}}' || trimmed === '{{skipCounting}}') {
+      flushParagraph();
+      if (!currentBlock) {
+        content.push({ type: 'skipCounting' });
+      } else {
+        blockContent.push({ type: 'skipCounting' });
+      }
+      continue;
+    }
+
+    // Reset page number counting: {{resetCounting}}
+    if (trimmed === '{{resetcounting}}' || trimmed === '{{resetCounting}}') {
+      flushParagraph();
+      if (!currentBlock) {
+        content.push({ type: 'resetCounting' });
+      } else {
+        blockContent.push({ type: 'resetCounting' });
+      }
+      continue;
+    }
+
+    // Vertical spacing: ::::
+    if (trimmed === '::::') {
+      flushParagraph();
+      if (!currentBlock) {
+        content.push({ type: 'verticalSpacing' });
+      } else {
+        blockContent.push({ type: 'verticalSpacing' });
       }
       continue;
     }
