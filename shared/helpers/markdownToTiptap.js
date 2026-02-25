@@ -224,9 +224,15 @@ export function markdownToTiptap(markdown) {
     if (coverMatch) {
       flushParagraph();
       flushBlock();
+      const coverTypeMap = {
+        frontCover:  'front',
+        insideCover: 'inside',
+        backCover:   'back',
+        partCover:   'part',
+      };
       const node = {
-        type: 'mustacheBlock',
-        attrs: { classes: coverMatch[1] },
+        type: 'coverBlock',
+        attrs: { coverType: coverTypeMap[coverMatch[1]] || 'front' },
         content: [{ type: 'paragraph' }]
       };
       content.push(node);

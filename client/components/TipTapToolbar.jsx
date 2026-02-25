@@ -294,11 +294,27 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => chain().insertMonster().run()}
-            title="Monster stat block"
+            onClick={() => chain().insertFramedMonster().run()}
+            title="Monster stat block (framed — bordered with background)"
           >
             <i className="fas fa-skull-crossbones" />
-            <span>Monster Stat Block</span>
+            <span>Monster Block (Framed)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertUnframedMonster().run()}
+            title="Monster stat block (unframed — stats only, no border)"
+          >
+            <i className="fas fa-skull-crossbones" style={{ opacity: 0.6 }} />
+            <span>Monster Block (Unframed)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertWideMonster().run()}
+            title="Monster stat block (wide — framed, spans both columns)"
+          >
+            <i className="fas fa-skull-crossbones" />
+            <span>Monster Block (Wide)</span>
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
@@ -326,11 +342,35 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => chain().insertCover().run()}
-            title="Cover page section"
+            onClick={() => chain().insertFrontCover().run()}
+            title="Front cover — full-bleed cover with logo, title, banner"
           >
             <i className="fas fa-book-open" />
-            <span>Cover Page</span>
+            <span>Front Cover</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertInsideCover().run()}
+            title="Inside cover — title page with image mask and logo"
+          >
+            <i className="fas fa-book" />
+            <span>Inside Cover</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertPartCover().run()}
+            title="Part/chapter cover — divider page with header background"
+          >
+            <i className="fas fa-bookmark" />
+            <span>Part Cover</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertBackCover().run()}
+            title="Back cover — dark background with description and logo"
+          >
+            <i className="fas fa-book-reader" />
+            <span>Back Cover</span>
           </button>
         </ToolbarDropdown>
       </div>

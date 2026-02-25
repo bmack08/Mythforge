@@ -76,8 +76,14 @@ import SpellBlock from './SpellBlock.js';
 import FeatureBlock from './FeatureBlock.js';
 import MonsterBlock from './MonsterBlock.js';
 
+// Decorative elements
+import WatercolorBlock from './WatercolorBlock.js';
+import WatermarkBlock from './WatermarkBlock.js';
+import ArtistCreditBlock from './ArtistCreditBlock.js';
+
 // Legacy PHB blocks (from Phase 9)
 import ClassFeature from './ClassFeature.js';
+import IndexBlock from './IndexBlock.js';
 import Spell from './Spell.js';
 import SpellList from './SpellList.js';
 
@@ -153,11 +159,17 @@ const baseExtensions = [
   CoverBlock,
   CreditsBlock,
 
+  // Decorative Elements
+  WatercolorBlock,
+  WatermarkBlock,
+  ArtistCreditBlock,
+
   // D&D Specific Blocks
   SpellBlock,
   FeatureBlock,
   MonsterBlock,
   ClassFeature,
+  IndexBlock,
   Spell,
   SpellList,
   
@@ -238,11 +250,17 @@ export {
   CoverBlock,
   CreditsBlock,
   
+  // Decorative Elements
+  WatercolorBlock,
+  WatermarkBlock,
+  ArtistCreditBlock,
+
   // D&D Blocks
   SpellBlock,
   FeatureBlock,
   MonsterBlock,
   ClassFeature,
+  IndexBlock,
   Spell,
   SpellList,
 

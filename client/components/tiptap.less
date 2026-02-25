@@ -1,6 +1,58 @@
 @import 'naturalcrit/styles/animations.less';
 @import 'naturalcrit/styles/colors.less';
 
+// ═══════════════════════════════════════════════════════════
+// D&D PHB Font Faces — served from /fonts/5e/ via Express
+// ═══════════════════════════════════════════════════════════
+
+@font-face {
+  font-family: 'MrEavesRemake';
+  src: url('/fonts/5e/Mr Eaves Small Caps.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BookInsanityRemake';
+  src: url('/fonts/5e/Bookinsanity.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BookInsanityRemake';
+  src: url('/fonts/5e/Bookinsanity Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BookInsanityRemake';
+  src: url('/fonts/5e/Bookinsanity Italic.woff2') format('woff2');
+  font-weight: normal;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'BookInsanityRemake';
+  src: url('/fonts/5e/Bookinsanity Bold Italic.woff2') format('woff2');
+  font-weight: bold;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ScalySansSmallCapsRemake';
+  src: url('/fonts/5e/Scaly Sans Caps.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
 // Main TipTap editor container
 .tiptap-editor {
   display: flex;
@@ -27,6 +79,8 @@
   background: white;
   padding: 16px 16px 16px 38px; // space for 30px gutter + some margin
   outline: none;
+  font-family: 'BookInsanityRemake', 'Noto Serif', Georgia, serif;
+  color: #000;
   
   // Make content editable and cursor visible
   &:focus {
@@ -39,9 +93,51 @@
     min-height: 1em;
   }
   
-  // Headings
-  h1, h2, h3, h4, h5, h6 {
-    margin: 1em 0 0.5em 0;
+  // ─── D&D PHB Headings ────────────────────────────────────
+  // MrEavesRemake for h1-h4, ScalySansSmallCaps for h5
+  // Colors and proportions match the Player's Handbook theme
+  // Sizes scaled up from print (cm) for editor readability
+
+  h1, h2, h3, h4 {
+    font-family: 'MrEavesRemake', 'Palatino Linotype', 'Palatino', serif;
+    color: #58180D;
+    margin: 1em 0 0.3em 0;
+    font-weight: normal;
+  }
+
+  h1 {
+    font-size: 28px;
+    line-height: 1em;
+  }
+
+  h2 {
+    font-size: 24px;
+    line-height: 0.988em;
+  }
+
+  h3 {
+    font-size: 18px;
+    line-height: 1.2em;
+    border-bottom: 2px solid #C0AD6A;
+    padding-bottom: 2px;
+  }
+
+  h4 {
+    font-size: 16px;
+    line-height: 1.2em;
+  }
+
+  h5 {
+    font-family: 'ScalySansSmallCapsRemake', 'Palatino Linotype', 'Palatino', serif;
+    font-size: 14px;
+    line-height: 1.2em;
+    margin: 0.8em 0 0.3em 0;
+    font-weight: normal;
+  }
+
+  h6 {
+    font-size: 12px;
+    margin: 0.8em 0 0.3em 0;
     line-height: 1.2;
   }
   
@@ -177,6 +273,13 @@
     border-left-width: 3px;
   }
 
+  // ─── Monster Wide Variant ────────────────────────────────
+  // Slightly darker maroon to distinguish wide (two-column) blocks
+  div.monster.wide {
+    .block-label(#7B2318; #fdf0ea; "MONSTER (WIDE)");
+    border-left-width: 3px;
+  }
+
   // ─── Quote Block ──────────────────────────────────────────
   // Purple — read-aloud quotes
   div.quote {
@@ -210,8 +313,44 @@
     .block-label(#856422; #fdf8f0; "SPELL LIST");
   }
 
-  // ─── Cover Block ──────────────────────────────────────────
-  // Gold — cover page sections
+  // ─── Index Block ─────────────────────────────────────────
+  // Dark gray — index/glossary pages
+  div.index {
+    .block-label(#555; #f5f5f5; "INDEX");
+  }
+
+  // ─── Cover Blocks ─────────────────────────────────────────
+  // Each cover type gets a distinct label and accent color
+
+  // Front Cover — deep crimson
+  div.frontCover,
+  section.frontCover {
+    .block-label(#8b1a1a; #fdf0f0; "FRONT COVER");
+    min-height: 3em;
+  }
+
+  // Inside Cover — dark teal
+  div.insideCover,
+  section.insideCover {
+    .block-label(#2a6b6b; #edf7f7; "INSIDE COVER");
+    min-height: 3em;
+  }
+
+  // Back Cover — slate/charcoal
+  div.backCover,
+  section.backCover {
+    .block-label(#3d3d3d; #f2f2f2; "BACK COVER");
+    min-height: 3em;
+  }
+
+  // Part/Chapter Cover — royal purple
+  div.partCover,
+  section.partCover {
+    .block-label(#5b2d8e; #f4eefa; "PART COVER");
+    min-height: 3em;
+  }
+
+  // Legacy fallback — old documents with just .cover
   section.cover,
   div.cover {
     .block-label(#8b7e4e; #fdf8f0; "COVER PAGE");
@@ -238,6 +377,30 @@
     border: 1px dashed #c9ad6a;
     border-radius: 3px;
     padding: 0 4px;
+  }
+
+  // ─── Watercolor Block ────────────────────────────────────
+  // Teal — decorative watercolor stain overlays
+  div[class^="watercolor"] {
+    .block-label(#2e8b8b; #e8f5f5; "WATERCOLOR");
+    min-height: 2em;
+    opacity: 0.8;
+  }
+
+  // ─── Watermark Block ───────────────────────────────────
+  // Gray — background watermark text overlays
+  div.watermark {
+    .block-label(#666; #f5f5f5; "WATERMARK");
+    border-style: dashed;
+    font-style: italic;
+    opacity: 0.6;
+  }
+
+  // ─── Artist Credit Block ───────────────────────────────
+  // Warm brown — artist attribution labels
+  div.artist {
+    .block-label(#766649; #f5efe6; "ARTIST CREDIT");
+    font-size: 0.85em;
   }
 
   // ─── Icon Marks ───────────────────────────────────────────
