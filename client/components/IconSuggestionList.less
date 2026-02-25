@@ -1,0 +1,139 @@
+// ─────────────────────────────────────────────────────────
+// IconSuggestionList — Inline icon autocomplete dropdown
+// Dark theme, VS Code-style autocomplete
+// ─────────────────────────────────────────────────────────
+
+@suggestion-bg: #2a2a2a;
+@suggestion-text: #e0e0e0;
+@suggestion-selected: #094771;
+@suggestion-border: #454545;
+@suggestion-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+@suggestion-radius: 6px;
+@suggestion-width: 320px;
+@suggestion-max-height: 300px;
+@suggestion-item-height: 32px;
+
+// Badge colors per icon set
+@badge-ei: #c9ad6a; // Elderberry — parchment gold
+@badge-gi: #7cb342; // Game Icons — forest green
+@badge-fa: #3b82f6; // Font Awesome — blue
+@badge-df: #e53935; // Dice — red
+
+// ── Floating container ──────────────────────────────────
+.icon-suggestion {
+  position: fixed;
+  z-index: 1000;
+  width: @suggestion-width;
+  max-height: @suggestion-max-height;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: @suggestion-bg;
+  border: 1px solid @suggestion-border;
+  border-radius: @suggestion-radius;
+  box-shadow: @suggestion-shadow;
+  padding: 4px 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+
+  // Thin scrollbar (WebKit)
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 3px;
+  }
+}
+
+// ── Individual item row ─────────────────────────────────
+.icon-suggestion__item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: @suggestion-item-height;
+  padding: 0 10px;
+  cursor: pointer;
+  color: @suggestion-text;
+  transition: background 0.05s;
+  user-select: none;
+
+  &:hover {
+    background: fade(@suggestion-selected, 60%);
+  }
+
+  &--selected {
+    background: @suggestion-selected;
+    color: #fff;
+  }
+}
+
+// ── Icon preview (24px box) ─────────────────────────────
+.icon-suggestion__preview {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  font-size: 16px;
+  color: #ccc;
+
+  .icon-suggestion__item--selected & {
+    color: #fff;
+  }
+
+  i {
+    font-style: normal;
+    line-height: 1;
+  }
+}
+
+// ── Icon name ───────────────────────────────────────────
+.icon-suggestion__name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 13px;
+  line-height: 1;
+}
+
+// ── Set badge (ei / gi / fa / df) ───────────────────────
+.icon-suggestion__badge {
+  flex-shrink: 0;
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  line-height: 1;
+  color: #1a1a1a;
+
+  &--elderberry {
+    background: @badge-ei;
+  }
+  &--game {
+    background: @badge-gi;
+  }
+  &--fontawesome {
+    background: @badge-fa;
+    color: #fff;
+  }
+  &--dice {
+    background: @badge-df;
+    color: #fff;
+  }
+}
+
+// ── Query text decoration (subtle underline in editor) ──
+.icon-suggestion-query {
+  text-decoration: underline;
+  text-decoration-color: #888;
+  text-decoration-style: dotted;
+  text-underline-offset: 3px;
+}

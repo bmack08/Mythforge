@@ -34,6 +34,7 @@ import LockNotification from './lockNotification/lockNotification.jsx';
 
 import { DEFAULT_BREW_LOAD } from '../../../../server/brewDefaults.js';
 import { printCurrentBrew, fetchThemeBundle } from '../../../../shared/helpers.js';
+import { markdownToTiptap } from '../../../../shared/helpers/markdownToTiptap.js';
 
 import { updateHistory, versionHistoryGarbageCollection } from '../../utils/versionHistory.js';
 
@@ -80,11 +81,31 @@ const EditPage = createClass({
 	// Derive nearest section (H1) title for current cursor page
 	getCurrentSectionHint : function(){
 		try {
-			const text = this.state.brew?.text || '';
+			const text = this.state.brew?.text;
+			if (!text) return this.state.brew?.title || '';
+
+			// TipTap JSON - extract headings from document nodes
+			if (typeof text === 'object' && text.type === 'doc') {
+				const headings = [];
+				const nodes = text.content || [];
+				let pageCount = 0;
+				const targetPage = (this.state.currentEditorCursorPageNum || 1) - 1;
+				for (const node of nodes) {
+					if (node.type === 'pageBreak') pageCount++;
+					if (pageCount > targetPage) break;
+					if (node.type === 'heading' && node.attrs?.level === 1) {
+						const headingText = (node.content || []).map((n) => n.text || '').join('');
+						if (headingText.trim()) headings.push(headingText.trim());
+					}
+				}
+				return headings.length > 0 ? headings[headings.length - 1] : (this.state.brew?.title || '');
+			}
+
+			// Legacy string-based content
 			const renderer = this.state.brew?.renderer || 'V3';
 			const pageRegexV3 = /^(?=\\page(?:break)?(?: *{[^\n{}]*})?$)/m;
 			const splitPattern = renderer === 'V3' ? pageRegexV3 : /\\page/;
-			const pages = text.split(splitPattern);
+			const pages = String(text).split(splitPattern);
 			const idx = Math.max(0, (this.state.currentEditorCursorPageNum||1) - 1);
 			const uptoText = pages.slice(0, Math.min(pages.length, idx+1)).join('\n');
 			const headingRegex = /^#\s+(.+)$/gm;
@@ -718,11 +739,27 @@ const EditPage = createClass({
 					brew={this.state.brew}
 					onContentGenerate={(content, replaceAll) => {
 						if (replaceAll) {
-							this.handleTextChange(content);
+							// Content from AI is a markdown string — convert to TipTap JSON
+							if (typeof content === 'string') {
+								this.handleTextChange(markdownToTiptap(content));
+							} else {
+								this.handleTextChange(content);
+							}
 						} else {
-							const currentText = this.state.brew.text;
-							const newText = currentText + '\n\n' + content + '\n\n';
-							this.handleTextChange(newText);
+							// Append mode: convert AI content to TipTap JSON and merge content arrays
+							const currentDoc = this.state.brew.text;
+							if (typeof currentDoc === 'object' && currentDoc.type === 'doc') {
+								const newDoc = typeof content === 'string' ? markdownToTiptap(content) : content;
+								const mergedDoc = {
+									type    : 'doc',
+									content : [...(currentDoc.content || []), ...(newDoc.content || [])]
+								};
+								this.handleTextChange(mergedDoc);
+							} else {
+								// Fallback for legacy string text
+								const newText = (currentDoc || '') + '\n\n' + content + '\n\n';
+								this.handleTextChange(newText);
+							}
 						}
 					}}
 					onMetaChange={this.handleMetaChange}

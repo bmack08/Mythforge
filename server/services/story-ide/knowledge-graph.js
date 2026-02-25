@@ -372,6 +372,165 @@ export class KnowledgeGraph {
     return { warnings };
   }
 
+  /**
+   * BFS traversal of entity relationships to find all connected entities
+   * up to maxDepth hops away.
+   */
+  async getEntityDependencyTree(projectId, entityName, maxDepth = 3) {
+    const entityId = await this.getEntityIdByName(projectId, entityName);
+    if (!entityId) return { root: entityName, nodes: [], edges: [] };
+
+    const visited = new Set();
+    const nodes = [];
+    const edges = [];
+    const queue = [{ id: entityId, name: entityName, depth: 0 }];
+
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (visited.has(current.id)) continue;
+      visited.add(current.id);
+
+      nodes.push({ id: current.id, name: current.name, depth: current.depth });
+
+      if (current.depth >= maxDepth) continue;
+
+      // Get all relationships involving this entity
+      const rels = await new Promise((resolve, reject) => {
+        const sql = `
+          SELECT r.*,
+            e1.name as entity1_name, e1.id as e1_id,
+            e2.name as entity2_name, e2.id as e2_id
+          FROM story_relationships r
+          JOIN story_entities e1 ON r.entity1_id = e1.id
+          JOIN story_entities e2 ON r.entity2_id = e2.id
+          WHERE r.project_id = ? AND (r.entity1_id = ? OR r.entity2_id = ?)
+        `;
+        this.db.all(sql, [projectId, current.id, current.id], (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows || []);
+        });
+      });
+
+      for (const rel of rels) {
+        const neighborId = rel.e1_id === current.id ? rel.e2_id : rel.e1_id;
+        const neighborName = rel.e1_id === current.id ? rel.entity2_name : rel.entity1_name;
+
+        edges.push({
+          source: current.name,
+          target: neighborName,
+          type: rel.relationship_type,
+          strength: rel.strength,
+          context: rel.context
+        });
+
+        if (!visited.has(neighborId)) {
+          queue.push({ id: neighborId, name: neighborName, depth: current.depth + 1 });
+        }
+      }
+    }
+
+    return { root: entityName, nodes, edges };
+  }
+
+  /**
+   * Find all document chunks that mention a specific entity.
+   */
+  async getEntityReferences(projectId, entityName) {
+    return new Promise((resolve, reject) => {
+      const sql = `
+        SELECT * FROM chunks
+        WHERE story_id = ? AND content LIKE ?
+        ORDER BY CAST(COALESCE(
+          json_extract(metadata, '$.position_start'), '0'
+        ) AS INTEGER) ASC
+      `;
+      this.db.all(sql, [projectId, `%${entityName}%`], (err, rows) => {
+        if (err) reject(err);
+        else resolve((rows || []).map(row => ({
+          ...row,
+          content: typeof row.content === 'string' ? row.content : JSON.stringify(row.content)
+        })));
+      });
+    });
+  }
+
+  /**
+   * Detect entities that would be "orphaned" if entityName is removed.
+   * Uses articulation point detection — finds entities whose only connection
+   * to the rest of the graph passes through the target entity.
+   */
+  async detectPlotDependencies(projectId, entityName) {
+    const entityId = await this.getEntityIdByName(projectId, entityName);
+    if (!entityId) return { dependentEntities: [], brokenRelationships: [] };
+
+    const entities = await this.getProjectEntities(projectId);
+    const relationships = await this.getProjectRelationships(projectId);
+
+    // Build adjacency list excluding the target entity
+    const adj = new Map();
+    const allIds = new Set();
+
+    for (const e of entities) {
+      if (e.id === entityId) continue;
+      allIds.add(e.id);
+      adj.set(e.id, new Set());
+    }
+
+    const brokenRelationships = [];
+
+    for (const rel of relationships) {
+      if (rel.entity1_id === entityId || rel.entity2_id === entityId) {
+        // Relationships directly involving the removed entity
+        const otherEntity = entities.find(e =>
+          e.id === (rel.entity1_id === entityId ? rel.entity2_id : rel.entity1_id)
+        );
+        brokenRelationships.push({
+          type: rel.relationship_type,
+          entity: otherEntity?.name || 'Unknown',
+          context: rel.context,
+          strength: rel.strength
+        });
+        continue;
+      }
+      // Only add edges between remaining entities
+      if (adj.has(rel.entity1_id) && adj.has(rel.entity2_id)) {
+        adj.get(rel.entity1_id).add(rel.entity2_id);
+        adj.get(rel.entity2_id).add(rel.entity1_id);
+      }
+    }
+
+    // BFS from first remaining entity to find connected component
+    const remaining = Array.from(allIds);
+    if (remaining.length === 0) return { dependentEntities: [], brokenRelationships };
+
+    const visited = new Set();
+    const bfsQueue = [remaining[0]];
+    visited.add(remaining[0]);
+
+    while (bfsQueue.length > 0) {
+      const current = bfsQueue.shift();
+      const neighbors = adj.get(current) || new Set();
+      for (const n of neighbors) {
+        if (!visited.has(n)) {
+          visited.add(n);
+          bfsQueue.push(n);
+        }
+      }
+    }
+
+    // Entities not reached by BFS are orphaned
+    const dependentEntities = entities
+      .filter(e => e.id !== entityId && !visited.has(e.id))
+      .map(e => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        description: e.description
+      }));
+
+    return { dependentEntities, brokenRelationships };
+  }
+
   // Context-aware search for GPT
   async getContextForQuery(projectId, query, limit = 5) {
     // Simple text search for now - can be enhanced with vector embeddings later

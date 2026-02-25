@@ -44,6 +44,7 @@ export default Node.create({
   
   parseHTML() {
     return [
+      { tag: 'div.monster.frame' },
       { tag: 'div.monster' },
       { tag: 'div.statblock' },
       { tag: 'section.monster' },
@@ -51,7 +52,7 @@ export default Node.create({
   },
   
   renderHTML({ node, HTMLAttributes }) {
-    const attrs = { class: 'monster', ...HTMLAttributes };
+    const attrs = { class: 'monster frame', ...HTMLAttributes };
     
     // If monster name exists, add header
     if (node.attrs.name) {

@@ -8,8 +8,41 @@ import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
 import ImageWithAttributes from './ImageWithAttributes.js';
 import { TableRow } from '@tiptap/extension-table-row';
-import { TableCell } from '@tiptap/extension-table-cell';
-import { TableHeader } from '@tiptap/extension-table-header';
+import { TableCell as BaseTableCell } from '@tiptap/extension-table-cell';
+import { TableHeader as BaseTableHeader } from '@tiptap/extension-table-header';
+
+// Extend TableCell and TableHeader with textAlign support for markdown alignment syntax
+const TableCell = BaseTableCell.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      textAlign: {
+        default: null,
+        parseHTML: (element) => element.style.textAlign || null,
+        renderHTML: (attributes) => {
+          if (!attributes.textAlign) return {};
+          return { style: `text-align: ${attributes.textAlign}` };
+        },
+      },
+    };
+  },
+});
+
+const TableHeader = BaseTableHeader.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      textAlign: {
+        default: null,
+        parseHTML: (element) => element.style.textAlign || null,
+        renderHTML: (attributes) => {
+          if (!attributes.textAlign) return {};
+          return { style: `text-align: ${attributes.textAlign}` };
+        },
+      },
+    };
+  },
+});
 import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Highlight } from '@tiptap/extension-highlight';
@@ -36,6 +69,7 @@ import CoverBlock from './CoverBlock.js';
 import CreditsBlock from './CreditsBlock.js';
 import MustacheSpan from './MustacheSpan.js';
 import MustacheBlock from './MustacheBlock.js';
+import Comment from './Comment.js';
 
 // D&D content blocks
 import SpellBlock from './SpellBlock.js';
@@ -52,6 +86,7 @@ import TableBlock from './TableBlock.js';
 
 // Inline marks - D&D reference marks
 import IconMark from './IconMark.js';
+import IconSuggestion from './IconSuggestion.js';
 import Emoji from './Emoji.js';
 import SpellMark from './SpellMark.js';
 import AbilityMark from './AbilityMark.js';
@@ -108,7 +143,8 @@ const baseExtensions = [
   ResetCounting,
   MustacheSpan,
   MustacheBlock,
-  
+  Comment,
+
   // PHB Content Blocks
   QuoteBlock,
   SidebarBlock,
@@ -127,6 +163,7 @@ const baseExtensions = [
   
   // Inline Marks & Nodes
   IconMark,
+  IconSuggestion,
   Emoji,
   SpellMark,
   AbilityMark,
@@ -191,7 +228,8 @@ export {
   ResetCounting,
   MustacheSpan,
   MustacheBlock,
-  
+  Comment,
+
   // Content Blocks
   QuoteBlock,
   SidebarBlock,
@@ -210,6 +248,7 @@ export {
 
   // Inline Marks
   IconMark,
+  IconSuggestion,
   Emoji,
   SpellMark,
   AbilityMark,

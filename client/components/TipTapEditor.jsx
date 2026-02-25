@@ -5,6 +5,8 @@ import extensions from 'client/extensions/index.js';
 import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
 import { normalizeTipTapDoc } from 'shared/helpers/normalizeDoc.js';
 import LineNumberGutter from './LineNumberGutter.jsx';
+import TipTapToolbar from './TipTapToolbar.jsx';
+import IconSuggestionList from './IconSuggestionList.jsx';
 
 
 // value: TipTap JSON doc OR legacy markdown string
@@ -138,26 +140,66 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     editor,
     insertContent: (content) => {
       if (!editor) return;
-      
-      // Accept both structured JSON and legacy markdown strings
-      let insertableContent;
-      
-      if (typeof content === 'string') {
-        // Legacy markdown text - convert to TipTap JSON
-        const doc = markdownToTiptap(content);
-        insertableContent = doc.content;
-      } else if (typeof content === 'object') {
-        // Already structured TipTap JSON - use directly
-        insertableContent = content;
-      } else {
-        return; // Invalid content type
+
+      try {
+        // Accept both structured JSON and legacy markdown strings
+        let insertableContent;
+
+        if (typeof content === 'string') {
+          // Legacy markdown text - convert to TipTap JSON
+          const doc = markdownToTiptap(content);
+          insertableContent = doc.content;
+        } else if (typeof content === 'object') {
+          // Already structured TipTap JSON - use directly
+          insertableContent = content;
+        } else {
+          return; // Invalid content type
+        }
+
+        // Insert content at current cursor position
+        editor.chain().focus().insertContent(insertableContent).run();
+      } catch (err) {
+        console.error('[TipTapEditor] Failed to insert content:', err);
       }
-      
-      // Insert content at current cursor position
-      editor.chain().focus().insertContent(insertableContent).run();
     },
     getJSON: () => editor?.getJSON(),
     setContent: (content) => editor?.commands.setContent(content),
+    // Scroll editor to the Nth page (0-indexed). Finds the Nth pageBreak node and scrolls it into view.
+    scrollToPage: (pageNum) => {
+      if (!editor || pageNum <= 0) return;
+      let breakCount = 0;
+      let targetPos = null;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'pageBreak') {
+          breakCount++;
+          if (breakCount === pageNum && targetPos === null) {
+            targetPos = pos;
+            return false; // Stop traversal
+          }
+        }
+      });
+      if (targetPos !== null) {
+        // Set cursor near the page break and scroll into view
+        editor.commands.setTextSelection(targetPos);
+        editor.commands.scrollIntoView();
+      } else if (pageNum === 1) {
+        // First page — scroll to top
+        editor.commands.setTextSelection(0);
+        editor.commands.scrollIntoView();
+      }
+    },
+    // Get the current page number based on cursor position
+    getCurrentPage: () => {
+      if (!editor) return 1;
+      const cursorPos = editor.state.selection.from;
+      let pageNum = 1;
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === 'pageBreak' && pos < cursorPos) {
+          pageNum++;
+        }
+      });
+      return pageNum;
+    },
   }), [editor]);
 
   // Render placeholder until editor is ready to avoid hydration mismatch
@@ -172,19 +214,11 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
 
   return (
     <div className='tiptap-editor'>
-      <div className='tiptap-editor__toolbar'>
-        <button onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()} title='H1'>H1</button>
-        <button onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()} title='H2'>H2</button>
-        <button onClick={() => editor.chain().focus().toggleBold().run()} title='Bold'><strong>B</strong></button>
-        <button onClick={() => editor.chain().focus().toggleItalic().run()} title='Italic'><em>I</em></button>
-        <button onClick={() => editor.chain().focus().setHorizontalRule().run()} title='HR'>---</button>
-        <span style={{borderLeft: '1px solid #ccc', margin: '0 4px'}} />
-        <button onClick={() => editor.chain().focus().setPageBreak().run()} title='Insert Page Break (\\page)'>📄 Page</button>
-        <button onClick={() => editor.chain().focus().setColumnBreak().run()} title='Insert Column Break (\\column)'>⫼ Column</button>
-        <button onClick={() => editor.chain().focus().insertFootnote().run()} title='Insert Footnote ({{footnote}})'>📝 Footnote</button>
-        <span style={{borderLeft: '1px solid #ccc', margin: '0 4px'}} />
-  <button onClick={() => setShowLineNumbers(v => !v)} title='Toggle line numbers'>#</button>
-      </div>
+      <TipTapToolbar
+        editor={editor}
+        showLineNumbers={showLineNumbers}
+        onToggleLineNumbers={() => setShowLineNumbers((v) => !v)}
+      />
       <div className='tiptap-editor__content' ref={contentRef}>
         <LineNumberGutter
           contentEl={contentRef.current}
@@ -192,6 +226,7 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
           enabled={showLineNumbers}
         />
         <EditorContent editor={editor} />
+        <IconSuggestionList editor={editor} />
       </div>
     </div>
   );

@@ -1,0 +1,412 @@
+import React, { useState, useCallback, useEffect } from 'react';
+import IconPicker from './IconPicker';
+import './TipTapToolbar.less';
+
+/**
+ * TipTapToolbar - Comprehensive grouped formatting toolbar for the TipTap editor.
+ *
+ * Groups:
+ *   1. Text Formatting  (headings, bold, italic, strike, lists)
+ *   2. Structure         (HR, page break, column break, wide block)
+ *   3. D&D Blocks        (dropdown: quote, note, sidebar, monster, spell, feature, descriptive)
+ *   4. Insert            (image, table, footnote, comment, link)
+ *   5. View              (line-numbers toggle)
+ *
+ * Receives the TipTap `editor` instance and state callbacks as props.
+ */
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/** Small wrapper so we can re-render when the editor selection changes. */
+function useForceUpdate() {
+  const [, setTick] = useState(0);
+  return useCallback(() => setTick((t) => t + 1), []);
+}
+
+// ---------------------------------------------------------------------------
+// Toolbar button
+// ---------------------------------------------------------------------------
+
+function TBtn({ editor, onClick, isActive, title, children, disabled }) {
+  return (
+    <button
+      className={`tiptap-toolbar__btn${isActive ? ' is-active' : ''}`}
+      onClick={onClick}
+      title={title}
+      disabled={disabled}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dropdown wrapper (for D&D Blocks, etc.)
+// ---------------------------------------------------------------------------
+
+function ToolbarDropdown({ label, icon, children }) {
+  const [open, setOpen] = useState(false);
+
+  // Close on outside click
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (!e.target.closest('.tiptap-toolbar__dropdown')) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className={`tiptap-toolbar__dropdown${open ? ' is-open' : ''}`}>
+      <button
+        className="tiptap-toolbar__btn tiptap-toolbar__dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        title={label}
+        type="button"
+      >
+        {icon && <i className={icon} />}
+        <span className="tiptap-toolbar__dropdown-label">{label}</span>
+        <i className="fas fa-caret-down tiptap-toolbar__caret" />
+      </button>
+      {open && (
+        <div className="tiptap-toolbar__dropdown-menu">
+          {React.Children.map(children, (child) =>
+            child
+              ? React.cloneElement(child, {
+                  onClick: (...args) => {
+                    child.props.onClick?.(...args);
+                    setOpen(false);
+                  },
+                })
+              : null
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Divider
+// ---------------------------------------------------------------------------
+
+function Divider() {
+  return <span className="tiptap-toolbar__divider" />;
+}
+
+// ---------------------------------------------------------------------------
+// Main Toolbar
+// ---------------------------------------------------------------------------
+
+export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNumbers }) {
+  const forceUpdate = useForceUpdate();
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+
+  // Subscribe to editor transaction events so active-state buttons re-render
+  useEffect(() => {
+    if (!editor) return;
+    editor.on('transaction', forceUpdate);
+    return () => {
+      editor.off('transaction', forceUpdate);
+    };
+  }, [editor, forceUpdate]);
+
+  if (!editor) return null;
+
+  // Shorthand
+  const chain = () => editor.chain().focus();
+  const active = (name, attrs) => editor.isActive(name, attrs);
+  const can = (cmd) => {
+    try {
+      return editor.can()[cmd]?.();
+    } catch {
+      return true; // If we can't check, assume it's available
+    }
+  };
+
+  // ----- Image insert helper -----
+  const handleInsertImage = () => {
+    const url = window.prompt('Image URL:');
+    if (url) {
+      chain().setImage({ src: url }).run();
+    }
+  };
+
+  // ----- Link insert helper -----
+  const handleInsertLink = () => {
+    const previousUrl = editor.getAttributes('link').href;
+    const url = window.prompt('Link URL:', previousUrl || 'https://');
+    if (url === null) return; // cancelled
+    if (url === '') {
+      chain().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    chain().extendMarkRange('link').setLink({ href: url, target: '_blank' }).run();
+  };
+
+  return (
+    <div className="tiptap-toolbar">
+      {/* ── Group 1: Text Formatting ──────────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="text">
+        <TBtn
+          editor={editor}
+          isActive={active('heading', { level: 1 })}
+          onClick={() => chain().toggleHeading({ level: 1 }).run()}
+          title="Heading 1"
+        >
+          H1
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('heading', { level: 2 })}
+          onClick={() => chain().toggleHeading({ level: 2 }).run()}
+          title="Heading 2"
+        >
+          H2
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('heading', { level: 3 })}
+          onClick={() => chain().toggleHeading({ level: 3 }).run()}
+          title="Heading 3"
+        >
+          H3
+        </TBtn>
+
+        <Divider />
+
+        <TBtn
+          editor={editor}
+          isActive={active('bold')}
+          onClick={() => chain().toggleBold().run()}
+          title="Bold (Ctrl+B)"
+        >
+          <i className="fas fa-bold" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('italic')}
+          onClick={() => chain().toggleItalic().run()}
+          title="Italic (Ctrl+I)"
+        >
+          <i className="fas fa-italic" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('strike')}
+          onClick={() => chain().toggleStrike().run()}
+          title="Strikethrough"
+        >
+          <i className="fas fa-strikethrough" />
+        </TBtn>
+
+        <Divider />
+
+        <TBtn
+          editor={editor}
+          isActive={active('bulletList')}
+          onClick={() => chain().toggleBulletList().run()}
+          title="Bullet List"
+        >
+          <i className="fas fa-list-ul" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('orderedList')}
+          onClick={() => chain().toggleOrderedList().run()}
+          title="Ordered List"
+        >
+          <i className="fas fa-list-ol" />
+        </TBtn>
+      </div>
+
+      <Divider />
+
+      {/* ── Group 2: Structure ─────────────────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="structure">
+        <TBtn
+          editor={editor}
+          onClick={() => chain().setHorizontalRule().run()}
+          title="Horizontal Rule"
+        >
+          <i className="fas fa-minus" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().setPageBreak().run()}
+          title="Page Break (\page)"
+        >
+          <i className="fas fa-file" />
+          <span className="tiptap-toolbar__btn-label">Page</span>
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().setColumnBreak().run()}
+          title="Column Break (\column)"
+        >
+          <i className="fas fa-columns" />
+          <span className="tiptap-toolbar__btn-label">Column</span>
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().insertWide().run()}
+          title="Wide Block (spans both columns)"
+        >
+          <i className="fas fa-arrows-alt-h" />
+          <span className="tiptap-toolbar__btn-label">Wide</span>
+        </TBtn>
+      </div>
+
+      <Divider />
+
+      {/* ── Group 3: D&D Blocks (dropdown) ─────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="dnd">
+        <ToolbarDropdown label="D&D Blocks" icon="fas fa-dragon">
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertQuote().run()}
+            title="Quote / Callout block"
+          >
+            <i className="fas fa-quote-left" />
+            <span>Quote Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertNote().run()}
+            title="Note / Annotation block"
+          >
+            <i className="fas fa-sticky-note" />
+            <span>Note Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertSidebar().run()}
+            title="Sidebar info box"
+          >
+            <i className="fas fa-window-maximize" />
+            <span>Sidebar Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertMonster().run()}
+            title="Monster stat block"
+          >
+            <i className="fas fa-skull-crossbones" />
+            <span>Monster Stat Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertSpell().run()}
+            title="Spell description block"
+          >
+            <i className="fas fa-magic" />
+            <span>Spell Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertFeature().run()}
+            title="Class/Race feature block"
+          >
+            <i className="fas fa-shield-alt" />
+            <span>Class Feature</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertDescriptive().run()}
+            title="Descriptive text block (PHB style read-aloud box)"
+          >
+            <i className="fas fa-scroll" />
+            <span>Descriptive Block</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertCover().run()}
+            title="Cover page section"
+          >
+            <i className="fas fa-book-open" />
+            <span>Cover Page</span>
+          </button>
+        </ToolbarDropdown>
+      </div>
+
+      <Divider />
+
+      {/* ── Group 4: Insert ────────────────────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="insert">
+        <TBtn editor={editor} onClick={handleInsertImage} title="Insert Image">
+          <i className="fas fa-image" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() =>
+            chain()
+              .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+              .run()
+          }
+          title="Insert Table (3x3)"
+        >
+          <i className="fas fa-table" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().insertFootnote().run()}
+          title="Insert Footnote"
+        >
+          <i className="fas fa-superscript" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().insertComment().run()}
+          title="Insert Comment (hidden in preview)"
+        >
+          <i className="fas fa-comment" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={active('link')}
+          onClick={handleInsertLink}
+          title="Insert / Edit Link"
+        >
+          <i className="fas fa-link" />
+        </TBtn>
+        <div className="tiptap-toolbar__icon-picker-wrap">
+          <TBtn
+            editor={editor}
+            isActive={iconPickerOpen}
+            onClick={() => setIconPickerOpen((v) => !v)}
+            title="Insert Icon"
+          >
+            <i className="fas fa-icons" />
+          </TBtn>
+          {iconPickerOpen && (
+            <IconPicker
+              editor={editor}
+              onClose={() => setIconPickerOpen(false)}
+            />
+          )}
+        </div>
+      </div>
+
+      <Divider />
+
+      {/* ── Group 5: View ──────────────────────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="view">
+        <TBtn
+          editor={editor}
+          isActive={showLineNumbers}
+          onClick={onToggleLineNumbers}
+          title="Toggle Line Numbers"
+        >
+          <i className="fas fa-list-ol" style={{ opacity: 0.7 }} />
+          <span className="tiptap-toolbar__btn-label">#</span>
+        </TBtn>
+      </div>
+    </div>
+  );
+}

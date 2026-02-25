@@ -39,6 +39,9 @@ const Navbar = createClass({
 				<Nav.item newTab={true} href='/changelog' color='purple' icon='far fa-file-alt'>
 					{`v${this.state.ver}`}
 				</Nav.item>
+				<Nav.item href='/new-campaign' color='purple' icon='fas fa-hat-wizard'>
+					Campaign Generator
+				</Nav.item>
 				<ProjectCreationNavItem />
 				<ProjectDashboardNavItem />
 				<CollaborationNavItem />

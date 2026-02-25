@@ -575,6 +575,16 @@ app.get('/new', asyncHandler(async(req, res, next)=>{
 	return next();
 }));
 
+//Campaign Wizard Page
+app.get('/new-campaign', asyncHandler(async(req, res, next)=>{
+	req.ogMeta = { ...defaultMetaTags,
+		title       : 'Campaign Generator',
+		description : 'Create an AI-generated D&D 5e campaign sourcebook'
+	};
+
+	return next();
+}));
+
 //Projects Page
 app.get('/projects', asyncHandler(async(req, res, next)=>{
 	req.ogMeta = { ...defaultMetaTags,
@@ -699,6 +709,107 @@ app.get('/vault', asyncHandler(async(req, res, next)=>{
 		description : 'Search for Brews'
 	};
 	return next();
+}));
+
+// ============================================================================
+// AI CAMPAIGN GENERATION API
+// Must be registered BEFORE the catch-all middleware below
+// ============================================================================
+app.post('/api/mythwright/generate', asyncHandler(async (req, res) => {
+	console.log('Received campaign generation request');
+
+	try {
+		const { AIService } = await import('./services/ai/index.js');
+		const { ContentGenerationOrchestrator } = await import('./services/ai/content-generation-orchestrator.js');
+
+		// Process reference files if provided
+		let referenceContext = '';
+		const { references, additionalContext } = req.body;
+
+		if (references && references.length > 0) {
+			console.log(`Processing ${references.length} reference file(s)...`);
+			const { PDFProcessor } = await import('./services/story-ide/pdf-processor.js');
+			const pdfProcessor = new PDFProcessor();
+
+			for (const ref of references) {
+				try {
+					if (ref.encoding === 'text' && ref.content) {
+						referenceContext += `\n--- From ${ref.name} ---\n${ref.content.substring(0, 5000)}\n`;
+					} else if (ref.encoding === 'base64' && (ref.mimeType === 'application/pdf' || ref.name.toLowerCase().endsWith('.pdf'))) {
+						const pdfBuffer = Buffer.from(ref.content, 'base64');
+						const extracted = await pdfProcessor.extractPDFText(pdfBuffer);
+						if (extracted && extracted.trim()) {
+							referenceContext += `\n--- From ${ref.name} ---\n${extracted.substring(0, 5000)}\n`;
+						}
+					}
+				} catch (fileErr) {
+					console.warn(`Failed to process reference ${ref.name}:`, fileErr.message);
+				}
+			}
+		}
+
+		if (additionalContext) {
+			referenceContext += `\n--- DM Notes ---\n${additionalContext}\n`;
+		}
+
+		// Pass reference context to the orchestrator via parameters
+		const params = { ...req.body, referenceContext: referenceContext || undefined };
+		delete params.references; // Don't send raw file data to orchestrator
+
+		const orchestrator = new ContentGenerationOrchestrator();
+		const campaign = await orchestrator.generateCampaign(params);
+
+		// Assemble the structured campaign output into a single Homebrewery markdown document
+		const sections = [];
+
+		if (campaign.coverPage) sections.push(campaign.coverPage);
+		if (campaign.tableOfContents) sections.push(campaign.tableOfContents);
+
+		if (campaign.chapters && campaign.chapters.length > 0) {
+			for (const chapter of campaign.chapters) {
+				sections.push(chapter.content || '');
+			}
+		}
+
+		if (campaign.appendices && campaign.appendices.length > 0) {
+			for (const appendix of campaign.appendices) {
+				sections.push(`\\page\n\n${appendix.content || ''}`);
+			}
+		}
+
+		const fullMarkdown = sections.filter(Boolean).join('\n\n\\page\n\n');
+
+		// Save the generated campaign as a new brew in the database
+		const { Homebrew } = getModels();
+		const { markdownToTiptap } = await import('../shared/helpers/markdownToTiptap.js');
+
+		// Convert generated Homebrewery markdown to TipTap JSON
+		const tiptapDoc = markdownToTiptap(fullMarkdown);
+
+		const brew = await Homebrew.create({
+			title       : req.body.title || 'AI Generated Campaign',
+			text        : tiptapDoc,
+			renderer    : 'V3',
+			theme       : '5ePHB',
+			description : `AI-generated ${req.body.adventureType || ''} campaign for ${req.body.partySize || 4} players, levels ${req.body.level || 'low'}`
+		});
+
+		res.json({
+			success  : true,
+			editId   : brew.editId,
+			shareId  : brew.shareId,
+			title    : brew.title,
+			url      : `/edit/${brew.editId}`,
+			metadata : campaign.metadata
+		});
+
+	} catch (error) {
+		console.error('Campaign generation error:', error);
+		res.status(500).json({
+			success: false,
+			error: 'Campaign generation failed: ' + error.message
+		});
+	}
 }));
 
 //Send rendered page

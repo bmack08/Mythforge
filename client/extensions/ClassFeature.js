@@ -1,32 +1,33 @@
 import { Node } from '@tiptap/core';
 
 /**
- * ClassFeature - D&D 5e PHB-style class feature block
- * Renders as: <div class="classFeature"><div class="block"></div></div>
+ * ClassFeature - D&D 5e PHB-style descriptive/class feature block
+ * Renders as: <div class="descriptive"> to match the PHB theme CSS
  */
 export default Node.create({
   name: 'classFeature',
-  
+
   group: 'block',
-  
+
   content: 'block+',
-  
+
   defining: true,
-  
+
   parseHTML() {
     return [
+      { tag: 'div.descriptive' },
       { tag: 'div.classFeature' },
       { tag: 'div[data-type="classFeature"]' }
     ];
   },
-  
+
   renderHTML({ HTMLAttributes }) {
     return [
       'div',
-      { 
-        class: 'classFeature',
+      {
+        class: 'descriptive',
         'data-type': 'classFeature',
-        ...HTMLAttributes 
+        ...HTMLAttributes
       },
       0
     ];
@@ -34,6 +35,14 @@ export default Node.create({
   
   addCommands() {
     return {
+      insertDescriptive: () => ({ chain }) => {
+        return chain()
+          .insertContent({
+            type: this.name,
+            content: [{ type: 'paragraph' }],
+          })
+          .run();
+      },
       setClassFeature: () => ({ commands }) => {
         return commands.wrapIn(this.name);
       },

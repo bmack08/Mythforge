@@ -21,6 +21,7 @@ import ErrorPage   from './pages/errorPage/errorPage.jsx';
 import VaultPage   from './pages/vaultPage/vaultPage.jsx';
 import AccountPage from './pages/accountPage/accountPage.jsx';
 import ProjectsPage from './pages/projectsPage/projectsPage.jsx';
+import CampaignWizard from './pages/campaignWizard/campaignWizard.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -67,6 +68,7 @@ const Homebrew = (props)=>{
 					<Route path='/share/:id' element={<WithRoute el={SharePage} brew={brew} />} />
 					<Route path='/new/:id' element={<WithRoute el={NewPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/new' element={<WithRoute el={NewPage} userThemes={userThemes}/> } />
+					<Route path='/new-campaign' element={<WithRoute el={CampaignWizard}/>} />
 					<Route path='/projects' element={<WithRoute el={ProjectsPage}/>} />
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>

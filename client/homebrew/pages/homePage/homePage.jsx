@@ -21,6 +21,7 @@ import BrewRenderer from '../../brewRenderer/brewRenderer.jsx';
 import AiSidebar from '../../editor/aiSidebar/aiSidebar.jsx';
 
 import { DEFAULT_BREW } from '../../../../server/brewDefaults.js';
+import { markdownToTiptap } from '../../../../shared/helpers/markdownToTiptap.js';
 
 const HomePage = createClass({
 	displayName     : 'HomePage',
@@ -129,10 +130,30 @@ const HomePage = createClass({
 				</SplitPane>
 				<AiSidebar
 					brew={this.state.brew}
-					onContentGenerate={(content) => {
-						const currentText = this.state.brew.text;
-						const newText = currentText + '\n\n' + content + '\n\n';
-						this.handleTextChange(newText);
+					onContentGenerate={(content, replaceAll) => {
+						if (replaceAll) {
+							// Content from AI is a markdown string — convert to TipTap JSON
+							if (typeof content === 'string') {
+								this.handleTextChange(markdownToTiptap(content));
+							} else {
+								this.handleTextChange(content);
+							}
+						} else {
+							// Append mode: convert AI content to TipTap JSON and merge content arrays
+							const currentDoc = this.state.brew.text;
+							if (typeof currentDoc === 'object' && currentDoc.type === 'doc') {
+								const newDoc = typeof content === 'string' ? markdownToTiptap(content) : content;
+								const mergedDoc = {
+									type    : 'doc',
+									content : [...(currentDoc.content || []), ...(newDoc.content || [])]
+								};
+								this.handleTextChange(mergedDoc);
+							} else {
+								// Fallback for legacy string text
+								const newText = (currentDoc || '') + '\n\n' + content + '\n\n';
+								this.handleTextChange(newText);
+							}
+						}
 					}}
 				/>
 			</div>

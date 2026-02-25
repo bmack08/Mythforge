@@ -66,7 +66,18 @@ const NewPage = createClass({
 			const styleStorage = localStorage.getItem(STYLEKEY);
 			const metaStorage = JSON.parse(localStorage.getItem(METAKEY));
 
-			brew.text  = brewStorage  ?? brew.text;
+			// Parse stored brew text - it's JSON-stringified TipTap doc or legacy markdown
+			if (brewStorage) {
+				try {
+					const parsed = JSON.parse(brewStorage);
+					brew.text = parsed;
+				} catch (_) {
+					// Legacy string or corrupted data - use as-is if valid, otherwise skip
+					if (brewStorage !== '[object Object]') {
+						brew.text = brewStorage;
+					}
+				}
+			}
 			brew.style = styleStorage ?? brew.style;
 			// brew.title = metaStorage?.title || this.state.brew.title;
 			// brew.description = metaStorage?.description || this.state.brew.description;
@@ -85,7 +96,9 @@ const NewPage = createClass({
 
 		fetchThemeBundle(this, this.props.brew.renderer, this.props.brew.theme);
 
-		localStorage.setItem(BREWKEY, brew.text);
+		// Stringify TipTap JSON for localStorage (objects become "[object Object]" without this)
+		const textForStorage = typeof brew.text === 'object' ? JSON.stringify(brew.text) : brew.text;
+		localStorage.setItem(BREWKEY, textForStorage);
 		if(brew.style)
 			localStorage.setItem(STYLEKEY, brew.style);
 		localStorage.setItem(METAKEY, JSON.stringify({ 'renderer': brew.renderer, 'theme': brew.theme, 'lang': brew.lang }));
@@ -133,7 +146,9 @@ const NewPage = createClass({
 			brew       : { ...prevState.brew, text: text },
 			htmlErrors : htmlErrors,
 		}));
-		localStorage.setItem(BREWKEY, text);
+		// Stringify TipTap JSON for localStorage
+		const textForStorage = typeof text === 'object' ? JSON.stringify(text) : text;
+		localStorage.setItem(BREWKEY, textForStorage);
 	},
 
 	handleStyleChange : function(style){

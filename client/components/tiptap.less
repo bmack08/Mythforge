@@ -11,35 +11,7 @@
   overflow: hidden; // prevent outer container from scrolling
 }
 
-// Toolbar with formatting buttons
-.tiptap-editor__toolbar {
-  display: flex;
-  gap: 4px;
-  padding: 8px;
-  border-bottom: 1px solid #ccc;
-  background: #f9f9f9;
-  flex-shrink: 0;
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  box-shadow: 0 1px 0 rgba(0,0,0,0.05);
-  
-  button {
-    background: #f7f7f7;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 4px 8px;
-    cursor: pointer;
-    
-    &:hover {
-      background: #e0e0e0;
-    }
-    
-    &:active {
-      background: #d0d0d0;
-    }
-  }
-}
+// Toolbar styles are now in TipTapToolbar.less (imported by TipTapToolbar.jsx)
 
 // Editor content wrapper (contains ProseMirror)
 .tiptap-editor__content {
@@ -143,30 +115,178 @@
     }
   }
   
-  // D&D 5e PHB custom blocks
-  div.classFeature,
-  div[data-type="classFeature"] {
-    background: #faf7ea;
-    border: 1px solid #c9ad6a;
-    padding: 0.5em 1em;
-    margin: 1em 0;
+  // ═══════════════════════════════════════════════════════════
+  // D&D BLOCK LABELS — shared mixin for the ::before badge
+  // Each block gets a colored label so users instantly know
+  // what type of content they're editing (like Homebrewery's
+  // syntax highlighting for {{note}}, {{monster}}, etc.)
+  // ═══════════════════════════════════════════════════════════
+  .block-label(@color; @bg; @label) {
+    position: relative;
+    margin: 1.2em 0 1em;
+    padding: 1.4em 0.8em 0.6em;
     border-radius: 4px;
+    border: 1px solid @color;
+    background: @bg;
+
+    &::before {
+      content: @label;
+      position: absolute;
+      top: -10px;
+      left: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: @color;
+      background: white;
+      padding: 1px 8px;
+      border: 1px solid @color;
+      border-radius: 3px;
+      pointer-events: none;
+      user-select: none;
+      z-index: 1;
+    }
+
+    // Nested paragraphs shouldn't add extra bottom margin
+    > p:last-child { margin-bottom: 0; }
+
+    // Headings inside blocks (H5 used for block titles)
+    h5 { margin-top: 0; color: darken(@color, 10%); }
   }
-  
+
+  // ─── Note Block ───────────────────────────────────────────
+  // Green/olive — annotation boxes
+  div.note {
+    .block-label(#4a7c32; #edf5e8; "NOTE");
+    border-left-width: 3px;
+  }
+
+  // ─── Descriptive Block ────────────────────────────────────
+  // Tan/gold — read-aloud text boxes
+  div.descriptive,
+  div[data-type="classFeature"] {
+    .block-label(#b8960c; #faf7ea; "DESCRIPTIVE");
+  }
+
+  // ─── Monster Stat Block ───────────────────────────────────
+  // Red/maroon — stat blocks
+  div.monster {
+    .block-label(#9C2B1B; #fdf0ea; "MONSTER");
+    border-left-width: 3px;
+  }
+
+  // ─── Quote Block ──────────────────────────────────────────
+  // Purple — read-aloud quotes
+  div.quote {
+    .block-label(#7b5ea7; #f5f0fa; "QUOTE");
+    font-style: italic;
+  }
+
+  // ─── Sidebar Block ────────────────────────────────────────
+  // Blue/slate — sidebar info boxes
+  div.sidebar {
+    .block-label(#4a6785; #edf2f7; "SIDEBAR");
+  }
+
+  // ─── Feature Block ────────────────────────────────────────
+  // Brown — class/race feature blocks
+  div.feature {
+    .block-label(#7a5c3a; #f5efe6; "FEATURE");
+  }
+
+  // ─── Spell Block ──────────────────────────────────────────
+  // Dark red — spell descriptions
   div.spell,
   div[data-type="spell"] {
-    background: #f3f3f3;
-    border-left: 3px solid #58180d;
-    padding: 0.5em 1em;
-    margin: 1em 0;
+    .block-label(#58180d; #f9f3f0; "SPELL");
+    border-left-width: 3px;
   }
-  
+
+  // ─── Spell List ───────────────────────────────────────────
   div.spellList,
   div[data-type="spellList"] {
-    background: #fdf8f3;
-    border: 1px solid #c9ad6a;
-    padding: 0.5em;
+    .block-label(#856422; #fdf8f0; "SPELL LIST");
+  }
+
+  // ─── Cover Block ──────────────────────────────────────────
+  // Gold — cover page sections
+  section.cover,
+  div.cover {
+    .block-label(#8b7e4e; #fdf8f0; "COVER PAGE");
+    min-height: 3em;
+  }
+
+  // ─── Wide Block ───────────────────────────────────────────
+  div.phb-wide,
+  div.wide {
+    .block-label(#666; #f8f8f8; "WIDE");
+    border-style: dashed;
+  }
+
+  // ─── Mustache Block ───────────────────────────────────────
+  // Dynamic class blocks from Homebrewery {{class\n...\n}}
+  div[data-mustache-block] {
+    .block-label(#888; #f5f5f5; "{{ block }}");
+    border-style: dashed;
+  }
+
+  // ─── Mustache Span (inline) ───────────────────────────────
+  span[data-mustache-span] {
+    background: #f0eee6;
+    border: 1px dashed #c9ad6a;
+    border-radius: 3px;
+    padding: 0 4px;
+  }
+
+  // ─── Icon Marks ───────────────────────────────────────────
+  // Make icons visible in the editor even without icon fonts
+  i.phb-icon,
+  span.phb-icon {
+    display: inline-block;
+    min-width: 1.2em;
+    text-align: center;
+    vertical-align: middle;
+    color: #58180d;
+    font-size: 1.1em;
+
+    // Fallback: show icon name if glyph doesn't render
+    &:empty::after,
+    &:not(:empty) {
+      font-style: normal;
+    }
+  }
+
+  // ─── Comment Block ────────────────────────────────────────
+  comment-block {
+    display: block;
+    position: relative;
     margin: 1em 0;
+    padding: 1.4em 0.8em 0.6em;
+    background: #fff8e1;
+    border: 1px solid #f9a825;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 0.9em;
+    color: #666;
+
+    &::before {
+      content: "COMMENT";
+      position: absolute;
+      top: -10px;
+      left: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      letter-spacing: 0.5px;
+      color: #f9a825;
+      background: white;
+      padding: 1px 8px;
+      border: 1px solid #f9a825;
+      border-radius: 3px;
+      pointer-events: none;
+      user-select: none;
+    }
   }
   
   // Table styling

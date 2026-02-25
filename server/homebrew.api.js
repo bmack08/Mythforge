@@ -60,6 +60,9 @@ router.post('/api/phase7/validate/content', asyncHandler((req, res) => api.valid
 router.post('/api/story/graph/process/:brewId', asyncHandler((req, res) => api.processKnowledgeGraph(req, res)));
 router.get('/api/story/graph/:brewId', asyncHandler((req, res) => api.getKnowledgeGraph(req, res)));
 router.get('/api/story/graph/:brewId/canon', asyncHandler((req, res) => api.getCanonChecks(req, res)));
+// Rewrite Plan endpoints
+router.post('/api/story/rewrite-plan/:brewId', asyncHandler((req, res) => api.generateRewritePlan(req, res)));
+router.post('/api/story/rewrite-plan/:brewId/apply', asyncHandler((req, res) => api.applyRewritePlan(req, res)));
 
 import { DEFAULT_BREW, DEFAULT_BREW_LOAD } from './brewDefaults.js';
 import Themes from '../themes/themes.json' with { type: 'json' };
@@ -682,6 +685,207 @@ const api = {
 				error: 'Failed to delete brew',
 				details: error.message
 			});
+		}
+	},
+
+	// ─── Rewrite Plan: Generate ───
+	generateRewritePlan : async (req, res) => {
+		const { brewId } = req.params;
+		const { message, documentText, metadata, chatHistory } = req.body;
+
+		try {
+			const { KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
+			const kg = new KnowledgeGraph();
+			await kg.ensureReady();
+
+			// Get or create project for this brew
+			const project = await kg.getOrCreateProject(brewId, metadata?.title || 'Untitled');
+
+			// Re-index document if text is provided
+			if (documentText) {
+				await kg.processDocument(project.id, documentText);
+			}
+
+			// Get the full knowledge graph for context
+			const graph = await kg.getProjectGraph(project.id);
+
+			// Detect primary entity being changed from the message
+			const entities = await kg.getProjectEntities(project.id);
+			const mentionedEntities = entities.filter(e =>
+				message.toLowerCase().includes(e.name.toLowerCase())
+			);
+
+			// For each mentioned entity, get dependency analysis
+			const impactAnalyses = [];
+			for (const entity of mentionedEntities) {
+				const deps = await kg.detectPlotDependencies(project.id, entity.name);
+				const refs = await kg.getEntityReferences(project.id, entity.name);
+				const tree = await kg.getEntityDependencyTree(project.id, entity.name, 2);
+
+				impactAnalyses.push({
+					entity: entity.name,
+					type: entity.type,
+					dependentEntities: deps.dependentEntities,
+					brokenRelationships: deps.brokenRelationships,
+					references: refs.length,
+					connectionDepth: tree.nodes.length
+				});
+			}
+
+			// Build the rewrite plan prompt
+			const openai = getOpenAI();
+			if (!openai) {
+				return res.status(503).json({ success: false, error: 'AI service not available' });
+			}
+
+			const systemPrompt = `You are an expert D&D campaign editor analyzing story changes for Mythwright.
+
+TASK: The DM wants to make a story change. Analyze the document and create a step-by-step rewrite plan.
+
+RULES:
+1. Identify the primary entity being changed
+2. Trace ALL references to that entity through the document
+3. Identify dependent entities and broken plot threads
+4. Generate ordered steps with specific text changes
+5. Preserve all Homebrewery/TipTap formatting tokens ({{...}}, \\page, \\column, #, ##, etc.)
+6. Limit to 10 steps max, group small related changes
+7. Each step must specify the section it targets and the type of change
+
+Return ONLY valid JSON matching this schema:
+{
+  "planId": "string (unique id)",
+  "summary": "string (1-2 sentence summary of the overall change)",
+  "impactAnalysis": {
+    "affectedEntities": [{ "name": "string", "type": "string", "impact": "removed|modified|new" }],
+    "brokenDependencies": [{ "description": "string", "severity": "high|medium|low" }],
+    "plotHoles": [{ "description": "string", "severity": "high|medium|low", "suggestedFix": "string" }]
+  },
+  "steps": [{
+    "stepId": "string",
+    "order": number,
+    "title": "string (short title)",
+    "description": "string (what this step does)",
+    "sectionTarget": "string (which part of the document)",
+    "changeType": "remove|replace|insert|modify",
+    "originalText": "string (text to find, if applicable)",
+    "newText": "string (replacement text, if applicable)",
+    "involvedEntities": ["string"]
+  }]
+}`;
+
+			const userPrompt = `DM's request: "${message}"
+
+KNOWLEDGE GRAPH CONTEXT:
+Entities (${graph.nodes.length}): ${graph.nodes.map(n => `${n.name} (${n.type})`).join(', ')}
+Relationships (${graph.edges.length}): ${graph.edges.map(e => `${e.source} --[${e.type}]--> ${e.target}`).join(', ')}
+
+IMPACT ANALYSIS:
+${impactAnalyses.map(a => `Entity "${a.entity}" (${a.type}): ${a.brokenRelationships.length} broken relationships, ${a.dependentEntities.length} dependent entities, ${a.references} document references`).join('\n')}
+
+DOCUMENT TEXT:
+${(documentText || '').substring(0, 8000)}
+
+Generate a detailed rewrite plan.`;
+
+			const response = await openai.chat.completions.create({
+				model: process.env.OPENAI_DEFAULT_MODEL || 'gpt-4o-mini',
+				messages: [
+					{ role: 'system', content: systemPrompt },
+					{ role: 'user', content: userPrompt }
+				],
+				response_format: { type: 'json_object' },
+				max_tokens: 4000,
+				temperature: 0.7
+			});
+
+			const plan = JSON.parse(response.choices[0].message.content);
+
+			// Enrich with our own impact analysis data
+			plan.knowledgeGraphImpact = impactAnalyses;
+
+			res.json({ success: true, plan });
+
+		} catch (error) {
+			console.error('Rewrite plan generation error:', error);
+			res.status(500).json({ success: false, error: error.message });
+		}
+	},
+
+	// ─── Rewrite Plan: Apply ───
+	applyRewritePlan : async (req, res) => {
+		const { brewId } = req.params;
+		const { planId, approvedSteps, currentDocumentText } = req.body;
+
+		try {
+			if (!approvedSteps || approvedSteps.length === 0) {
+				return res.status(400).json({ success: false, error: 'No approved steps provided' });
+			}
+
+			// Sort steps by order
+			const sortedSteps = [...approvedSteps].sort((a, b) => a.order - b.order);
+
+			let text = currentDocumentText;
+			let appliedCount = 0;
+
+			for (const step of sortedSteps) {
+				if (step.changeType === 'remove' && step.originalText) {
+					const idx = text.indexOf(step.originalText);
+					if (idx !== -1) {
+						text = text.slice(0, idx) + text.slice(idx + step.originalText.length);
+						appliedCount++;
+					}
+				} else if (step.changeType === 'replace' && step.originalText && step.newText) {
+					const idx = text.indexOf(step.originalText);
+					if (idx !== -1) {
+						text = text.slice(0, idx) + step.newText + text.slice(idx + step.originalText.length);
+						appliedCount++;
+					}
+				} else if (step.changeType === 'insert' && step.newText) {
+					// Insert after sectionTarget or at end
+					if (step.originalText) {
+						const idx = text.indexOf(step.originalText);
+						if (idx !== -1) {
+							text = text.slice(0, idx + step.originalText.length) + '\n' + step.newText + text.slice(idx + step.originalText.length);
+							appliedCount++;
+						}
+					} else {
+						text += '\n' + step.newText;
+						appliedCount++;
+					}
+				} else if (step.changeType === 'modify' && step.originalText && step.newText) {
+					// Same as replace
+					const idx = text.indexOf(step.originalText);
+					if (idx !== -1) {
+						text = text.slice(0, idx) + step.newText + text.slice(idx + step.originalText.length);
+						appliedCount++;
+					}
+				}
+			}
+
+			// Create a version snapshot
+			try {
+				const { KnowledgeGraph } = await import('./services/story-ide/knowledge-graph.js');
+				const kg = new KnowledgeGraph();
+				await kg.ensureReady();
+				const project = await kg.getProjectByBrewId(brewId);
+				if (project) {
+					await kg.processDocument(project.id, text);
+				}
+			} catch (reindexErr) {
+				console.warn('Failed to re-index knowledge graph after rewrite:', reindexErr.message);
+			}
+
+			res.json({
+				success: true,
+				fullText: text,
+				appliedCount,
+				totalSteps: sortedSteps.length,
+				planId
+			});
+
+		} catch (error) {
+			console.error('Rewrite plan apply error:', error);
+			res.status(500).json({ success: false, error: error.message });
 		}
 	},
 

@@ -1,0 +1,194 @@
+// ─────────────────────────────────────────────────────────
+// TipTapToolbar — Comprehensive grouped formatting toolbar
+// ─────────────────────────────────────────────────────────
+
+@toolbar-bg: #f9f9f9;
+@toolbar-border: #ccc;
+@btn-bg: #f7f7f7;
+@btn-bg-hover: #e4e4e4;
+@btn-bg-active: #d2d2d2;
+@btn-active-accent: #58180d; // PHB maroon
+@btn-active-bg: #fdf1dc; // Parchment gold tint
+@divider-color: #d0d0d0;
+@dropdown-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+// ── Toolbar container ────────────────────────────────────
+.tiptap-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 8px;
+  border-bottom: 1px solid @toolbar-border;
+  background: @toolbar-bg;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
+  user-select: none;
+}
+
+// ── Button group ─────────────────────────────────────────
+.tiptap-toolbar__group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+// ── Divider between groups ───────────────────────────────
+.tiptap-toolbar__divider {
+  display: inline-block;
+  width: 1px;
+  height: 22px;
+  background: @divider-color;
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+// ── Button ───────────────────────────────────────────────
+.tiptap-toolbar__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: @btn-bg;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 4px 7px;
+  min-width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  color: #333;
+  line-height: 1;
+  transition: background 0.1s, border-color 0.1s;
+
+  &:hover {
+    background: @btn-bg-hover;
+    border-color: #bbb;
+  }
+
+  &:active {
+    background: @btn-bg-active;
+  }
+
+  &.is-active {
+    background: @btn-active-bg;
+    border-color: @btn-active-accent;
+    color: @btn-active-accent;
+    font-weight: 600;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  i {
+    font-size: 13px;
+    line-height: 1;
+  }
+}
+
+// Label that sits beside an icon inside a button
+.tiptap-toolbar__btn-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+// ── Dropdown ─────────────────────────────────────────────
+.tiptap-toolbar__dropdown {
+  position: relative;
+}
+
+.tiptap-toolbar__dropdown-trigger {
+  padding-right: 6px;
+}
+
+.tiptap-toolbar__dropdown-label {
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tiptap-toolbar__caret {
+  font-size: 10px !important;
+  margin-left: 2px;
+  transition: transform 0.15s;
+
+  .is-open & {
+    transform: rotate(180deg);
+  }
+}
+
+.tiptap-toolbar__dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  box-shadow: @dropdown-shadow;
+  padding: 4px 0;
+  z-index: 100;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.tiptap-toolbar__dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 12px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  color: #333;
+  text-align: left;
+  line-height: 1.3;
+
+  &:hover {
+    background: @btn-active-bg;
+    color: @btn-active-accent;
+  }
+
+  i {
+    width: 18px;
+    text-align: center;
+    font-size: 14px;
+    color: #666;
+    flex-shrink: 0;
+  }
+
+  &:hover i {
+    color: @btn-active-accent;
+  }
+
+  span {
+    white-space: nowrap;
+  }
+}
+
+// ── Icon Picker wrapper (positions the panel) ────────────
+.tiptap-toolbar__icon-picker-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+// ── Responsive: hide text labels below 740px ─────────────
+@media (max-width: 740px) {
+  .tiptap-toolbar__btn-label {
+    display: none;
+  }
+
+  .tiptap-toolbar__dropdown-label {
+    display: none;
+  }
+}

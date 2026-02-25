@@ -11,7 +11,7 @@ const AiSidebar = createClass({
 
 	getInitialState : function() {
 		return {
-			isExpanded          : false,
+			isExpanded          : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AI_SIDEBAR_EXPANDED') === '1') : false,
 			chatMessages        : [],
 			currentMessage      : '',
 			isProcessing        : false,
@@ -28,7 +28,11 @@ const AiSidebar = createClass({
 			// Persist user preference for auto-applying patches
 			autoApplyPatches    : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_APPLY_PATCHES') === '1') : false,
 			// New: auto-index on save (RAG)
-			autoIndexRetrieval  : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_INDEX_RETRIEVAL') === '1') : false
+			autoIndexRetrieval  : (typeof window !== 'undefined' && window.localStorage) ? (window.localStorage.getItem('MF_AUTO_INDEX_RETRIEVAL') === '1') : false,
+			// Rewrite Plan state
+			activeRewritePlan   : null,
+			applyingRewriteSteps: false,
+			rewritePlanStepStatus : {} // { stepId: 'approved' | 'rejected' }
 		};
 	},
 
@@ -629,7 +633,12 @@ const AiSidebar = createClass({
 	},
 	getCurrentDocumentText : function() {
 		if(this.props.brew && this.props.brew.text) {
-			return this.props.brew.text;
+			const text = this.props.brew.text;
+			// If TipTap JSON, extract plain text recursively
+			if(typeof text === 'object' && text.type === 'doc') {
+				return this.extractTextFromTipTap(text);
+			}
+			return text;
 		}
 		if(window.editor && window.editor.getValue) {
 			return window.editor.getValue();
@@ -640,8 +649,24 @@ const AiSidebar = createClass({
 		}
 		return '';
 	},
+	extractTextFromTipTap : function(node) {
+		if(!node) return '';
+		if(node.type === 'text') return node.text || '';
+		if(!node.content) return '';
+		return node.content.map((child) => {
+			if(child.type === 'text') return child.text || '';
+			if(child.type === 'paragraph' || child.type === 'heading') {
+				const inner = this.extractTextFromTipTap(child);
+				return inner + '\n';
+			}
+			if(child.type === 'pageBreak') return '\n\\page\n';
+			if(child.type === 'horizontalRule') return '\n---\n';
+			return this.extractTextFromTipTap(child);
+		}).join('');
+	},
 	setDocumentText : function(newText) {
 		if(this.props.onContentGenerate) {
+			// If newText is a string, the parent handler should convert to TipTap JSON
 			this.props.onContentGenerate(newText, true);
 		} else if(window.editor && window.editor.setValue) {
 			window.editor.setValue(newText);
@@ -1267,10 +1292,240 @@ const AiSidebar = createClass({
 		}
 	},
 	
-	toggleExpanded : function() {
+	// ─── Rewrite Plan Methods ───
+	detectRewriteTrigger : function(message) {
+		const destructionVerbs = /\b(killed?|died|destroys?|destroyed|removes?|removed|eliminates?|eliminated|replaced?|lost|betrays?|betrayed|murders?|murdered|sacrificed?|vanished?|disappeared?)\b/i;
+		const hasProperNoun = /\b[A-Z][a-z]{2,}(?:\s+(?:the\s+)?[A-Z][a-z]+)*\b/.test(message);
+		return destructionVerbs.test(message) && hasProperNoun;
+	},
+
+	requestRewritePlan : async function(message) {
+		const meta = this.getCurrentDocumentMetadata();
+		const brewId = meta.editId;
+		if (!brewId) {
+			this.appendSystemMessage('No document ID available for rewrite plans.', 'error');
+			return;
+		}
+
+		this.setState({ isProcessing: true, statusMessage: 'Analyzing story impact and generating rewrite plan...' });
+
+		try {
+			const docText = this.getCurrentDocumentText();
+			const plain = toPlainText(ensureJson(docText)).slice(0, 10000);
+
+			const response = await fetch(`/api/story/rewrite-plan/${brewId}`, {
+				method  : 'POST',
+				headers : { 'Content-Type': 'application/json' },
+				body    : JSON.stringify({
+					message,
+					documentText   : plain,
+					metadata       : meta,
+					chatHistory    : this.buildChatHistoryPayload(this.state.chatMessages)
+				})
+			});
+
+			const data = await response.json();
+			if (!data.success) throw new Error(data.error || 'Failed to generate rewrite plan');
+
+			this.setState({
+				activeRewritePlan    : data.plan,
+				rewritePlanStepStatus: {},
+				isProcessing         : false,
+				statusMessage        : null
+			});
+
+			this.appendSystemMessage(`Rewrite plan generated: "${data.plan.summary}". Review the steps below.`, 'system');
+		} catch (err) {
+			console.error('Rewrite plan error:', err);
+			this.setState({ isProcessing: false, statusMessage: null });
+			this.appendSystemMessage(err.message || 'Failed to generate rewrite plan.', 'error');
+		}
+	},
+
+	approveRewriteStep : function(stepId) {
 		this.setState((prev) => ({
-			isExpanded: !prev.isExpanded
+			rewritePlanStepStatus: { ...prev.rewritePlanStepStatus, [stepId]: 'approved' }
 		}));
+	},
+
+	rejectRewriteStep : function(stepId) {
+		this.setState((prev) => ({
+			rewritePlanStepStatus: { ...prev.rewritePlanStepStatus, [stepId]: 'rejected' }
+		}));
+	},
+
+	approveAllRewriteSteps : function() {
+		const plan = this.state.activeRewritePlan;
+		if (!plan) return;
+		const statuses = {};
+		plan.steps.forEach((step) => { statuses[step.stepId] = 'approved'; });
+		this.setState({ rewritePlanStepStatus: statuses });
+	},
+
+	applyApprovedRewriteSteps : async function() {
+		const plan = this.state.activeRewritePlan;
+		if (!plan) return;
+
+		const meta = this.getCurrentDocumentMetadata();
+		const brewId = meta.editId;
+		if (!brewId) return;
+
+		const approvedSteps = plan.steps.filter(
+			(step) => this.state.rewritePlanStepStatus[step.stepId] === 'approved'
+		);
+
+		if (approvedSteps.length === 0) {
+			this.appendSystemMessage('No steps approved. Please approve at least one step before applying.', 'error');
+			return;
+		}
+
+		this.setState({ applyingRewriteSteps: true, statusMessage: 'Applying approved rewrite steps...' });
+
+		try {
+			const docText = this.getCurrentDocumentText();
+			const plain = toPlainText(ensureJson(docText));
+
+			const response = await fetch(`/api/story/rewrite-plan/${brewId}/apply`, {
+				method  : 'POST',
+				headers : { 'Content-Type': 'application/json' },
+				body    : JSON.stringify({
+					planId             : plan.planId,
+					approvedSteps,
+					currentDocumentText: plain
+				})
+			});
+
+			const data = await response.json();
+			if (!data.success) throw new Error(data.error || 'Failed to apply rewrite plan');
+
+			// Apply the rewritten text to the document
+			this.setDocumentText(data.fullText);
+			this.setState({
+				activeRewritePlan    : null,
+				rewritePlanStepStatus: {},
+				applyingRewriteSteps : false,
+				statusMessage        : null,
+				lastFullStory        : data.fullText
+			});
+
+			this.appendSystemMessage(
+				`Rewrite plan applied: ${data.appliedCount}/${data.totalSteps} steps executed successfully.`,
+				'system'
+			);
+
+			// Save version snapshot
+			this.saveVersionSnapshot(data.fullText, null, 'ai', `Rewrite plan: ${plan.summary}`).catch(() => {});
+		} catch (err) {
+			console.error('Rewrite plan apply error:', err);
+			this.setState({ applyingRewriteSteps: false, statusMessage: null });
+			this.appendSystemMessage(err.message || 'Failed to apply rewrite plan.', 'error');
+		}
+	},
+
+	cancelRewritePlan : function() {
+		this.setState({
+			activeRewritePlan    : null,
+			rewritePlanStepStatus: {},
+			applyingRewriteSteps : false
+		});
+		this.appendSystemMessage('Rewrite plan cancelled.', 'system');
+	},
+
+	renderRewritePlanPanel : function() {
+		const plan = this.state.activeRewritePlan;
+		if (!plan) return null;
+
+		const statuses = this.state.rewritePlanStepStatus;
+		const approvedCount = Object.values(statuses).filter((s) => s === 'approved').length;
+		const totalSteps = plan.steps?.length || 0;
+
+		return <div className='rewrite-plan-panel'>
+			<div className='plan-header'>
+				<h4><i className='fas fa-project-diagram' /> Rewrite Plan</h4>
+				<button className='plan-close' onClick={this.cancelRewritePlan}><i className='fas fa-times' /></button>
+			</div>
+
+			<div className='plan-summary'>{plan.summary}</div>
+
+			{plan.impactAnalysis && <div className='plan-impact'>
+				<h5>Impact Analysis</h5>
+				{plan.impactAnalysis.affectedEntities?.length > 0 && <div className='impact-entities'>
+					{plan.impactAnalysis.affectedEntities.map((e, i) =>
+						<span key={i} className={`entity-pill ${e.impact}`}>{e.name} ({e.impact})</span>
+					)}
+				</div>}
+				{plan.impactAnalysis.brokenDependencies?.length > 0 && <div className='impact-deps'>
+					<strong>Broken Dependencies:</strong>
+					{plan.impactAnalysis.brokenDependencies.map((d, i) =>
+						<div key={i} className={`dep-item severity-${d.severity}`}>
+							<i className='fas fa-exclamation-triangle' /> {d.description}
+						</div>
+					)}
+				</div>}
+				{plan.impactAnalysis.plotHoles?.length > 0 && <div className='impact-holes'>
+					<strong>Potential Plot Holes:</strong>
+					{plan.impactAnalysis.plotHoles.map((h, i) =>
+						<div key={i} className={`hole-item severity-${h.severity}`}>
+							<i className='fas fa-bug' /> {h.description}
+							{h.suggestedFix && <div className='suggested-fix'>Fix: {h.suggestedFix}</div>}
+						</div>
+					)}
+				</div>}
+			</div>}
+
+			<div className='plan-steps'>
+				<h5>Steps ({approvedCount}/{totalSteps} approved)</h5>
+				{(plan.steps || []).map((step) => {
+					const status = statuses[step.stepId];
+					return <div key={step.stepId} className={`plan-step ${status || 'pending'}`}>
+						<div className='step-header'>
+							<span className='step-order'>{step.order}</span>
+							<span className='step-title'>{step.title}</span>
+							<span className={`step-type ${step.changeType}`}>{step.changeType}</span>
+						</div>
+						<div className='step-desc'>{step.description}</div>
+						{step.sectionTarget && <div className='step-target'>Target: {step.sectionTarget}</div>}
+						{!status && <div className='step-actions'>
+							<button className='approve-btn' onClick={() => this.approveRewriteStep(step.stepId)}>
+								<i className='fas fa-check' /> Approve
+							</button>
+							<button className='reject-btn' onClick={() => this.rejectRewriteStep(step.stepId)}>
+								<i className='fas fa-times' /> Reject
+							</button>
+						</div>}
+						{status === 'approved' && <div className='step-status approved'><i className='fas fa-check-circle' /> Approved</div>}
+						{status === 'rejected' && <div className='step-status rejected'><i className='fas fa-times-circle' /> Rejected</div>}
+					</div>;
+				})}
+			</div>
+
+			<div className='plan-actions'>
+				<button className='approve-all-btn' onClick={this.approveAllRewriteSteps} disabled={this.state.applyingRewriteSteps}>
+					<i className='fas fa-check-double' /> Approve All
+				</button>
+				<button className='apply-plan-btn' onClick={this.applyApprovedRewriteSteps}
+					disabled={this.state.applyingRewriteSteps || approvedCount === 0}>
+					{this.state.applyingRewriteSteps
+						? <><i className='fas fa-spinner fa-spin' /> Applying...</>
+						: <><i className='fas fa-magic' /> Apply {approvedCount} Step{approvedCount !== 1 ? 's' : ''}</>
+					}
+				</button>
+				<button className='cancel-plan-btn' onClick={this.cancelRewritePlan} disabled={this.state.applyingRewriteSteps}>
+					Cancel
+				</button>
+			</div>
+		</div>;
+	},
+
+	toggleExpanded : function() {
+		this.setState((prev) => {
+			const newExpanded = !prev.isExpanded;
+			// Persist the expanded state to localStorage
+			try {
+				window.localStorage.setItem('MF_AI_SIDEBAR_EXPANDED', newExpanded ? '1' : '0');
+			} catch(_) {}
+			return { isExpanded: newExpanded };
+		});
 	},
 	
 	handleInputChange : function(event) {
@@ -1287,29 +1542,49 @@ const AiSidebar = createClass({
 	sendMessage : function() {
 		const message = this.state.currentMessage.trim();
 		if (!message || this.state.isProcessing) return;
-		
+
+		// Check for rewrite plan trigger
+		if (this.detectRewriteTrigger(message) && !this.state.activeRewritePlan) {
+			const userMessage = {
+				type: 'user',
+				content: message,
+				historyContent: message,
+				timestamp: new Date()
+			};
+			this.setState((prev) => ({
+				chatMessages: [...prev.chatMessages, userMessage],
+				currentMessage: ''
+			}));
+			this.appendSystemMessage(
+				'This sounds like a major story change. I\'ll analyze your document and create a step-by-step rewrite plan.',
+				'system'
+			);
+			this.requestRewritePlan(message);
+			return;
+		}
+
 		const userMessage = {
 			type: 'user',
 			content: message,
 			historyContent: message,
 			timestamp: new Date()
 		};
-		
+
 		const nextMessages = [...this.state.chatMessages, userMessage];
-		
+
 		this.setState({
 			chatMessages: nextMessages,
 			currentMessage: '',
 			isProcessing: true,
 			statusMessage: null
 		});
-		
+
 		const isContinue = message.toLowerCase() === 'continue';
 		const options = {
 			chatMessages: nextMessages,
 			continueRequest: isContinue && this.state.pendingContinuation
 		};
-		
+
 		this.updateStoryFromBot(message, options)
 			.then((response) => {
 				this.handleAssistantResponse(response, nextMessages, message);
@@ -1408,8 +1683,9 @@ const AiSidebar = createClass({
 								</div>
 							)}
 						</div>
+						{this.renderRewritePlanPanel()}
 						{this.renderReferenceManager()}
-						
+
 						<div className='chat-input-container'>
 							<div className='chat-input'>
 								<textarea

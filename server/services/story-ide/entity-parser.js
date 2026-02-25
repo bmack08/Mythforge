@@ -142,8 +142,19 @@ class EntityParser {
 
     detectRelationshipType(sentence) {
         const lowerSentence = sentence.toLowerCase();
-        
-        if (lowerSentence.includes('enemy') || lowerSentence.includes('fight') || lowerSentence.includes('battle')) {
+
+        // D&D story-specific relationship types (check more specific patterns first)
+        if (/\b(?:reveals?|tells|shares|confides|discloses|informs)\b/.test(lowerSentence)) {
+            return 'reveals_to';
+        } else if (/\b(?:guards?|protects?|defends?|watches over|safeguards?)\b/.test(lowerSentence)) {
+            return 'guards';
+        } else if (/\b(?:quest|task|mission|asks? .+ to|sends? .+ to|hires?|commissions?)\b/.test(lowerSentence)) {
+            return 'quest_giver';
+        } else if (/\b(?:only .+ knows?|secret|hidden knowledge|keeps? .+ hidden)\b/.test(lowerSentence)) {
+            return 'knows_secret';
+        } else if (/\b(?:prophecy|prophes|foretold|destined|fated|oracle|vision)\b/.test(lowerSentence)) {
+            return 'prophesied';
+        } else if (lowerSentence.includes('enemy') || lowerSentence.includes('fight') || lowerSentence.includes('battle')) {
             return 'enemies';
         } else if (lowerSentence.includes('friend') || lowerSentence.includes('ally') || lowerSentence.includes('help')) {
             return 'allies';
@@ -156,7 +167,7 @@ class EntityParser {
         } else if (lowerSentence.includes('part of') || lowerSentence.includes('member') || lowerSentence.includes('belongs')) {
             return 'part_of';
         }
-        
+
         return 'related'; // Default relationship type
     }
 

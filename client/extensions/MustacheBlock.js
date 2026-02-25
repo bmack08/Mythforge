@@ -1,4 +1,4 @@
-import { Node } from '@tiptap/core';
+import { Node, mergeAttributes } from '@tiptap/core';
 
 const buildStyleString = (styles = {})=>{
 	return Object.entries(styles)
@@ -8,11 +8,12 @@ const buildStyleString = (styles = {})=>{
 
 /**
  * MustacheBlock
- * Represents legacy block syntax:
- * {{
- *   tags
- *   content
+ * Represents legacy Homebrewery block syntax:
+ * {{class1,class2 #id style:value
+ *   content here
  * }}
+ *
+ * Renders as: <div class="class1 class2" id="id" style="style:value">content</div>
  */
 export default Node.create({
 	name     : 'mustacheBlock',
@@ -25,12 +26,12 @@ export default Node.create({
 			id : {
 				default    : null,
 				parseHTML  : (element)=>element.getAttribute('data-mustache-id') ?? element.getAttribute('id'),
-				renderHTML : (attributes)=>attributes.id ? { id: attributes.id } : {}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			classes : {
 				default    : null,
-				parseHTML  : (element)=>element.getAttribute('data-mustache-classes'),
-				renderHTML : (attributes)=>({ class: ['block', attributes.classes].filter(Boolean).join(' ') })
+				parseHTML  : (element)=>element.getAttribute('data-mustache-classes') || element.className?.replace(/\bmustache-block\b/g, '').trim() || null,
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			styles : {
 				default    : null,
@@ -39,15 +40,13 @@ export default Node.create({
 					if(!raw) return null;
 					return raw.split(';').reduce((acc, entry)=>{
 						if(!entry) return acc;
-						const [key, value] = entry.split(':');
+						const [key, ...valueParts] = entry.split(':');
+						const value = valueParts.join(':');
 						if(key && value !== undefined) acc[key.trim()] = value.trim();
 						return acc;
 					}, {});
 				},
-				renderHTML : (attributes)=>{
-					if(!attributes.styles) return {};
-					return { style: buildStyleString(attributes.styles) };
-				}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			attributes : {
 				default    : null,
@@ -60,10 +59,7 @@ export default Node.create({
 						return null;
 					}
 				},
-				renderHTML : (attributes)=>{
-					if(!attributes.attributes) return {};
-					return attributes.attributes;
-				}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			}
 		};
 	},
@@ -75,30 +71,56 @@ export default Node.create({
 		];
 	},
 
-	renderHTML({ HTMLAttributes }) {
-		const { style, attributes, classes, id, ...rest } = HTMLAttributes;
-		const renderedAttrs = {
-			'data-mustache-block'  : 'true',
-			class                  : ['block', classes].filter(Boolean).join(' ') || 'block',
-			'data-mustache-classes': classes || '',
-			...rest
+	renderHTML({ node, HTMLAttributes }) {
+		const { id, classes, styles, attributes } = node.attrs;
+
+		const attrs = {
+			'data-mustache-block' : 'true',
 		};
 
+		// Build class string from mustache classes
+		const classNames = [classes].filter(Boolean).join(' ');
+		attrs.class = classNames || undefined;
+		attrs['data-mustache-classes'] = classes || '';
+
+		// Apply ID
 		if(id) {
-			renderedAttrs.id = id;
-			renderedAttrs['data-mustache-id'] = id;
+			attrs.id = id;
+			attrs['data-mustache-id'] = id;
 		}
 
-		if(style) {
-			renderedAttrs.style = style;
-			renderedAttrs['data-mustache-styles'] = style;
+		// Apply inline styles
+		if(styles && Object.keys(styles).length > 0) {
+			const styleStr = buildStyleString(styles);
+			attrs.style = styleStr;
+			attrs['data-mustache-styles'] = styleStr;
 		}
 
-		if(attributes) {
-			renderedAttrs['data-mustache-attrs'] = JSON.stringify(attributes);
-			Object.assign(renderedAttrs, attributes);
+		// Apply extra attributes
+		if(attributes && Object.keys(attributes).length > 0) {
+			attrs['data-mustache-attrs'] = JSON.stringify(attributes);
+			Object.assign(attrs, attributes);
 		}
 
-		return ['div', renderedAttrs, 0];
+		return ['div', attrs, 0];
+	},
+
+	addCommands() {
+		return {
+			insertMustacheBlock: (attrs = {})=>({ chain })=>{
+				return chain()
+					.insertContent({
+						type    : this.name,
+						attrs,
+						content : [{ type: 'paragraph' }]
+					})
+					.run();
+			},
+			wrapInMustacheBlock: (attrs = {})=>({ chain })=>{
+				return chain()
+					.wrapIn(this.name, attrs)
+					.run();
+			}
+		};
 	}
 });

@@ -97,6 +97,9 @@ export default defineConfig({
       		'/staticFonts': 'http://localhost:3000', // ← ADDED for font serving
       		'/staticImages': 'http://localhost:3000', // ← ADDED for image serving
       		'/homebrew/bundle': 'http://localhost:3000',  // ← ADDED (was initially '/homebrew' but made more specific)
+			'/fa-solid-900.woff2': 'http://localhost:3000',   // FA font files
+			'/fa-brands-400.woff2': 'http://localhost:3000',
+			'/fa-regular-400.woff2': 'http://localhost:3000',
 			'/api': {
 				target: 'http://localhost:3000',
 				changeOrigin: true

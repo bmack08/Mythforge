@@ -8,7 +8,8 @@ const buildStyleString = (styles = {})=>{
 
 /**
  * MustacheSpan
- * Represents inline legacy syntax {{tags content}} and renders with combined attributes.
+ * Represents inline legacy Homebrewery syntax: {{class content}}
+ * Renders as: <span class="class">content</span>
  */
 export default Node.create({
 	name     : 'mustacheSpan',
@@ -22,12 +23,12 @@ export default Node.create({
 			id : {
 				default    : null,
 				parseHTML  : (element)=>element.getAttribute('data-mustache-id') ?? element.getAttribute('id'),
-				renderHTML : (attributes)=>attributes.id ? { id: attributes.id } : {}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			classes : {
 				default    : null,
-				parseHTML  : (element)=>element.getAttribute('data-mustache-classes'),
-				renderHTML : (attributes)=>({ class: ['inline-block', attributes.classes].filter(Boolean).join(' ') })
+				parseHTML  : (element)=>element.getAttribute('data-mustache-classes') || element.className?.replace(/\bmustache-inline\b/g, '').trim() || null,
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			styles : {
 				default    : null,
@@ -36,15 +37,13 @@ export default Node.create({
 					if(!raw) return null;
 					return raw.split(';').reduce((acc, entry)=>{
 						if(!entry) return acc;
-						const [key, value] = entry.split(':');
+						const [key, ...valueParts] = entry.split(':');
+						const value = valueParts.join(':');
 						if(key && value !== undefined) acc[key.trim()] = value.trim();
 						return acc;
 					}, {});
 				},
-				renderHTML : (attributes)=>{
-					if(!attributes.styles) return {};
-					return { style: buildStyleString(attributes.styles) };
-				}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			},
 			attributes : {
 				default    : null,
@@ -57,10 +56,7 @@ export default Node.create({
 						return null;
 					}
 				},
-				renderHTML : (attributes)=>{
-					if(!attributes.attributes) return {};
-					return attributes.attributes;
-				}
+				renderHTML : ()=>({})  // Handled in node renderHTML
 			}
 		};
 	},
@@ -72,30 +68,51 @@ export default Node.create({
 		];
 	},
 
-	renderHTML({ HTMLAttributes }) {
-		const { style, attributes, classes, id, ...rest } = HTMLAttributes;
-		const renderedAttrs = {
-			'data-mustache-span'   : 'true',
-			class                  : ['inline-block', classes].filter(Boolean).join(' ') || 'inline-block',
-			'data-mustache-classes': classes || '',
-			...rest
+	renderHTML({ node, HTMLAttributes }) {
+		const { id, classes, styles, attributes } = node.attrs;
+
+		const attrs = {
+			'data-mustache-span' : 'true',
 		};
 
+		// Build class string from mustache classes
+		const classNames = [classes].filter(Boolean).join(' ');
+		attrs.class = classNames || undefined;
+		attrs['data-mustache-classes'] = classes || '';
+
+		// Apply ID
 		if(id) {
-			renderedAttrs.id = id;
-			renderedAttrs['data-mustache-id'] = id;
+			attrs.id = id;
+			attrs['data-mustache-id'] = id;
 		}
 
-		if(style) {
-			renderedAttrs.style = style;
-			renderedAttrs['data-mustache-styles'] = style;
+		// Apply inline styles
+		if(styles && Object.keys(styles).length > 0) {
+			const styleStr = buildStyleString(styles);
+			attrs.style = styleStr;
+			attrs['data-mustache-styles'] = styleStr;
 		}
 
-		if(attributes) {
-			renderedAttrs['data-mustache-attrs'] = JSON.stringify(attributes);
-			Object.assign(renderedAttrs, attributes);
+		// Apply extra attributes
+		if(attributes && Object.keys(attributes).length > 0) {
+			attrs['data-mustache-attrs'] = JSON.stringify(attributes);
+			Object.assign(attrs, attributes);
 		}
 
-		return ['span', renderedAttrs, 0];
+		return ['span', attrs, 0];
+	},
+
+	addCommands() {
+		return {
+			insertMustacheSpan: (attrs = {})=>({ chain })=>{
+				return chain()
+					.insertContent({
+						type    : this.name,
+						attrs,
+						content : [{ type: 'text', text: ' ' }]
+					})
+					.run();
+			}
+		};
 	}
 });

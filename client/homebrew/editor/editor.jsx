@@ -11,6 +11,7 @@ import CodeEditor from 'naturalcrit/codeEditor/codeEditor.jsx';
 import TipTapEditor from 'client/components/TipTapEditor.jsx';
 import SnippetBar from './snippetbar/snippetbar.jsx';
 import MetadataEditor from './metadataEditor/metadataEditor.jsx';
+import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
 // const GraphPanel = require('./graphPanel/graphPanel.jsx');
 // const InlineEditor = require('./inlineEditor/inlineEditor.jsx');
 
@@ -181,24 +182,38 @@ const Editor = createClass({
 	},
 
 	handleAiContentGenerate : function(content, replaceAll = false) {
-		// Handle both content insertion and full document replacement
-		const editor = this.codeEditor.current;
-		if (editor) {
-			if (replaceAll) {
-				// Replace entire document with new content
-				this.props.onTextChange(content);
+		if (replaceAll) {
+			// Replace entire document
+			if (typeof content === 'string') {
+				this.props.onTextChange(markdownToTiptap(content));
 			} else {
-				// Insert AI-generated content at current cursor position (original behavior)
-				const currentText = this.props.brew.text;
-				const newText = currentText + '\n\n' + content + '\n\n';
+				this.props.onTextChange(content);
+			}
+		} else {
+			// Append: merge TipTap JSON content arrays
+			const currentDoc = this.props.brew.text;
+			if (typeof currentDoc === 'object' && currentDoc.type === 'doc') {
+				const newDoc = typeof content === 'string' ? markdownToTiptap(content) : content;
+				const mergedDoc = {
+					type    : 'doc',
+					content : [...(currentDoc.content || []), ...(newDoc.content || [])]
+				};
+				this.props.onTextChange(mergedDoc);
+			} else {
+				// Legacy string fallback
+				const newText = (currentDoc || '') + '\n\n' + content + '\n\n';
 				this.props.onTextChange(newText);
 			}
 		}
 	},
 
 	handleInlineEdit : function(selectionStart, selectionEnd, newText) {
-		// Handle inline text replacement
 		const currentText = this.props.brew.text;
+		// Inline edit only works with string-based text (CodeMirror/legacy mode)
+		if (typeof currentText !== 'string') {
+			console.warn('[editor] handleInlineEdit called with non-string text, skipping');
+			return;
+		}
 		const beforeSelection = currentText.substring(0, selectionStart);
 		const afterSelection = currentText.substring(selectionEnd);
 		const updatedText = beforeSelection + newText + afterSelection;
@@ -418,11 +433,10 @@ const Editor = createClass({
 		if(!this.isText() || isJumping)
 			return;
 
-		// TipTap editor doesn't have the same line-based API as CodeMirror
-		// For now, we'll skip page jumping in text view
-		console.log('TipTap sourceJump not yet implemented - target page:', targetPage);
-		// TODO: Implement page jumping for TipTap editor
-		return;
+		// Use TipTap's page navigation via pageBreak node traversal
+		if(this.tipTapEditor.current?.scrollToPage) {
+			this.tipTapEditor.current.scrollToPage(targetPage);
+		}
 	},
 
 	//Called when there are changes to the editor's dimensions

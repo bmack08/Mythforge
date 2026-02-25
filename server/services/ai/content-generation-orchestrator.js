@@ -162,7 +162,7 @@ export class ContentGenerationOrchestrator {
   }
 
   async generateCampaignOutline(parameters, xpBudget) {
-    const prompt = `Create a detailed campaign outline for "${parameters.title}".
+    let prompt = `Create a detailed campaign outline for "${parameters.title}".
 
 CAMPAIGN PARAMETERS:
 - Adventure Type: ${parameters.adventureType}
@@ -170,6 +170,7 @@ CAMPAIGN PARAMETERS:
 - Party Level: ${parameters.level}
 - Sessions: ${parameters.sessionCount}
 - Complexity: ${parameters.complexity}
+${parameters.tone ? `- Tone: ${parameters.tone}` : ''}
 
 XP BUDGET: ${xpBudget.totalXPBudget} total XP
 - Combat (${xpBudget.combatWeight}%): ${xpBudget.combatXP} XP
@@ -185,6 +186,13 @@ Generate a cohesive story arc with:
 6. Satisfying climax and resolution
 
 Return as JSON with detailed structure.`;
+
+    // Include DM's reference materials as additional context
+    if (parameters.referenceContext) {
+      prompt += `\n\nREFERENCE MATERIALS FROM THE DM:
+The following content was provided by the DM as background material. Use it to inform the campaign's world, characters, plot elements, and tone. Incorporate relevant details naturally.
+${parameters.referenceContext}`;
+    }
 
     const response = await this.aiService.generateContent({
       type: 'custom',
