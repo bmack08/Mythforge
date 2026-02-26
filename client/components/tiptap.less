@@ -97,50 +97,146 @@
   // MrEavesRemake for h1-h4, ScalySansSmallCaps for h5
   // Colors and proportions match the Player's Handbook theme
   // Sizes scaled up from print (cm) for editor readability
+  // Each heading has a level badge (H1, H2, etc.) so the user
+  // always knows which heading level they're working with
 
-  h1, h2, h3, h4 {
+  // Shared heading level badge mixin
+  .heading-badge(@level; @color; @size) {
+    position: relative;
     font-family: 'MrEavesRemake', 'Palatino Linotype', 'Palatino', serif;
-    color: #58180D;
-    margin: 1em 0 0.3em 0;
+    color: @color;
     font-weight: normal;
+    font-size: @size;
+    margin: 0.8em 0 0.3em 0;
+    padding-left: 2.2em; // room for the badge
+
+    &::before {
+      content: @level;
+      position: absolute;
+      left: 0;
+      top: 50%;
+      transform: translateY(-50%);
+      font-family: 'Courier New', monospace;
+      font-size: 10px;
+      font-weight: bold;
+      color: #58180D;
+      background: #fdf1dc;
+      border: 1px solid #C0AD6A;
+      border-radius: 3px;
+      padding: 1px 5px;
+      line-height: 1.3;
+      user-select: none;
+      pointer-events: none;
+      opacity: 0.7;
+    }
   }
 
   h1 {
-    font-size: 28px;
+    .heading-badge("H1"; #58180D; 28px);
     line-height: 1em;
+    margin-top: 1em;
   }
 
   h2 {
-    font-size: 24px;
+    .heading-badge("H2"; #58180D; 24px);
     line-height: 0.988em;
   }
 
   h3 {
-    font-size: 18px;
+    .heading-badge("H3"; #58180D; 18px);
     line-height: 1.2em;
     border-bottom: 2px solid #C0AD6A;
     padding-bottom: 2px;
   }
 
   h4 {
-    font-size: 16px;
+    .heading-badge("H4"; #58180D; 16px);
     line-height: 1.2em;
   }
 
   h5 {
+    .heading-badge("H5"; #666; 14px);
     font-family: 'ScalySansSmallCapsRemake', 'Palatino Linotype', 'Palatino', serif;
-    font-size: 14px;
     line-height: 1.2em;
-    margin: 0.8em 0 0.3em 0;
-    font-weight: normal;
   }
 
   h6 {
-    font-size: 12px;
-    margin: 0.8em 0 0.3em 0;
+    .heading-badge("H6"; #999; 12px);
+    font-family: 'BookInsanityRemake', 'Noto Serif', Georgia, serif;
     line-height: 1.2;
   }
   
+  // ─── Bold & Italic ──────────────────────────────────────
+  // Ensure inline formatting is visually obvious while editing
+  strong {
+    font-weight: bold;
+    // BookInsanityRemake bold variant loads automatically
+  }
+
+  em {
+    font-style: italic;
+    // BookInsanityRemake italic variant loads automatically
+  }
+
+  strong em,
+  em strong {
+    font-weight: bold;
+    font-style: italic;
+  }
+
+  s, del {
+    text-decoration: line-through;
+    color: #999;
+  }
+
+  // ─── Lists ─────────────────────────────────────────────
+  // Bullet and numbered lists with clear, visible markers
+  ul {
+    list-style-type: disc;
+    padding-left: 1.8em;
+    margin: 0.5em 0;
+
+    li {
+      margin-bottom: 0.25em;
+      padding-left: 0.2em;
+    }
+
+    // Nested bullet levels
+    ul { list-style-type: circle; }
+    ul ul { list-style-type: square; }
+  }
+
+  ol {
+    list-style-type: decimal;
+    padding-left: 1.8em;
+    margin: 0.5em 0;
+
+    li {
+      margin-bottom: 0.25em;
+      padding-left: 0.2em;
+    }
+
+    // Nested number levels
+    ol { list-style-type: lower-alpha; }
+    ol ol { list-style-type: lower-roman; }
+  }
+
+  // Shared list item styling
+  li {
+    > p {
+      margin: 0; // paragraphs inside list items shouldn't add extra space
+    }
+  }
+
+  // ─── Blockquote ────────────────────────────────────────
+  blockquote {
+    border-left: 3px solid #C0AD6A;
+    margin: 0.5em 0;
+    padding: 0.3em 0 0.3em 1em;
+    color: #555;
+    font-style: italic;
+  }
+
   // Horizontal rule
   hr {
     border: none;
@@ -313,6 +409,42 @@
     .block-label(#856422; #fdf8f0; "SPELL LIST");
   }
 
+  // ─── Class Table Block ──────────────────────────────────
+  // Dark navy — class progression tables
+  div.classTable {
+    .block-label(#2a3f5f; #edf0f5; "CLASS TABLE");
+    border-left-width: 3px;
+  }
+
+  div.classTable.wide {
+    .block-label(#2a3f5f; #edf0f5; "CLASS TABLE (WIDE)");
+    border-left-width: 3px;
+  }
+
+  // ─── Rune Table Block ──────────────────────────────────
+  // Dark purple — rune/script inscription tables
+  div.runeTable {
+    .block-label(#4a2f6a; #f0eaf5; "RUNE TABLE");
+    border-left-width: 3px;
+  }
+
+  div.runeTable.wide {
+    .block-label(#4a2f6a; #f0eaf5; "RUNE TABLE (WIDE)");
+    border-left-width: 3px;
+  }
+
+  // ─── Table of Contents Block ────────────────────────────
+  // Dark gold — table of contents pages
+  div.toc {
+    .block-label(#8b7d3a; #fdf8ea; "TABLE OF CONTENTS");
+    border-left-width: 3px;
+  }
+
+  div.toc.wide {
+    .block-label(#8b7d3a; #fdf8ea; "TABLE OF CONTENTS (WIDE)");
+    border-left-width: 3px;
+  }
+
   // ─── Index Block ─────────────────────────────────────────
   // Dark gray — index/glossary pages
   div.index {
@@ -385,6 +517,13 @@
     .block-label(#2e8b8b; #e8f5f5; "WATERCOLOR");
     min-height: 2em;
     opacity: 0.8;
+  }
+
+  // ─── Image Mask Block ────────────────────────────────────
+  // Teal — image masking effects (watercolor clip masks)
+  div[class^="imageMask"] {
+    .block-label(#2e7d7d; #e6f2f2; "IMAGE MASK");
+    min-height: 3em;
   }
 
   // ─── Watermark Block ───────────────────────────────────

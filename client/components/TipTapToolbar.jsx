@@ -104,7 +104,7 @@ function Divider() {
 // Main Toolbar
 // ---------------------------------------------------------------------------
 
-export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNumbers }) {
+export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNumbers, inkFriendly, onToggleInkFriendly }) {
   const forceUpdate = useForceUpdate();
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
@@ -342,6 +342,62 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertClassTable().run()}
+            title="Class progression table (framed)"
+          >
+            <i className="fas fa-th-list" />
+            <span>Class Table</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertClassTable('frame', true).run()}
+            title="Class progression table (framed, wide — spans both columns)"
+          >
+            <i className="fas fa-th-list" style={{ opacity: 0.6 }} />
+            <span>Class Table (Wide)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertRuneTable('dwarvish').run()}
+            title="Rune table — Dwarvish script (Davek font)"
+          >
+            <i className="fas fa-language" />
+            <span>Rune Table (Dwarvish)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertRuneTable('elvish').run()}
+            title="Rune table — Elvish script (Rellanic font)"
+          >
+            <i className="fas fa-language" style={{ opacity: 0.8 }} />
+            <span>Rune Table (Elvish)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertRuneTable('draconic').run()}
+            title="Rune table — Draconic script (Iokharic font)"
+          >
+            <i className="fas fa-language" style={{ opacity: 0.6 }} />
+            <span>Rune Table (Draconic)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertToc().run()}
+            title="Table of Contents page"
+          >
+            <i className="fas fa-book" />
+            <span>Table of Contents</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertToc(true).run()}
+            title="Table of Contents (wide — spans both columns)"
+          >
+            <i className="fas fa-book" style={{ opacity: 0.6 }} />
+            <span>Table of Contents (Wide)</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
             onClick={() => chain().insertFrontCover().run()}
             title="Front cover — full-bleed cover with logo, title, banner"
           >
@@ -371,6 +427,14 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           >
             <i className="fas fa-book-reader" />
             <span>Back Cover</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertImageMask().run()}
+            title="Image mask — clip images with watercolor mask shapes"
+          >
+            <i className="fas fa-mask" />
+            <span>Image Mask</span>
           </button>
         </ToolbarDropdown>
       </div>
@@ -445,6 +509,15 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
         >
           <i className="fas fa-list-ol" style={{ opacity: 0.7 }} />
           <span className="tiptap-toolbar__btn-label">#</span>
+        </TBtn>
+        <TBtn
+          editor={editor}
+          isActive={inkFriendly}
+          onClick={onToggleInkFriendly}
+          title="Ink Friendly (strip backgrounds for printing)"
+        >
+          <i className="fas fa-tint" style={{ opacity: 0.7 }} />
+          <span className="tiptap-toolbar__btn-label">Ink</span>
         </TBtn>
       </div>
     </div>

@@ -63,6 +63,7 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   // Refs to wire the gutter
   const contentRef = useRef(null);
   const [showLineNumbers, setShowLineNumbers] = useState(true);
+  const [inkFriendly, setInkFriendly] = useState(false);
   const [proseMirrorRoot, setProseMirrorRoot] = useState(null);
 
   // Capture ProseMirror root once the editor is ready
@@ -134,6 +135,40 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
     editorElement.addEventListener('scroll', handleScroll);
     return () => editorElement.removeEventListener('scroll', handleScroll);
   }, [editor]);
+
+  // Ink Friendly: inject/remove CSS in the BrewRenderer iframe
+  useEffect(() => {
+    const INK_FRIENDLY_ID = 'mythforge-ink-friendly';
+    const INK_FRIENDLY_CSS = `
+      /* Ink Friendly — strips backgrounds and images for printer-friendly output */
+      *:is(.page, .monster, .note, .descriptive) {
+        background: white !important;
+        box-shadow: 1px 4px 14px #888 !important;
+      }
+      .page img {
+        visibility: hidden;
+      }
+    `;
+
+    try {
+      const frameEl = document.getElementById('BrewRenderer');
+      const frameDoc = frameEl?.contentDocument;
+      if (!frameDoc) return;
+
+      const existing = frameDoc.getElementById(INK_FRIENDLY_ID);
+
+      if (inkFriendly && !existing) {
+        const style = frameDoc.createElement('style');
+        style.id = INK_FRIENDLY_ID;
+        style.textContent = INK_FRIENDLY_CSS;
+        frameDoc.head.appendChild(style);
+      } else if (!inkFriendly && existing) {
+        existing.remove();
+      }
+    } catch (_) {
+      // Silently fail if iframe not accessible
+    }
+  }, [inkFriendly]);
 
   // Expose editor instance and helper methods via ref
   useImperativeHandle(ref, () => ({
@@ -218,6 +253,8 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
         editor={editor}
         showLineNumbers={showLineNumbers}
         onToggleLineNumbers={() => setShowLineNumbers((v) => !v)}
+        inkFriendly={inkFriendly}
+        onToggleInkFriendly={() => setInkFriendly((v) => !v)}
       />
       <div className='tiptap-editor__content' ref={contentRef}>
         <LineNumberGutter

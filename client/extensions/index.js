@@ -80,6 +80,14 @@ import MonsterBlock from './MonsterBlock.js';
 import WatercolorBlock from './WatercolorBlock.js';
 import WatermarkBlock from './WatermarkBlock.js';
 import ArtistCreditBlock from './ArtistCreditBlock.js';
+import ImageMaskBlock from './ImageMaskBlock.js';
+
+// Table-wrapper blocks (class progression & rune/script tables)
+import ClassTableBlock from './ClassTableBlock.js';
+import RuneTableBlock from './RuneTableBlock.js';
+
+// Table of Contents
+import TocBlock from './TocBlock.js';
 
 // Legacy PHB blocks (from Phase 9)
 import ClassFeature from './ClassFeature.js';
@@ -155,6 +163,7 @@ const baseExtensions = [
   QuoteBlock,
   SidebarBlock,
   NoteBlock,
+  TocBlock,
   FootnoteBlock,
   CoverBlock,
   CreditsBlock,
@@ -163,11 +172,14 @@ const baseExtensions = [
   WatercolorBlock,
   WatermarkBlock,
   ArtistCreditBlock,
+  ImageMaskBlock,
 
   // D&D Specific Blocks
   SpellBlock,
   FeatureBlock,
   MonsterBlock,
+  ClassTableBlock,
+  RuneTableBlock,
   ClassFeature,
   IndexBlock,
   Spell,
@@ -246,6 +258,7 @@ export {
   QuoteBlock,
   SidebarBlock,
   NoteBlock,
+  TocBlock,
   FootnoteBlock,
   CoverBlock,
   CreditsBlock,
@@ -254,11 +267,14 @@ export {
   WatercolorBlock,
   WatermarkBlock,
   ArtistCreditBlock,
+  ImageMaskBlock,
 
   // D&D Blocks
   SpellBlock,
   FeatureBlock,
   MonsterBlock,
+  ClassTableBlock,
+  RuneTableBlock,
   ClassFeature,
   IndexBlock,
   Spell,
