@@ -131,7 +131,11 @@ export default Node.create({
               offsetY: opts.offsetY || '0%',
               rotation: opts.rotation || '0',
             },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Image masks clip images with decorative edges. Set the mask type (center, edge, corner) and adjust --offsetX, --offsetY, and --rotation using the node attributes.' }
+              ]},
+            ],
           })
           .run();
       },

@@ -79,39 +79,36 @@ export default Node.create({
        * @param {boolean} [wide=false] - whether the table spans both columns
        */
       insertClassTable: (variant = 'frame', wide = false) => ({ chain }) => {
+        const levels = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th','13th','14th','15th','16th','17th','18th','19th','20th'];
+        const bonuses = ['+2','+2','+2','+2','+3','+3','+3','+3','+4','+4','+4','+4','+5','+5','+5','+5','+6','+6','+6','+6'];
+
+        const headerRow = {
+          type: 'tableRow',
+          content: [
+            { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Level' }] }] },
+            { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Proficiency Bonus' }] }] },
+            { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Features' }] }] },
+          ]
+        };
+
+        const dataRows = levels.map((level, i) => ({
+          type: 'tableRow',
+          content: [
+            { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: level }] }] },
+            { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: bonuses[i] }] }] },
+            { type: 'tableCell', content: [{ type: 'paragraph' }] },
+          ]
+        }));
+
         return chain()
           .insertContent({
             type: this.name,
             attrs: { variant, wide },
             content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'The Class Name' }] },
               {
                 type: 'table',
-                content: [
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Level' }] }] },
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Proficiency Bonus' }] }] },
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Features' }] }] },
-                    ],
-                  },
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '1st' }] }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '+2' }] }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                    ],
-                  },
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '2nd' }] }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph', content: [{ type: 'text', text: '+2' }] }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                    ],
-                  },
-                ],
+                content: [headerRow, ...dataRows],
               },
             ],
           })

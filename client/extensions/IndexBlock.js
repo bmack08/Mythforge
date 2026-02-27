@@ -33,7 +33,18 @@ export default Node.create({
         return chain()
           .insertContent({
             type: this.name,
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'Index' }] },
+              {
+                type: 'bulletList',
+                content: [
+                  { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Adventurers, 7' }] }] },
+                  { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Dragons, 12-15' }] }] },
+                  { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Magic Items, 23' }] }] },
+                  { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Spells, 28-34' }] }] },
+                ]
+              },
+            ],
           })
           .run();
       },

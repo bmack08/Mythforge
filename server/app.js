@@ -699,6 +699,10 @@ if(isLocalEnvironment){
 app.use('/staticImages', express.static(config.get('hb_images') && fs.existsSync(config.get('hb_images')) ? config.get('hb_images') :'staticImages'));
 app.use('/staticFonts', express.static(config.get('hb_fonts')  && fs.existsSync(config.get('hb_fonts')) ? config.get('hb_fonts'):'staticFonts'));
 
+// Serve theme asset images at root (e.g. /PHB_footerAccent.png → build/assets/PHB_footerAccent.png)
+// Matches Vite's publicDir behavior so CSS url('/PHB_footerAccent.png') works in both dev and prod
+app.use('/', express.static(join(process.cwd(), 'build', 'assets')));
+
 // Serve compiled theme CSS files
 app.use('/themes', express.static(join(process.cwd(), 'build', 'themes')));
 

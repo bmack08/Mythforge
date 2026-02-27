@@ -79,7 +79,32 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs,
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 4 }, content: [{ type: 'text', text: 'Spell Name' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'italic' }], text: '1st-level evocation' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'bold' }], text: 'Casting Time: ' },
+                { type: 'text', text: '1 action' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'bold' }], text: 'Range: ' },
+                { type: 'text', text: '60 feet' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'bold' }], text: 'Components: ' },
+                { type: 'text', text: 'V, S, M (a small button)' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'bold' }], text: 'Duration: ' },
+                { type: 'text', text: 'Instantaneous' }
+              ]},
+              { type: 'horizontalRule' },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'A flame, equivalent in brightness to a torch, springs from an object that you touch. The effect looks like a regular flame, but it creates no heat and doesn\'t use oxygen. A continual flame can be covered or hidden but not smothered or quenched.' }
+              ]},
+            ],
           })
           .run();
       },

@@ -30,7 +30,12 @@ export default Node.create({
         return chain()
           .insertContent({
             type: this.name,
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'Note Title' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Notes are used to add helpful information or reminders to your homebrew. They appear as green boxes in the PHB style.' }
+              ]},
+            ],
           })
           .run();
       },

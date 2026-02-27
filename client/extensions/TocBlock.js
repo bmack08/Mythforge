@@ -13,7 +13,7 @@ export default Node.create({
 
   group: 'block',
 
-  content: '(heading|paragraph|bulletList)+',
+  content: 'block+',
 
   defining: true,
 
@@ -54,14 +54,37 @@ export default Node.create({
             type: this.name,
             attrs: { wide },
             content: [
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Table of Contents' }] },
               {
-                type: 'heading',
-                attrs: { level: 3 },
-                content: [{ type: 'text', text: 'Table of Contents' }],
-              },
-              {
-                type: 'paragraph',
-                content: [{ type: 'text', text: 'Add your TOC entries here' }],
+                type: 'bulletList',
+                content: [
+                  { type: 'listItem', content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: 'Chapter 1: Introduction .............. 3' }] },
+                    {
+                      type: 'bulletList',
+                      content: [
+                        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Background .................. 4' }] }] },
+                        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Adventure Overview ....... 5' }] }] },
+                      ]
+                    }
+                  ]},
+                  { type: 'listItem', content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: 'Chapter 2: The Adventure ........... 7' }] },
+                    {
+                      type: 'bulletList',
+                      content: [
+                        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Part 1: The Journey .......... 8' }] }] },
+                        { type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Part 2: The Dungeon ......... 12' }] }] },
+                      ]
+                    }
+                  ]},
+                  { type: 'listItem', content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: 'Appendix A: Monsters ............... 18' }] }
+                  ]},
+                  { type: 'listItem', content: [
+                    { type: 'paragraph', content: [{ type: 'text', text: 'Appendix B: Magic Items ........... 22' }] }
+                  ]},
+                ]
               },
             ],
           })

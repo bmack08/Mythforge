@@ -98,6 +98,80 @@ export default Node.create({
   },
 
   addCommands() {
+    const MONSTER_CONTENT = [
+      { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Creature Name' }] },
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'italic' }], text: 'Medium beast, unaligned' }
+      ]},
+      { type: 'horizontalRule' },
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Armor Class ' },
+        { type: 'text', text: '13 (natural armor)' }
+      ]},
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Hit Points ' },
+        { type: 'text', text: '22 (4d8 + 4)' }
+      ]},
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Speed ' },
+        { type: 'text', text: '30 ft.' }
+      ]},
+      { type: 'horizontalRule' },
+      {
+        type: 'table',
+        content: [
+          {
+            type: 'tableRow',
+            content: [
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'STR' }] }] },
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'DEX' }] }] },
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'CON' }] }] },
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'INT' }] }] },
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'WIS' }] }] },
+              { type: 'tableHeader', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: 'CHA' }] }] },
+            ]
+          },
+          {
+            type: 'tableRow',
+            content: [
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '14 (+2)' }] }] },
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '12 (+1)' }] }] },
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '12 (+1)' }] }] },
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '2 (-4)' }] }] },
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '10 (+0)' }] }] },
+              { type: 'tableCell', attrs: { textAlign: 'center' }, content: [{ type: 'paragraph', content: [{ type: 'text', text: '6 (-2)' }] }] },
+            ]
+          },
+        ]
+      },
+      { type: 'horizontalRule' },
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Senses ' },
+        { type: 'text', text: 'darkvision 60 ft., passive Perception 12' }
+      ]},
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Languages ' },
+        { type: 'text', text: 'Common' }
+      ]},
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }], text: 'Challenge ' },
+        { type: 'text', text: '1 (200 XP)' }
+      ]},
+      { type: 'horizontalRule' },
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }, { type: 'italic' }], text: 'Pack Tactics. ' },
+        { type: 'text', text: 'The creature has advantage on attack rolls against a target if at least one of the creature\'s allies is within 5 feet of the target.' }
+      ]},
+      { type: 'heading', attrs: { level: 3 }, content: [{ type: 'text', text: 'Actions' }] },
+      { type: 'paragraph', content: [
+        { type: 'text', marks: [{ type: 'bold' }, { type: 'italic' }], text: 'Bite. ' },
+        { type: 'text', marks: [{ type: 'italic' }], text: 'Melee Weapon Attack: ' },
+        { type: 'text', text: '+4 to hit, reach 5 ft., one target. ' },
+        { type: 'text', marks: [{ type: 'italic' }], text: 'Hit: ' },
+        { type: 'text', text: '5 (1d6 + 2) piercing damage.' }
+      ]},
+    ];
+
     return {
       /** Insert a framed monster block (default). Backwards-compatible. */
       insertMonster: (attrs = {}) => ({ chain }) => {
@@ -105,7 +179,7 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { variant: 'framed', ...attrs },
-            content: [{ type: 'paragraph' }],
+            content: MONSTER_CONTENT,
           })
           .run();
       },
@@ -116,7 +190,7 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { variant: 'framed', ...attrs },
-            content: [{ type: 'paragraph' }],
+            content: MONSTER_CONTENT,
           })
           .run();
       },
@@ -127,7 +201,7 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { variant: 'unframed', ...attrs },
-            content: [{ type: 'paragraph' }],
+            content: MONSTER_CONTENT,
           })
           .run();
       },
@@ -138,7 +212,7 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { variant: 'wide', ...attrs },
-            content: [{ type: 'paragraph' }],
+            content: MONSTER_CONTENT,
           })
           .run();
       },

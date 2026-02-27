@@ -56,7 +56,12 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { title },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'Sidebar Title' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Sidebars provide additional context, variant rules, or optional content that supplements the main text. Use them for supplementary details like NPC backstories, regional lore, or optional mechanics.' }
+              ]},
+            ],
           })
           .run();
       },

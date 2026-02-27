@@ -39,7 +39,12 @@ export default Node.create({
         return chain()
           .insertContent({
             type: this.name,
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'Descriptive Text' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'italic' }], text: 'Read-aloud text or descriptive box content goes here. This block uses the PHB descriptive style with a tan background and subtle border.' }
+              ]},
+            ],
           })
           .run();
       },

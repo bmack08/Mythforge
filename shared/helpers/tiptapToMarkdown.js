@@ -66,6 +66,23 @@ function nodeToMarkdown(node) {
 			}
 			return textContent;
 
+		case 'coverBlock': {
+			const coverTypeMap = { front: 'frontCover', inside: 'insideCover', back: 'backCover', part: 'partCover' };
+			const markup = coverTypeMap[node.attrs?.coverType] || 'frontCover';
+			const inner = (node.content || []).map(child => nodeToMarkdown(child)).join('\n\n');
+			return `{{${markup}}}\n\n${inner}`;
+		}
+
+		case 'bannerBlock': {
+			const inner = contentToText(node.content || []);
+			return `{{banner ${inner.trim()}}}`;
+		}
+
+		case 'logoBlock': {
+			const inner = (node.content || []).map(child => nodeToMarkdown(child)).join('\n');
+			return `{{logo\n${inner.trim()}\n}}`;
+		}
+
 		case 'hardBreak':
 			return '\n';
 

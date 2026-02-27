@@ -68,7 +68,6 @@ export default Node.create({
 
   parseHTML() {
     return [
-      // Specific cover types first (higher priority)
       { tag: 'div.frontCover' },
       { tag: 'div.insideCover' },
       { tag: 'div.backCover' },
@@ -77,7 +76,6 @@ export default Node.create({
       { tag: 'section.insideCover' },
       { tag: 'section.backCover' },
       { tag: 'section.partCover' },
-      // Legacy fallback — old documents with just .cover
       { tag: 'section.cover' },
       { tag: 'div.cover' },
     ];
@@ -86,11 +84,27 @@ export default Node.create({
   renderHTML({ node, HTMLAttributes }) {
     const coverType = node.attrs.coverType || 'front';
     const cssClass = COVER_TYPE_MAP[coverType] || 'frontCover';
-    const attrs = { class: cssClass, ...HTMLAttributes };
 
-    // Add inline background style if background attribute exists
-    if (node.attrs.background) {
-      attrs.style = `background-image: url(${node.attrs.background})`;
+    const attrs = {
+      class: cssClass,
+      ...HTMLAttributes,
+    };
+
+    // All cover types use position: static to prevent content wrapper collapse.
+    //
+    // In Homebrewery, cover divs are empty CSS-class markers (position: absolute).
+    // In TipTap, content is wrapped INSIDE the cover div. Without position: static,
+    // the theme's position: absolute pulls the div out of flow, collapsing the page.
+    //
+    // Static lets content flow normally while .page:has() selectors still trigger
+    // for child elements (banner, footnote, logo) that position absolute to .page.
+    //
+    // Part cover also overrides height: auto to prevent the theme's fixed 6cm
+    // height from clipping content.
+    if (coverType === 'part') {
+      attrs.style = 'position: static; height: auto; min-height: 6cm';
+    } else {
+      attrs.style = 'position: static';
     }
 
     return ['div', attrs, 0];
@@ -107,7 +121,24 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { coverType, background },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'logoBlock', content: [
+                { type: 'image', attrs: { src: '/naturalCritLogoRed.svg' } },
+              ]},
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Adventure Title' }] },
+              { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'A D&D 5e Adventure' }] },
+              { type: 'horizontalRule' },
+              { type: 'bannerBlock', content: [{ type: 'text', text: 'HOMEBREW' }] },
+              { type: 'footnoteBlock', content: [
+                { type: 'paragraph', content: [
+                  { type: 'text', text: 'In a forgotten kingdom, a group of adventurers set out to uncover an ancient secret that could change the world forever.' }
+                ]},
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
+              ]},
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+            ],
           })
           .run();
       },
@@ -118,7 +149,24 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { coverType: 'front', background },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'logoBlock', content: [
+                { type: 'image', attrs: { src: '/naturalCritLogoRed.svg' } },
+              ]},
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Adventure Title' }] },
+              { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'A D&D 5e Adventure' }] },
+              { type: 'horizontalRule' },
+              { type: 'bannerBlock', content: [{ type: 'text', text: 'HOMEBREW' }] },
+              { type: 'footnoteBlock', content: [
+                { type: 'paragraph', content: [
+                  { type: 'text', text: 'In a forgotten kingdom, a group of adventurers set out to uncover an ancient secret that could change the world forever.' }
+                ]},
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
+              ]},
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+            ],
           })
           .run();
       },
@@ -129,7 +177,20 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { coverType: 'inside', background },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Adventure Title' }] },
+              { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Subtitle' }] },
+              { type: 'horizontalRule' },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
+              ]},
+              { type: 'imageMaskBlock', attrs: { maskType: 'center', maskNumber: 5, offsetX: '0%', offsetY: '0%', rotation: '0' }, content: [
+                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } }
+              ]},
+              { type: 'logoBlock', content: [
+                { type: 'image', attrs: { src: '/naturalCritLogoRed.svg' } },
+              ]},
+            ],
           })
           .run();
       },
@@ -140,7 +201,27 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { coverType: 'back', background },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Back Cover Title' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Embark on a thrilling journey across a vast and varied world, where magic and mystery await you at every turn. Encounter strange creatures and ancient secrets, and forge your own destiny with your choices.' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Experience a rich and immersive story that adapts to your actions and decisions. Every choice you make has consequences, for good or ill.' }
+              ]},
+              { type: 'horizontalRule' },
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'italic' }], text: 'For use with any fantasy roleplaying ruleset. Play the best game of your life!' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
+              ]},
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+              { type: 'logoBlock', content: [
+                { type: 'image', attrs: { src: '/naturalCritLogoWhite.svg' } },
+                { type: 'paragraph', content: [{ type: 'text', text: 'Mythforge' }] },
+              ]},
+            ],
           })
           .run();
       },
@@ -151,7 +232,16 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { coverType: 'part', background },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'PART I' }] },
+              { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Chapter Title' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
+              ]},
+              { type: 'imageMaskBlock', attrs: { maskType: 'edge', maskNumber: 3, offsetX: '0%', offsetY: '0%', rotation: '180' }, content: [
+                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } }
+              ]},
+            ],
           })
           .run();
       },

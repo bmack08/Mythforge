@@ -57,7 +57,15 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs: { attribution },
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'paragraph', content: [
+                { type: 'text', marks: [{ type: 'italic' }], text: 'The dragon\'s roar shook the ground beneath their feet, and the brave knight stood tall, his sword at the ready. He knew that this would be the battle of his life, but he was determined to emerge victorious.' }
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: '— Eolande Blackwood, ' },
+                { type: 'text', marks: [{ type: 'italic' }], text: 'The Blade of Destiny' }
+              ]},
+            ],
           })
           .run();
       },

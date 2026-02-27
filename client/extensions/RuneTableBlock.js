@@ -94,39 +94,40 @@ export default Node.create({
        * @param {string} [script='dwarvish'] - 'dwarvish', 'elvish', or 'draconic'
        */
       insertRuneTable: (script = 'dwarvish') => ({ chain }) => {
+        const scriptNames = { dwarvish: 'Dwarvish', elvish: 'Elvish', draconic: 'Draconic' };
+        const scriptLabel = scriptNames[script] || 'Dwarvish';
+
+        const letters1 = 'abcdefghijklm'.split('');
+        const letters2 = 'nopqrstuvwxyz'.split('');
+
+        const makeRow = (letters, isHeader) => ({
+          type: 'tableRow',
+          content: letters.map(letter => ({
+            type: isHeader ? 'tableHeader' : 'tableCell',
+            attrs: { textAlign: 'center' },
+            content: [{ type: 'paragraph', content: [{ type: 'text', text: letter }] }]
+          }))
+        });
+
         return chain()
           .insertContent({
             type: this.name,
             attrs: { script, wide: true, frame: true },
             content: [
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: `${scriptLabel} Runes: Sample Alphabet` }] },
               {
                 type: 'table',
                 content: [
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Rune' }] }] },
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Meaning' }] }] },
-                      { type: 'tableHeader', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Notes' }] }] },
-                    ],
-                  },
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                    ],
-                  },
-                  {
-                    type: 'tableRow',
-                    content: [
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                      { type: 'tableCell', content: [{ type: 'paragraph' }] },
-                    ],
-                  },
-                ],
+                  makeRow(letters1, true),
+                  makeRow(letters1, false),
+                ]
+              },
+              {
+                type: 'table',
+                content: [
+                  makeRow(letters2, true),
+                  makeRow(letters2, false),
+                ]
               },
             ],
           })

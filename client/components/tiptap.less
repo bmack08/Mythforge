@@ -489,6 +489,88 @@
     min-height: 3em;
   }
 
+  // ─── Cover Block Image Thumbnails (Editor Only) ──────────
+  // Collapse full-size background/cover images to small thumbnails
+  // so the editor remains compact and usable. Preview is unaffected.
+  div.frontCover,
+  section.frontCover,
+  div.insideCover,
+  section.insideCover,
+  div.backCover,
+  section.backCover,
+  div.partCover,
+  section.partCover,
+  section.cover,
+  div.cover {
+    // All images inside cover blocks — thumbnail mode
+    img {
+      max-width: 80px;
+      max-height: 60px;
+      object-fit: cover;
+      display: inline-block;
+      margin: 4px 4px 4px 0;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      border-radius: 3px;
+      opacity: 0.7;
+      vertical-align: middle;
+      transition: opacity 0.15s ease;
+
+      &:hover {
+        opacity: 1;
+      }
+    }
+
+    // Image containers (.phb-image from ImageWithAttributes) — compact row
+    .phb-image {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      margin: 2px 0;
+      background: rgba(0, 0, 0, 0.03);
+      border: 1px dashed rgba(0, 0, 0, 0.15);
+      border-radius: 4px;
+      max-width: 100%;
+
+      // Label indicator for background images
+      &::after {
+        content: "bg image";
+        font-size: 9px;
+        color: #999;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        white-space: nowrap;
+      }
+    }
+
+    // Image mask blocks nested inside covers — also compact
+    div[class^="imageMask"] {
+      img {
+        max-width: 80px;
+        max-height: 60px;
+        object-fit: cover;
+        display: inline-block;
+        margin: 4px 4px 4px 0;
+        border: 1px solid rgba(46, 125, 125, 0.3);
+        border-radius: 3px;
+        opacity: 0.6;
+      }
+    }
+
+    // Watercolor blocks nested inside covers — also compact
+    div[class^="watercolor"] {
+      img {
+        max-width: 80px;
+        max-height: 60px;
+        object-fit: cover;
+        display: inline-block;
+        opacity: 0.5;
+        border: 1px dashed rgba(46, 139, 139, 0.3);
+        border-radius: 3px;
+      }
+    }
+  }
+
   // ─── Wide Block ───────────────────────────────────────────
   div.phb-wide,
   div.wide {
@@ -540,6 +622,112 @@
   div.artist {
     .block-label(#766649; #f5efe6; "ARTIST CREDIT");
     font-size: 0.85em;
+  }
+
+  // ─── Image Attribute Widget ──────────────────────────────
+  // Compact text-based widget replacing rendered images in the editor
+  .image-attr-widget {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 10px;
+    margin: 4px 0;
+    background: #f8f8f8;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    cursor: default;
+
+    // Prevent the widget from being too wide
+    max-width: 100%;
+    overflow: hidden;
+
+    &:hover {
+      border-color: #aaa;
+      background: #f4f4f4;
+    }
+
+    // When selected in the editor
+    &.ProseMirror-selectednode {
+      border-color: #68CEF8;
+      box-shadow: 0 0 0 2px rgba(104, 206, 248, 0.3);
+    }
+  }
+
+  .image-attr-badge {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    // Default: regular image — neutral gray
+    background: #e0e0e0;
+    color: #555;
+
+    // Background image variant — warm amber
+    &.bg {
+      background: #f0c040;
+      color: #5a3e00;
+    }
+  }
+
+  .image-attr-fields {
+    flex: 1;
+    min-width: 0; // Allow text truncation
+  }
+
+  .image-attr-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 2px;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .image-attr-label {
+    color: #888;
+    font-size: 11px;
+    min-width: 24px;
+    &::after {
+      content: ':';
+    }
+  }
+
+  .image-attr-input {
+    flex: 1;
+    border: none;
+    background: transparent;
+    font-family: 'Courier New', Consolas, monospace;
+    font-size: 12px;
+    color: #333;
+    padding: 0;
+    outline: none;
+    min-width: 0; // Allow shrinking
+
+    &:focus {
+      background: #fff;
+      border-bottom: 1px solid #68CEF8;
+    }
+
+    &::placeholder {
+      color: #ccc;
+    }
+  }
+
+  .image-attr-style {
+    color: #8B6914;
+    font-size: 11px;
+    margin-top: 2px;
+    word-break: break-all;
   }
 
   // ─── Icon Marks ───────────────────────────────────────────

@@ -67,7 +67,12 @@ export default Node.create({
           .insertContent({
             type: this.name,
             attrs,
-            content: [{ type: 'paragraph' }],
+            content: [
+              { type: 'heading', attrs: { level: 4 }, content: [{ type: 'text', text: 'Feature Name' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Describe your class or race feature here. This block is styled with a tan/parchment background and a decorative border.' }
+              ]},
+            ],
           })
           .run();
       },

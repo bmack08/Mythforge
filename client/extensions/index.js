@@ -65,6 +65,8 @@ import VerticalSpacing from './VerticalSpacing.js';
 import SkipCounting from './SkipCounting.js';
 import ResetCounting from './ResetCounting.js';
 import FootnoteBlock from './FootnoteBlock.js';
+import BannerBlock from './BannerBlock.js';
+import LogoBlock from './LogoBlock.js';
 import CoverBlock from './CoverBlock.js';
 import CreditsBlock from './CreditsBlock.js';
 import MustacheSpan from './MustacheSpan.js';
@@ -165,6 +167,8 @@ const baseExtensions = [
   NoteBlock,
   TocBlock,
   FootnoteBlock,
+  BannerBlock,
+  LogoBlock,
   CoverBlock,
   CreditsBlock,
 
@@ -260,9 +264,11 @@ export {
   NoteBlock,
   TocBlock,
   FootnoteBlock,
+  BannerBlock,
+  LogoBlock,
   CoverBlock,
   CreditsBlock,
-  
+
   // Decorative Elements
   WatercolorBlock,
   WatermarkBlock,

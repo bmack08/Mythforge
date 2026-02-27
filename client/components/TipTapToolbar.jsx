@@ -130,14 +130,6 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
     }
   };
 
-  // ----- Image insert helper -----
-  const handleInsertImage = () => {
-    const url = window.prompt('Image URL:');
-    if (url) {
-      chain().setImage({ src: url }).run();
-    }
-  };
-
   // ----- Link insert helper -----
   const handleInsertLink = () => {
     const previousUrl = editor.getAttributes('link').href;
@@ -265,6 +257,90 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
 
       <Divider />
 
+      {/* ── Group: Images ─────────────────────────────────────── */}
+      <div className="tiptap-toolbar__group" data-group="images">
+        <ToolbarDropdown label="Images" icon="fas fa-image">
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => {
+              const url = window.prompt('Image URL:');
+              if (url) chain().setImage({ src: url }).run();
+            }}
+            title="Insert an image"
+          >
+            <i className="fas fa-image" />
+            <span>Image</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => {
+              const url = window.prompt('Image URL:');
+              if (url) chain().insertImageWrapLeft(url).run();
+            }}
+            title="Insert image with text wrapping on left"
+          >
+            <i className="fas fa-align-left" />
+            <span>Image Wrap Left</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => {
+              const url = window.prompt('Image URL:');
+              if (url) chain().insertImageWrapRight(url).run();
+            }}
+            title="Insert image with text wrapping on right"
+          >
+            <i className="fas fa-align-right" />
+            <span>Image Wrap Right</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => {
+              const url = window.prompt('Background image URL:');
+              if (url) chain().insertBackgroundImage(url).run();
+            }}
+            title="Full-page background image (position: absolute)"
+          >
+            <i className="fas fa-expand" />
+            <span>Background Image</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertWatercolor({ variant: Math.ceil(Math.random() * 12), top: '0px', left: '0px', width: '400px', opacity: '80%', backgroundColor: '#BBAD82' }).run()}
+            title="Watercolor stain decoration (center, random variant)"
+          >
+            <i className="fas fa-paint-brush" />
+            <span>Watercolor Center</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertImageMask({ maskType: 'edge', maskNumber: Math.ceil(Math.random() * 8), rotation: '0' }).run()}
+            title="Image mask — edge mask for page borders"
+          >
+            <i className="fas fa-border-style" />
+            <span>Watercolor Edge</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertImageMask({ maskType: 'corner', maskNumber: Math.ceil(Math.random() * 37), offsetX: '-50%', offsetY: '50%' }).run()}
+            title="Image mask — corner mask for decorative corners"
+          >
+            <i className="fas fa-vector-square" />
+            <span>Watercolor Corner</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertWatermark('DRAFT').run()}
+            title="Add watermark text overlay"
+          >
+            <i className="fas fa-font" />
+            <span>Watermark</span>
+          </button>
+        </ToolbarDropdown>
+      </div>
+
+      <Divider />
+
       {/* ── Group 3: D&D Blocks (dropdown) ─────────────────────── */}
       <div className="tiptap-toolbar__group" data-group="dnd">
         <ToolbarDropdown label="D&D Blocks" icon="fas fa-dragon">
@@ -326,11 +402,19 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
+            onClick={() => chain().insertSpellList().run()}
+            title="Spell list organized by level"
+          >
+            <i className="fas fa-list" />
+            <span>Spell List</span>
+          </button>
+          <button
+            className="tiptap-toolbar__dropdown-item"
             onClick={() => chain().insertFeature().run()}
             title="Class/Race feature block"
           >
             <i className="fas fa-shield-alt" />
-            <span>Class Feature</span>
+            <span>Feature</span>
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
@@ -443,9 +527,6 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
 
       {/* ── Group 4: Insert ────────────────────────────────────── */}
       <div className="tiptap-toolbar__group" data-group="insert">
-        <TBtn editor={editor} onClick={handleInsertImage} title="Insert Image">
-          <i className="fas fa-image" />
-        </TBtn>
         <TBtn
           editor={editor}
           onClick={() =>

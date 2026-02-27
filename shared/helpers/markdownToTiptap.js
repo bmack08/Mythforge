@@ -261,9 +261,8 @@ export function markdownToTiptap(markdown) {
     if (bannerMatch) {
       flushParagraph();
       const node = {
-        type: 'mustacheBlock',
-        attrs: { classes: 'banner' },
-        content: [{ type: 'paragraph', content: [{ type: 'text', text: bannerMatch[1] }] }]
+        type: 'bannerBlock',
+        content: [{ type: 'text', text: bannerMatch[1] }]
       };
       if (!currentBlock) {
         content.push(node);
@@ -279,8 +278,7 @@ export function markdownToTiptap(markdown) {
       flushParagraph();
       const innerContent = parseInlineMarks(logoMatch[1]);
       const node = {
-        type: 'mustacheBlock',
-        attrs: { classes: 'logo' },
+        type: 'logoBlock',
         content: [{ type: 'paragraph', content: innerContent }]
       };
       if (!currentBlock) {
