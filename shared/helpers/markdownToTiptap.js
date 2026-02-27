@@ -123,6 +123,48 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
+    // Multi-line footnote: {{footnote (without closing }})
+    // MUST be before generic mustache block handler to avoid being caught as mustacheBlock
+    if ((trimmed === '{{footnote' || trimmed.startsWith('{{footnote ')) && !trimmed.endsWith('}}')) {
+      flushParagraph();
+      flushBlock();
+      const afterTag = trimmed.replace(/^{{footnote\s*/, '').trim();
+      currentBlock = { type: 'footnoteBlock', attrs: {} };
+      if (afterTag) {
+        blockContent.push({
+          type: 'paragraph',
+          content: parseInlineMarks(afterTag)
+        });
+      }
+      continue;
+    }
+
+    // Image mask block: {{imageMaskCenter5,--offsetX:0%,...
+    // MUST be before generic mustache block handler
+    const imageMaskMatch = trimmed.match(/^{{(imageMask(Center|Edge|Corner)(\d+))(?:,(.*))?$/);
+    if (imageMaskMatch && !trimmed.endsWith('}}')) {
+      flushParagraph();
+      flushBlock();
+      const maskType = imageMaskMatch[2].toLowerCase();
+      const maskNumber = parseInt(imageMaskMatch[3], 10);
+      const extraAttrs = imageMaskMatch[4] || '';
+      const offsetXMatch = extraAttrs.match(/--offsetX:([^,}]+)/);
+      const offsetYMatch = extraAttrs.match(/--offsetY:([^,}]+)/);
+      const rotationMatch = extraAttrs.match(/--rotation:([^,}]+)/);
+
+      currentBlock = {
+        type: 'imageMaskBlock',
+        attrs: {
+          maskType: maskType,
+          maskNumber: maskNumber,
+          offsetX: offsetXMatch ? offsetXMatch[1] : '0%',
+          offsetY: offsetYMatch ? offsetYMatch[1] : '0%',
+          rotation: rotationMatch ? rotationMatch[1] : '0',
+        }
+      };
+      continue;
+    }
+
     // Start of quote block: {{quote
     if (trimmed.startsWith('{{quote')) {
       flushParagraph();
@@ -220,6 +262,7 @@ export function markdownToTiptap(markdown) {
     }
 
     // Cover page markers: {{frontCover}}, {{backCover}}, {{insideCover}}, {{partCover}}
+    // These are block openers — content follows until \page or }}
     const coverMatch = trimmed.match(/^{{(frontCover|backCover|insideCover|partCover)}}$/);
     if (coverMatch) {
       flushParagraph();
@@ -230,12 +273,10 @@ export function markdownToTiptap(markdown) {
         backCover:   'back',
         partCover:   'part',
       };
-      const node = {
+      currentBlock = {
         type: 'coverBlock',
         attrs: { coverType: coverTypeMap[coverMatch[1]] || 'front' },
-        content: [{ type: 'paragraph' }]
       };
-      content.push(node);
       continue;
     }
 
@@ -609,6 +650,37 @@ export function markdownToTiptap(markdown) {
           type: 'blockquote',
           content: [quotePara]
         });
+      }
+      continue;
+    }
+
+    // Standalone image line: ![alt](url) or ![alt](url){styles}
+    // Block-level image — avoids wrapping in a paragraph (imageWithAttributes is group: block)
+    const standaloneImgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\s*\{([^}]+)\})?$/);
+    if (standaloneImgMatch) {
+      flushParagraph();
+      const src = standaloneImgMatch[2];
+      const alt = standaloneImgMatch[1] || '';
+      let imgNode;
+      if (standaloneImgMatch[3]) {
+        // Has {k:v,...} style block → imageWithAttributes
+        const parsed = parseStyleTags(standaloneImgMatch[3].trim());
+        const style = parsed.styles || {};
+        if (parsed.classes) {
+          parsed.classes.split(' ').forEach(cls => {
+            if (cls === 'wrapLeft') style.float = 'left';
+            else if (cls === 'wrapRight') style.float = 'right';
+          });
+        }
+        imgNode = { type: 'imageWithAttributes', attrs: { src, alt, style } };
+      } else {
+        // No style block → basic image
+        imgNode = { type: 'image', attrs: { src, alt } };
+      }
+      if (!currentBlock) {
+        content.push(imgNode);
+      } else {
+        blockContent.push(imgNode);
       }
       continue;
     }
@@ -1030,23 +1102,31 @@ function parseSimpleInlineMarks(text) {
         marks: [{ type: 'link', attrs: { href: nextMatch.match[2], target: '_blank' } }]
       });
     } else if (nextMatch.type === 'image') {
-      const imageAttrs = {
-        src: nextMatch.match[2],
-        alt: nextMatch.match[1] || null,
-        title: nextMatch.match[1] || null
-      };
-      // Parse optional trailing style attributes: ![alt](url) {width:325px,mix-blend-mode:multiply}
+      const src = nextMatch.match[2];
+      const alt = nextMatch.match[1] || '';
+
       if (nextMatch.match[3]) {
+        // Has {k:v,...} style block → create imageWithAttributes with style Record
         const parsed = parseStyleTags(nextMatch.match[3].trim());
-        if (parsed.styles)     imageAttrs.styles     = parsed.styles;
-        if (parsed.classes)    imageAttrs.classes     = parsed.classes;
-        if (parsed.id)         imageAttrs.id          = parsed.id;
-        if (parsed.attributes) imageAttrs.attributes  = parsed.attributes;
+        const style = parsed.styles || {};
+        // Also handle classes that map to styles (e.g. float classes)
+        if (parsed.classes) {
+          parsed.classes.split(' ').forEach(cls => {
+            if (cls === 'wrapLeft') style.float = 'left';
+            else if (cls === 'wrapRight') style.float = 'right';
+          });
+        }
+        nodes.push({
+          type: 'imageWithAttributes',
+          attrs: { src, alt, style },
+        });
+      } else {
+        // No style block → basic image
+        nodes.push({
+          type: 'image',
+          attrs: { src, alt, title: alt || null },
+        });
       }
-      nodes.push({
-        type: 'image',
-        attrs: imageAttrs
-      });
     } else if (nextMatch.type === 'code') {
       nodes.push({
         type: 'text',

@@ -15,10 +15,11 @@ function nodeToMarkdown(node) {
 		case 'paragraph':
 			return contentToText(node.content || []);
 
-		case 'heading':
+		case 'heading': {
 			const level = node.attrs?.level || 1;
 			const text = contentToText(node.content || []);
-			return level === 1 ? `# ${text}` : `## ${text}`;
+			return `${'#'.repeat(level)} ${text}`;
+		}
 
 		case 'mustacheSpan': {
 			const tags = stringifyStyleTags(node.attrs || {});
@@ -37,8 +38,14 @@ function nodeToMarkdown(node) {
 		}
 
 		case 'footnoteBlock': {
-			const inner = contentToText(node.content || []);
-			return `{{footnote ${inner.trim()}}}`;
+			const paragraphs = (node.content || []).map(child => nodeToMarkdown(child));
+			const inner = paragraphs.join('\n').trim();
+			// Single paragraph → single-line format
+			if (paragraphs.length <= 1) {
+				return `{{footnote ${inner}}}`;
+			}
+			// Multi-paragraph → multi-line format
+			return `{{footnote\n${inner}\n}}`;
 		}
 
 		case 'pageBreak': {
@@ -66,6 +73,36 @@ function nodeToMarkdown(node) {
 			}
 			return textContent;
 
+		case 'imageWithAttributes': {
+			const src = node.attrs?.src || '';
+			const alt = node.attrs?.alt || '';
+			const style = node.attrs?.style || {};
+			const sortedEntries = Object.entries(style).sort(([a], [b]) => a.localeCompare(b));
+			const styleBlock = sortedEntries.length > 0
+				? `{${sortedEntries.map(([k, v]) => `${k}:${v}`).join(',')}}`
+				: '';
+			return `![${alt}](${src})${styleBlock}`;
+		}
+
+		case 'image': {
+			const src = node.attrs?.src || '';
+			const alt = node.attrs?.alt || '';
+			return `![${alt}](${src})`;
+		}
+
+		case 'imageMaskBlock': {
+			const { maskType, maskNumber, offsetX, offsetY, rotation } = node.attrs || {};
+			const typeCapitalized = (maskType || 'center').charAt(0).toUpperCase() + (maskType || 'center').slice(1);
+			const className = `imageMask${typeCapitalized}${maskNumber || 1}`;
+			const attrParts = [];
+			if (offsetX && offsetX !== '0%') attrParts.push(`--offsetX:${offsetX}`);
+			if (offsetY && offsetY !== '0%') attrParts.push(`--offsetY:${offsetY}`);
+			if (rotation && rotation !== '0') attrParts.push(`--rotation:${rotation}`);
+			const attrString = attrParts.length > 0 ? `,${attrParts.join(',')}` : '';
+			const inner = (node.content || []).map(child => nodeToMarkdown(child)).join('\n').trim();
+			return `{{${className}${attrString}\n${inner}\n}}`;
+		}
+
 		case 'coverBlock': {
 			const coverTypeMap = { front: 'frontCover', inside: 'insideCover', back: 'backCover', part: 'partCover' };
 			const markup = coverTypeMap[node.attrs?.coverType] || 'frontCover';
@@ -79,8 +116,8 @@ function nodeToMarkdown(node) {
 		}
 
 		case 'logoBlock': {
-			const inner = (node.content || []).map(child => nodeToMarkdown(child)).join('\n');
-			return `{{logo\n${inner.trim()}\n}}`;
+			const inner = (node.content || []).map(child => nodeToMarkdown(child)).join(' ').trim();
+			return `{{logo ${inner}}}`;
 		}
 
 		case 'hardBreak':

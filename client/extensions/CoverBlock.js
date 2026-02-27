@@ -137,7 +137,7 @@ export default Node.create({
               { type: 'paragraph', content: [
                 { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
               ]},
-              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
             ],
           })
           .run();
@@ -165,7 +165,7 @@ export default Node.create({
               { type: 'paragraph', content: [
                 { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
               ]},
-              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
             ],
           })
           .run();
@@ -185,7 +185,7 @@ export default Node.create({
                 { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
               ]},
               { type: 'imageMaskBlock', attrs: { maskType: 'center', maskNumber: 5, offsetX: '0%', offsetY: '0%', rotation: '0' }, content: [
-                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } }
+                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } }
               ]},
               { type: 'logoBlock', content: [
                 { type: 'image', attrs: { src: '/naturalCritLogoRed.svg' } },
@@ -216,7 +216,7 @@ export default Node.create({
               { type: 'paragraph', content: [
                 { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
               ]},
-              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } },
+              { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
               { type: 'logoBlock', content: [
                 { type: 'image', attrs: { src: '/naturalCritLogoWhite.svg' } },
                 { type: 'paragraph', content: [{ type: 'text', text: 'Mythforge' }] },
@@ -239,7 +239,7 @@ export default Node.create({
                 { type: 'text', text: 'Tip: Select the background image and change its src to use your own image.' }
               ]},
               { type: 'imageMaskBlock', attrs: { maskType: 'edge', maskNumber: 3, offsetX: '0%', offsetY: '0%', rotation: '180' }, content: [
-                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', background: true } }
+                { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } }
               ]},
             ],
           })

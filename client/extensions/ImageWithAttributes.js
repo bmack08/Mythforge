@@ -4,18 +4,18 @@ import { Node } from '@tiptap/core';
  * ImageWithAttributes - Enhanced image with PHB-specific styling attributes
  * Renders as: <img class="phb-image {wrapClass}" style="...">
  *
- * Per Blueprint EPIC F:
- * - Support width, marginLeft, marginRight attributes
- * - Support wrapLeft/wrapRight for text wrapping
- * - Inline styles for dimensions and spacing
+ * Uses a single `style` Record<string,string> attribute for all visual
+ * properties (width, margins, position, float, etc.) instead of individual
+ * semantic attributes.
+ *
+ * Backward compatible: parses old data-width, data-margin-left,
+ * data-margin-right attributes and wrapLeft/wrapRight classes into the
+ * unified style Record.
  *
  * Attributes:
  * - src (string): Image URL (required)
- * - alt (string): Alt text
- * - width (string): CSS width value (e.g., "280px", "50%")
- * - marginLeft (string): CSS margin-left value
- * - marginRight (string): CSS margin-right value
- * - wrap ('left'|'right'|null): Text wrapping side
+ * - alt (string): Alt text (default '')
+ * - style (Record<string,string>): CSS key-value pairs (default {})
  */
 export default Node.create({
   name: 'imageWithAttributes',
@@ -45,67 +45,59 @@ export default Node.create({
           return { alt: attributes.alt };
         },
       },
-      title: {
-        default: null,
-        parseHTML: element => element.getAttribute('title'),
-        renderHTML: attributes => {
-          if (!attributes.title) {
-            return {};
-          }
-          return { title: attributes.title };
-        },
-      },
-      width: {
-        default: null,
-        parseHTML: element => element.style.width || element.getAttribute('data-width'),
-        renderHTML: attributes => {
-          if (!attributes.width) {
-            return {};
-          }
-          return { 'data-width': attributes.width };
-        },
-      },
-      marginLeft: {
-        default: null,
-        parseHTML: element => element.style.marginLeft || element.getAttribute('data-margin-left'),
-        renderHTML: attributes => {
-          if (!attributes.marginLeft) {
-            return {};
-          }
-          return { 'data-margin-left': attributes.marginLeft };
-        },
-      },
-      marginRight: {
-        default: null,
-        parseHTML: element => element.style.marginRight || element.getAttribute('data-margin-right'),
-        renderHTML: attributes => {
-          if (!attributes.marginRight) {
-            return {};
-          }
-          return { 'data-margin-right': attributes.marginRight };
-        },
-      },
-      wrap: {
-        default: null,
+      style: {
+        default: {},
         parseHTML: element => {
-          if (element.classList.contains('wrapLeft')) return 'left';
-          if (element.classList.contains('wrapRight')) return 'right';
-          return element.getAttribute('data-wrap');
-        },
-        renderHTML: attributes => {
-          if (!attributes.wrap) {
-            return {};
+          const style = {};
+
+          // 1. Parse inline style attribute into key-value pairs
+          const inlineStyle = element.getAttribute('style') || '';
+          if (inlineStyle) {
+            inlineStyle.split(';').forEach(pair => {
+              const colonIdx = pair.indexOf(':');
+              if (colonIdx === -1) return;
+              const key = pair.slice(0, colonIdx).trim();
+              const value = pair.slice(colonIdx + 1).trim();
+              if (key && value) {
+                style[key] = value;
+              }
+            });
           }
-          return { 'data-wrap': attributes.wrap };
+
+          // 2. Old data-width → width
+          const dataWidth = element.getAttribute('data-width');
+          if (dataWidth) {
+            style['width'] = dataWidth;
+          }
+
+          // 3. Old data-margin-left → margin-left
+          const dataMarginLeft = element.getAttribute('data-margin-left');
+          if (dataMarginLeft) {
+            style['margin-left'] = dataMarginLeft;
+          }
+
+          // 4. Old data-margin-right → margin-right
+          const dataMarginRight = element.getAttribute('data-margin-right');
+          if (dataMarginRight) {
+            style['margin-right'] = dataMarginRight;
+          }
+
+          // 5. wrapLeft class → float: left
+          if (element.classList.contains('wrapLeft')) {
+            style['float'] = 'left';
+          }
+
+          // 6. wrapRight class → float: right
+          if (element.classList.contains('wrapRight')) {
+            style['float'] = 'right';
+          }
+
+          return Object.keys(style).length > 0 ? style : {};
         },
-      },
-      background: {
-        default: false,
-        parseHTML: element => {
-          const style = element.getAttribute('style') || '';
-          return style.includes('position') && style.includes('absolute');
+        renderHTML: () => {
+          // Handled in the main renderHTML
+          return {};
         },
-        renderHTML: () => ({}), // Handled in renderHTML
       },
     };
   },
@@ -131,22 +123,20 @@ export default Node.create({
     ];
   },
 
-  renderHTML({ node, HTMLAttributes }) {
-    const { src, alt, title, width, marginLeft, marginRight, wrap, background } = node.attrs;
-
-    // Build inline style string
-    const styles = [];
-    if (width) styles.push(`width:${width}`);
-    if (marginLeft) styles.push(`margin-left:${marginLeft}`);
-    if (marginRight) styles.push(`margin-right:${marginRight}`);
-    if (background) {
-      styles.push('position:absolute', 'bottom:0', 'left:0', 'height:100%');
-    }
+  renderHTML({ node }) {
+    const { src, alt, style } = node.attrs;
+    const styleObj = style || {};
 
     // Build class list
     const classes = ['phb-image'];
-    if (wrap === 'left') classes.push('wrapLeft');
-    if (wrap === 'right') classes.push('wrapRight');
+    if (styleObj.float === 'left') classes.push('wrapLeft');
+    if (styleObj.float === 'right') classes.push('wrapRight');
+
+    // Build inline style (exclude float since it's handled by class)
+    const inlineStyles = Object.entries(styleObj)
+      .filter(([k]) => k !== 'float')
+      .map(([k, v]) => `${k}:${v}`)
+      .join(';');
 
     return [
       'img',
@@ -154,9 +144,7 @@ export default Node.create({
         class: classes.join(' '),
         src,
         alt: alt || '',
-        title: title || undefined,
-        style: styles.length > 0 ? styles.join(';') : undefined,
-        ...HTMLAttributes,
+        style: inlineStyles || undefined,
       }
     ];
   },
@@ -172,19 +160,23 @@ export default Node.create({
       insertImageWrapLeft: (src, alt) => ({ commands }) => {
         return commands.insertContent({
           type: this.name,
-          attrs: { src, alt: alt || '', wrap: 'left', width: '50%' },
+          attrs: { src, alt: alt || '', style: { float: 'left', width: '50%' } },
         });
       },
       insertImageWrapRight: (src, alt) => ({ commands }) => {
         return commands.insertContent({
           type: this.name,
-          attrs: { src, alt: alt || '', wrap: 'right', width: '50%' },
+          attrs: { src, alt: alt || '', style: { float: 'right', width: '50%' } },
         });
       },
       insertBackgroundImage: (src, alt) => ({ commands }) => {
         return commands.insertContent({
           type: this.name,
-          attrs: { src, alt: alt || 'background image', background: true },
+          attrs: {
+            src,
+            alt: alt || 'background image',
+            style: { position: 'absolute', bottom: '0', left: '0', height: '100%' },
+          },
         });
       },
     };
@@ -197,15 +189,11 @@ export default Node.create({
 
       // --- Helper: build Homebrewery-style style summary string ---
       const buildStyleString = (attrs) => {
-        const parts = [];
-        if (attrs.background) {
-          parts.push('position:absolute', 'bottom:0', 'left:0', 'height:100%');
-        }
-        if (attrs.wrap) parts.push(`wrap:${attrs.wrap}`);
-        if (attrs.width) parts.push(`width:${attrs.width}`);
-        if (attrs.marginLeft) parts.push(`margin-left:${attrs.marginLeft}`);
-        if (attrs.marginRight) parts.push(`margin-right:${attrs.marginRight}`);
-        return parts.length > 0 ? `{${parts.join(', ')}}` : '';
+        const style = attrs.style || {};
+        const entries = Object.entries(style).sort(([a], [b]) => a.localeCompare(b));
+        return entries.length > 0
+          ? `{${entries.map(([k, v]) => `${k}:${v}`).join(', ')}}`
+          : '';
       };
 
       // --- Prevent ProseMirror from swallowing input events ---
@@ -213,7 +201,13 @@ export default Node.create({
         input.addEventListener('focus', (e) => e.stopPropagation());
         input.addEventListener('click', (e) => e.stopPropagation());
         input.addEventListener('mousedown', (e) => e.stopPropagation());
-        input.addEventListener('keydown', (e) => e.stopPropagation());
+        input.addEventListener('keydown', (e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            input.blur(); // Triggers 'change' event
+          }
+        });
       };
 
       // --- Wrapper ---
@@ -222,11 +216,14 @@ export default Node.create({
       dom.contentEditable = 'false';
 
       // --- Badge ---
+      const style = node.attrs.style || {};
+      const isBackground = (style.position === 'absolute');
+
       const badge = document.createElement('span');
-      badge.className = node.attrs.background
+      badge.className = isBackground
         ? 'image-attr-badge bg'
         : 'image-attr-badge';
-      badge.textContent = node.attrs.background ? 'BG IMAGE' : 'IMAGE';
+      badge.textContent = isBackground ? 'BG IMAGE' : 'IMAGE';
       dom.appendChild(badge);
 
       // --- Fields container ---
@@ -307,15 +304,17 @@ export default Node.create({
           currentNode = updatedNode;
           srcInput.value = updatedNode.attrs.src || '';
           altInput.value = updatedNode.attrs.alt || '';
-          badge.className = updatedNode.attrs.background
+          const updatedStyle = updatedNode.attrs.style || {};
+          const updatedIsBackground = (updatedStyle.position === 'absolute');
+          badge.className = updatedIsBackground
             ? 'image-attr-badge bg'
             : 'image-attr-badge';
-          badge.textContent = updatedNode.attrs.background ? 'BG IMAGE' : 'IMAGE';
-          const newStyle = buildStyleString(updatedNode.attrs);
-          styleInfo.textContent = newStyle;
-          if (newStyle && !styleInfo.parentNode) {
+          badge.textContent = updatedIsBackground ? 'BG IMAGE' : 'IMAGE';
+          const newStyleStr = buildStyleString(updatedNode.attrs);
+          styleInfo.textContent = newStyleStr;
+          if (newStyleStr && !styleInfo.parentNode) {
             fields.appendChild(styleInfo);
-          } else if (!newStyle && styleInfo.parentNode) {
+          } else if (!newStyleStr && styleInfo.parentNode) {
             styleInfo.remove();
           }
           return true;
