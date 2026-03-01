@@ -703,8 +703,12 @@ app.use('/staticFonts', express.static(config.get('hb_fonts')  && fs.existsSync(
 // Matches Vite's publicDir behavior so CSS url('/PHB_footerAccent.png') works in both dev and prod
 app.use('/', express.static(join(process.cwd(), 'build', 'assets')));
 
-// Serve compiled theme CSS files
+// Serve compiled theme CSS files (build/themes first, source themes/ as fallback for fonts)
 app.use('/themes', express.static(join(process.cwd(), 'build', 'themes')));
+app.use('/themes', express.static(join(process.cwd(), 'themes')));
+
+// Serve icon font files at /fonts/iconFonts/ (theme CSS resolves font URLs to this path)
+app.use('/fonts', express.static(join(process.cwd(), 'themes', 'fonts')));
 
 //Vault Page
 app.get('/vault', asyncHandler(async(req, res, next)=>{

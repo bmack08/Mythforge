@@ -8,6 +8,9 @@ import '@fortawesome/fontawesome-free/css/solid.css';
 import '@fortawesome/fontawesome-free/css/brands.css';
 import '@fortawesome/fontawesome-free/css/regular.css';
 
+// Import non-FA icon fonts (Elderberry Inn, Game Icons, Dice) with corrected paths
+import '../styles/iconFonts.less';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';

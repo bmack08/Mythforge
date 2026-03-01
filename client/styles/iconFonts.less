@@ -1,0 +1,41 @@
+/**
+ * Icon Font Loader
+ *
+ * Declares @font-face rules with relative URLs that Vite can resolve
+ * from this file's location to the actual font files in themes/.
+ * Vite will asset-hash and serve them correctly in both dev and build.
+ *
+ * Then imports the original theme LESS files for .ei / .gi / .df class
+ * definitions (their broken relative @font-face URLs are harmless —
+ * the browser silently ignores failed font loads).
+ */
+
+/* ── Elderberry Inn ─────────────────────────────────────── */
+@font-face {
+  font-family: 'Elderberry-Inn';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../../themes/fonts/iconFonts/elderberryInn.woff2') format('woff2');
+}
+
+/* ── Game Icons ──────────────────────────────────────────── */
+@font-face {
+  font-family: 'Game-Icons';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../../themes/fonts/iconFonts/gameIcons.woff') format('woff');
+  font-display: block;
+}
+
+/* ── Dice Font ───────────────────────────────────────────── */
+@font-face {
+  font-family: 'DiceFont';
+  font-style: normal;
+  font-weight: normal;
+  src: url('../../themes/fonts/iconFonts/diceFont.woff2') format('woff2');
+}
+
+/* ── Import class definitions (.ei, .gi, .df + ::before rules) ── */
+@import '../../themes/fonts/iconFonts/elderberryInn.less';
+@import '../../themes/fonts/iconFonts/gameIcons.less';
+@import '../../themes/fonts/iconFonts/diceFont.less';
