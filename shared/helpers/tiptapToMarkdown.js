@@ -108,6 +108,14 @@ function nodeToMarkdown(node) {
       return tags ? `\\column{${tags}}` : '\\column';
     }
 
+    case 'pageNumber': {
+      if (node.attrs?.auto) return '{{pageNumber,auto}}';
+      if (node.attrs?.value !== null && node.attrs?.value !== undefined) {
+        return `{{pageNumber ${node.attrs.value}}}`;
+      }
+      return '{{pageNumber,auto}}';
+    }
+
     case 'horizontalRule':
       return '---';
 

@@ -195,13 +195,50 @@ export default Node.create({
       altRow.appendChild(altInput);
       fields.appendChild(altRow);
 
-      const styleInfo = document.createElement('div');
-      styleInfo.className = 'image-attr-style';
-      styleInfo.textContent = formatStyleSummary(node.attrs.style || {});
-      if (styleInfo.textContent) {
-        fields.appendChild(styleInfo);
-      }
+      // --- Editable style properties ---
+      const styleContainer = document.createElement('div');
+      styleContainer.className = 'image-attr-style-fields';
 
+      const styleInputs = {};
+      const STYLE_KEYS = ['position', 'bottom', 'top', 'left', 'right', 'height', 'width'];
+
+      const buildStyleRows = (style) => {
+        styleContainer.innerHTML = '';
+        Object.keys(styleInputs).forEach((k) => delete styleInputs[k]);
+
+        const entries = Object.entries(style || {})
+          .filter(([key, value]) => key && value !== undefined && value !== null && String(value) !== '')
+          .sort(([a], [b]) => a.localeCompare(b));
+
+        for (const [key, value] of entries) {
+          const row = document.createElement('div');
+          row.className = 'image-attr-row';
+          const label = document.createElement('span');
+          label.className = 'image-attr-label';
+          label.textContent = key;
+          row.appendChild(label);
+          const input = document.createElement('input');
+          input.className = 'image-attr-input';
+          input.type = 'text';
+          input.value = value;
+          stopEvent(input);
+          input.addEventListener('change', () => {
+            const newStyle = { ...currentNode.attrs.style };
+            if (input.value.trim()) {
+              newStyle[key] = input.value.trim();
+            } else {
+              delete newStyle[key];
+            }
+            updateAttrs({ style: newStyle });
+          });
+          row.appendChild(input);
+          styleContainer.appendChild(row);
+          styleInputs[key] = input;
+        }
+      };
+
+      buildStyleRows(node.attrs.style || {});
+      fields.appendChild(styleContainer);
       dom.appendChild(fields);
 
       return {
@@ -211,13 +248,7 @@ export default Node.create({
           currentNode = updatedNode;
           srcInput.value = updatedNode.attrs.src || '';
           altInput.value = updatedNode.attrs.alt || '';
-          const styleText = formatStyleSummary(updatedNode.attrs.style || {});
-          styleInfo.textContent = styleText;
-          if (styleText && !styleInfo.parentNode) {
-            fields.appendChild(styleInfo);
-          } else if (!styleText && styleInfo.parentNode) {
-            styleInfo.remove();
-          }
+          buildStyleRows(updatedNode.attrs.style || {});
           return true;
         },
       };

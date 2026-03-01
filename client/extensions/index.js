@@ -67,7 +67,7 @@ import ResetCounting from './ResetCounting.js';
 import FootnoteBlock from './FootnoteBlock.js';
 import BannerBlock from './BannerBlock.js';
 import LogoBlock from './LogoBlock.js';
-import CoverBlock from './CoverBlock.js';
+// CoverBlock removed — replaced by HbFrontCover (with coverType attr for all 4 types)
 import CreditsBlock from './CreditsBlock.js';
 import MustacheSpan from './MustacheSpan.js';
 import MustacheBlock from './MustacheBlock.js';
@@ -176,7 +176,6 @@ const baseExtensions = [
   FootnoteBlock,
   BannerBlock,
   LogoBlock,
-  CoverBlock,
   CreditsBlock,
 
   // Decorative Elements
@@ -280,7 +279,6 @@ export {
   FootnoteBlock,
   BannerBlock,
   LogoBlock,
-  CoverBlock,
   CreditsBlock,
 
   // Decorative Elements

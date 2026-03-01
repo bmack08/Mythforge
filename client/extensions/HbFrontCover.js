@@ -129,6 +129,7 @@ export default Node.create({
       },
 
       // Full cover templates — insert the marker plus default sibling content
+      // Matches Homebrewery's default cover structures
       insertFrontCoverTemplate: () => ({ chain }) => {
         return chain().insertContent([
           { type: 'hbFrontCover', attrs: { coverType: 'front' } },
@@ -139,40 +140,54 @@ export default Node.create({
           { type: 'hbBanner', attrs: { text: 'HOMEBREW' } },
           { type: 'hbFootnote', content: [{ type: 'text', text: 'In a forgotten kingdom, a group of adventurers set out to uncover an ancient secret that could change the world forever.' }] },
           { type: 'hbBackgroundImage', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          { type: 'pageBreak' },
         ]).run();
       },
       insertBackCoverTemplate: () => ({ chain }) => {
+        // Back cover: no page break after (it's always the last page)
         return chain().insertContent([
           { type: 'hbFrontCover', attrs: { coverType: 'back' } },
           { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Back Cover Title' }] },
-          { type: 'paragraph', content: [{ type: 'text', text: 'Description text goes here.' }] },
+          { type: 'paragraph', content: [{ type: 'text', text: 'Dive into a world of epic fantasy and adventure.' }] },
           { type: 'horizontalRule' },
-          { type: 'hbBackgroundImage', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          { type: 'paragraph', content: [{ type: 'text', text: 'For use with any fantasy roleplaying ruleset. Play the best game of your life!' }] },
+          { type: 'hbBackgroundImage', attrs: { src: 'https://i.imgur.com/MJ4YHu7.jpg', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
           { type: 'hbLogo', attrs: { src: '/assets/naturalCritLogoWhite.svg' } },
         ]).run();
       },
       insertInsideCoverTemplate: () => ({ chain }) => {
         return chain().insertContent([
           { type: 'hbFrontCover', attrs: { coverType: 'inside' } },
+          { type: 'hbLogo', attrs: { src: '/assets/naturalCritLogoRed.svg' } },
           { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Book Title' }] },
           { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Subtitle' }] },
           { type: 'horizontalRule' },
           { type: 'hbBackgroundImage', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
-          { type: 'hbLogo', attrs: { src: '/assets/naturalCritLogoRed.svg' } },
+          { type: 'pageBreak' },
         ]).run();
       },
       insertPartCoverTemplate: () => ({ chain }) => {
         return chain().insertContent([
           { type: 'hbFrontCover', attrs: { coverType: 'part' } },
-          { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Part I' }] },
+          { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'PART X' }] },
           { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Chapter Title' }] },
-          { type: 'hbBackgroundImage', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          { type: 'hbBackgroundImage', attrs: { src: 'https://i.imgur.com/9TU96xY.jpg', alt: 'Background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          { type: 'pageBreak' },
         ]).run();
       },
 
-      // Legacy alias
+      // Legacy aliases — toolbar calls these names
       insertFrontCover: () => ({ commands }) => {
         return commands.insertFrontCoverTemplate();
+      },
+      insertInsideCover: () => ({ commands }) => {
+        return commands.insertInsideCoverTemplate();
+      },
+      insertPartCover: () => ({ commands }) => {
+        return commands.insertPartCoverTemplate();
+      },
+      insertBackCover: () => ({ commands }) => {
+        return commands.insertBackCoverTemplate();
       },
     };
   },
