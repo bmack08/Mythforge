@@ -84,6 +84,13 @@ import WatermarkBlock from './WatermarkBlock.js';
 import ArtistCreditBlock from './ArtistCreditBlock.js';
 import ImageMaskBlock from './ImageMaskBlock.js';
 
+// Homebrewery-compatible special blocks (hb* atoms)
+import HbFrontCover from './HbFrontCover.js';
+import HbLogo from './HbLogo.js';
+import HbBanner from './HbBanner.js';
+import HbFootnote from './HbFootnote.js';
+import HbBackgroundImage from './HbBackgroundImage.js';
+
 // Table-wrapper blocks (class progression & rune/script tables)
 import ClassTableBlock from './ClassTableBlock.js';
 import RuneTableBlock from './RuneTableBlock.js';
@@ -177,6 +184,13 @@ const baseExtensions = [
   WatermarkBlock,
   ArtistCreditBlock,
   ImageMaskBlock,
+
+  // Homebrewery-compatible special blocks (flat atoms)
+  HbFrontCover,
+  HbLogo,
+  HbBanner,
+  HbFootnote,
+  HbBackgroundImage,
 
   // D&D Specific Blocks
   SpellBlock,
@@ -285,6 +299,13 @@ export {
   IndexBlock,
   Spell,
   SpellList,
+
+  // Homebrewery Atoms
+  HbFrontCover,
+  HbLogo,
+  HbBanner,
+  HbFootnote,
+  HbBackgroundImage,
 
   // Inline Marks
   IconMark,

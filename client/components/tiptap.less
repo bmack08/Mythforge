@@ -730,6 +730,106 @@
     word-break: break-all;
   }
 
+  // ─── Homebrewery Macro Widgets ──────────────────────────────
+  // Code-editor style syntax display for hb* nodes (covers, banners, logos, footnotes)
+
+  // Single-line atom macros: {{frontCover}}, {{banner TEXT}}, {{logo ![](url)}}
+  .hb-macro-line {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 4px 10px;
+    margin: 4px 0;
+    background: #1e1e2e;
+    border-left: 3px solid #666;
+    border-radius: 3px;
+    font-family: 'Courier New', Consolas, 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #cdd6f4;
+    cursor: default;
+
+    &:hover {
+      background: #252535;
+    }
+
+    &.ProseMirror-selectednode {
+      border-left-color: #68CEF8;
+      box-shadow: 0 0 0 2px rgba(104, 206, 248, 0.3);
+    }
+  }
+
+  // Multi-line block macros: {{footnote ... }}
+  .hb-macro-block {
+    margin: 4px 0;
+    background: #1e1e2e;
+    border-left: 3px solid #666;
+    border-radius: 3px;
+    font-family: 'Courier New', Consolas, 'Fira Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #cdd6f4;
+
+    &:hover {
+      background: #252535;
+    }
+
+    &.ProseMirror-selectednode {
+      border-left-color: #68CEF8;
+      box-shadow: 0 0 0 2px rgba(104, 206, 248, 0.3);
+    }
+  }
+
+  // {{ and }} delimiters
+  .hb-macro-tag {
+    color: #6c7086;
+    user-select: none;
+  }
+
+  // Block-level tags (header/footer of multi-line macros)
+  .hb-macro-block-tag {
+    padding: 2px 10px;
+  }
+
+  // Macro name (frontCover, banner, logo, footnote)
+  .hb-macro-name {
+    font-weight: 600;
+    margin: 0 1px;
+  }
+
+  // Editable input fields inside macro widgets
+  .hb-macro-input {
+    border: none;
+    background: transparent;
+    font-family: inherit;
+    font-size: inherit;
+    color: #a6e3a1;
+    padding: 0 2px;
+    outline: none;
+    min-width: 80px;
+    max-width: 100%;
+
+    &:focus {
+      background: rgba(104, 206, 248, 0.1);
+      border-bottom: 1px solid #68CEF8;
+    }
+
+    &::placeholder {
+      color: #585b70;
+    }
+  }
+
+  // Content area inside multi-line macros (editable by ProseMirror)
+  .hb-macro-content {
+    padding: 2px 10px 2px 24px;
+    color: #cdd6f4;
+    min-height: 1.4em;
+
+    &:focus {
+      outline: none;
+    }
+  }
+
   // ─── Icon Marks ───────────────────────────────────────────
   // Make icons visible in the editor even without icon fonts
   i.phb-icon,

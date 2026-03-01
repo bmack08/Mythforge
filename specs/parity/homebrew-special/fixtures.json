@@ -1,0 +1,82 @@
+[
+  {
+    "name": "front-cover-marker",
+    "source": "{{frontCover}}"
+  },
+  {
+    "name": "back-cover-marker",
+    "source": "{{backCover}}"
+  },
+  {
+    "name": "inside-cover-marker",
+    "source": "{{insideCover}}"
+  },
+  {
+    "name": "part-cover-marker",
+    "source": "{{partCover}}"
+  },
+  {
+    "name": "logo-macro",
+    "source": "{{logo ![](/assets/naturalCritLogoRed.svg)}}"
+  },
+  {
+    "name": "logo-macro-long-url",
+    "source": "{{logo ![](https://homebrewery.naturalcrit.com/assets/naturalCritLogoRed.svg)}}"
+  },
+  {
+    "name": "banner-macro",
+    "source": "{{banner HOMEBREW}}"
+  },
+  {
+    "name": "banner-macro-multiword",
+    "source": "{{banner MY EPIC CAMPAIGN}}"
+  },
+  {
+    "name": "footnote-single-line",
+    "source": "{{footnote PART 1 | FANCINESS}}"
+  },
+  {
+    "name": "footnote-multi-line",
+    "source": "{{footnote\n  In an amazing kingdom, a wizard and a secretary hope to prevent the destruction of mankind.\n}}"
+  },
+  {
+    "name": "footnote-punctuation",
+    "source": "{{footnote\n  \"Fortune favors the bold,\" said the wizard.\n}}"
+  },
+  {
+    "name": "footnote-multi-paragraph",
+    "source": "{{footnote\n  First line of the footnote.\n  Second line continues here.\n}}"
+  },
+  {
+    "name": "background-image-standard",
+    "source": "![background image](https://i.imgur.com/IwHRrbF.jpg){position:absolute,bottom:0,left:0,height:100%}"
+  },
+  {
+    "name": "background-image-unsorted-style",
+    "source": "![background image](https://i.imgur.com/IwHRrbF.jpg){left:0,height:100%,position:absolute,bottom:0}"
+  },
+  {
+    "name": "style-tail-empty-alt",
+    "source": "![](https://i.imgur.com/GZfjDWV.png){position:absolute,height:100%,left:0,bottom:0}"
+  },
+  {
+    "name": "background-image-query-url",
+    "source": "![background image](https://i.imgur.com/hMna6G0.png?auth=12345&height=1024){height:100%,left:0,bottom:0,position:absolute}"
+  },
+  {
+    "name": "full-front-cover-snippet",
+    "source": "{{frontCover}}\n\n{{logo ![](/assets/naturalCritLogoRed.svg)}}\n\n# Yellow Divinity\n## Cursed Ruins\n___\n\n{{banner HOMEBREW}}\n\n{{footnote\n  In an amazing kingdom, a wizard and a secretary hope to prevent the destruction of mankind.\n}}\n\n![background image](https://i.imgur.com/IwHRrbF.jpg){position:absolute,bottom:0,left:0,height:100%}"
+  },
+  {
+    "name": "full-back-cover-snippet",
+    "source": "{{backCover}}\n\n# Subtitle Here\n\nBody text paragraph one.\n\n___\n\n![background image](https://i.imgur.com/IwHRrbF.jpg){position:absolute,bottom:0,left:0,height:100%}\n\n{{logo ![](/assets/naturalCritLogoWhite.svg)}}"
+  },
+  {
+    "name": "multiple-special-blocks",
+    "source": "{{frontCover}}\n\n{{logo ![](/assets/naturalCritLogoRed.svg)}}\n\n{{banner MY CAMPAIGN}}\n\n{{footnote\n  Chapter One | Into the Wild\n}}\n\n![background image](https://example.com/bg.jpg){position:absolute,bottom:0,left:0,height:100%}\n\n{{banner EPISODE I}}"
+  },
+  {
+    "name": "macro-whitespace-variants",
+    "source": "{{frontCover}}\n\n{{banner HOMEBREW}}\n\n{{logo ![](/assets/naturalCritLogoRed.svg)}}"
+  }
+]

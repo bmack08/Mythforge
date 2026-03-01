@@ -8,12 +8,19 @@ describe('Footnote Parity', ()=>{
 		const json = normalizeTipTapDoc(markdownToTiptap(source));
 
 		expect(json.content).toHaveLength(1);
-		expect(json.content[0].type).toBe('footnoteBlock');
+		expect(json.content[0].type).toBe('hbFootnote');
 
+		// Single-line footnote → canonical multi-line on serialize
 		const roundTrip = tiptapToMarkdown(json);
-		expect(roundTrip.trim()).toBe(source);
+		expect(roundTrip.trim()).toBe('{{footnote\n  PART 1 | SECTION NAME\n}}');
+
+		// Second round-trip is idempotent
+		const secondJson = normalizeTipTapDoc(markdownToTiptap(roundTrip));
+		const secondRoundTrip = tiptapToMarkdown(secondJson);
+		expect(secondRoundTrip).toBe(roundTrip);
 	});
-	test('normalizer converts raw footnote text', ()=>{
+
+	test('normalizer converts raw footnote text to hbFootnote', ()=>{
 		const doc = {
 			type    : 'doc',
 			content : [{
@@ -23,7 +30,7 @@ describe('Footnote Parity', ()=>{
 		};
 
 		const normalized = normalizeTipTapDoc(doc);
-		expect(normalized.content[0].type).toBe('footnoteBlock');
+		expect(normalized.content[0].type).toBe('hbFootnote');
 	});
 
 	test('handles trailing spaces inside footnote braces', ()=>{
@@ -35,6 +42,24 @@ describe('Footnote Parity', ()=>{
 			}]
 		};
 		const normalized = normalizeTipTapDoc(doc);
-		expect(normalized.content[0].content[0].content[0].text).toBe('Example Text');
+		expect(normalized.content[0].type).toBe('hbFootnote');
+		expect(normalized.content[0].content[0].text).toBe('Example Text');
+	});
+
+	test('normalizer migrates legacy footnoteBlock to hbFootnote', ()=>{
+		const doc = {
+			type: 'doc',
+			content: [{
+				type: 'footnoteBlock',
+				content: [{
+					type: 'paragraph',
+					content: [{ type: 'text', text: 'Legacy footnote content' }]
+				}]
+			}]
+		};
+
+		const normalized = normalizeTipTapDoc(doc);
+		expect(normalized.content[0].type).toBe('hbFootnote');
+		expect(normalized.content[0].content[0].text).toBe('Legacy footnote content');
 	});
 });

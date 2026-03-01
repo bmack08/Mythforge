@@ -198,9 +198,13 @@ export default Node.create({
 
       // --- Prevent ProseMirror from swallowing input events ---
       const shieldInput = (input) => {
-        input.addEventListener('focus', (e) => e.stopPropagation());
-        input.addEventListener('click', (e) => e.stopPropagation());
-        input.addEventListener('mousedown', (e) => e.stopPropagation());
+        // Stop ALL events ProseMirror intercepts so typing stays in the input
+        const stop = (e) => e.stopPropagation();
+        for (const evt of ['focus', 'click', 'mousedown', 'keyup', 'keypress',
+          'beforeinput', 'input', 'compositionstart', 'compositionend',
+          'compositionupdate', 'paste', 'drop']) {
+          input.addEventListener(evt, stop);
+        }
         input.addEventListener('keydown', (e) => {
           e.stopPropagation();
           if (e.key === 'Enter') {

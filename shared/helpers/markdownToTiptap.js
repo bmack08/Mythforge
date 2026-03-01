@@ -106,36 +106,55 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
-    // Footnote block: {{footnote ...}}
+    // Single-line footnote: {{footnote TEXT}} → hbFootnote (inline* content)
     const footnoteMatch = trimmed.match(/^{{footnote\s+(.*)}}$/s);
     if (footnoteMatch) {
       flushParagraph();
-      flushBlock();
       const footnoteText = footnoteMatch[1].trim();
       const innerContent = parseInlineMarks(footnoteText);
-      content.push({
-        type    : 'footnoteBlock',
-        content : [{
-          type    : 'paragraph',
-          content : innerContent.length ? innerContent : [{ type: 'text', text: '' }]
-        }]
-      });
+      const footnoteNode = {
+        type: 'hbFootnote',
+        content: innerContent.length ? innerContent : [{ type: 'text', text: '' }]
+      };
+      if (!currentBlock) content.push(footnoteNode);
+      else blockContent.push(footnoteNode);
       continue;
     }
 
-    // Multi-line footnote: {{footnote (without closing }})
-    // MUST be before generic mustache block handler to avoid being caught as mustacheBlock
+    // Multi-line footnote: {{footnote (without closing }}) → hbFootnote (inline* content)
+    // Collect all lines until }} and join with hardBreaks.
+    // MUST be before generic mustache block handler to avoid being caught as mustacheBlock.
     if ((trimmed === '{{footnote' || trimmed.startsWith('{{footnote ')) && !trimmed.endsWith('}}')) {
       flushParagraph();
-      flushBlock();
       const afterTag = trimmed.replace(/^{{footnote\s*/, '').trim();
-      currentBlock = { type: 'footnoteBlock', attrs: {} };
-      if (afterTag) {
-        blockContent.push({
-          type: 'paragraph',
-          content: parseInlineMarks(afterTag)
-        });
+      const footnoteLines = [];
+      if (afterTag) footnoteLines.push(afterTag);
+
+      i++;
+      while (i < lines.length) {
+        const fl = lines[i].trim();
+        if (fl === '}}') break;
+        if (fl) footnoteLines.push(fl);
+        i++;
       }
+
+      // Build inline content from collected lines (joined with hardBreak)
+      const inlineNodes = [];
+      for (let j = 0; j < footnoteLines.length; j++) {
+        if (j > 0) inlineNodes.push({ type: 'hardBreak' });
+        const lineMarks = parseInlineMarks(footnoteLines[j]);
+        for (const n of lineMarks) {
+          if (n.type === 'text' && !n.text) continue;
+          inlineNodes.push(n);
+        }
+      }
+
+      const footnoteNode = {
+        type: 'hbFootnote',
+        content: inlineNodes.length > 0 ? inlineNodes : [{ type: 'text', text: '' }]
+      };
+      if (!currentBlock) content.push(footnoteNode);
+      else blockContent.push(footnoteNode);
       continue;
     }
 
@@ -262,21 +281,22 @@ export function markdownToTiptap(markdown) {
     }
 
     // Cover page markers: {{frontCover}}, {{backCover}}, {{insideCover}}, {{partCover}}
-    // These are block openers — content follows until \page or }}
+    // These are flat atom markers — NOT block openers. Content that follows is siblings.
     const coverMatch = trimmed.match(/^{{(frontCover|backCover|insideCover|partCover)}}$/);
     if (coverMatch) {
       flushParagraph();
-      flushBlock();
       const coverTypeMap = {
         frontCover:  'front',
         insideCover: 'inside',
         backCover:   'back',
         partCover:   'part',
       };
-      currentBlock = {
-        type: 'coverBlock',
+      const coverNode = {
+        type: 'hbFrontCover',
         attrs: { coverType: coverTypeMap[coverMatch[1]] || 'front' },
       };
+      if (!currentBlock) content.push(coverNode);
+      else blockContent.push(coverNode);
       continue;
     }
 
@@ -297,36 +317,26 @@ export function markdownToTiptap(markdown) {
       continue;
     }
 
-    // Banner: {{banner TEXT}}
+    // Banner: {{banner TEXT}} → hbBanner atom with text attr
     const bannerMatch = trimmed.match(/^{{banner\s+(.+?)}}$/);
     if (bannerMatch) {
       flushParagraph();
-      const node = {
-        type: 'bannerBlock',
-        content: [{ type: 'text', text: bannerMatch[1] }]
-      };
-      if (!currentBlock) {
-        content.push(node);
-      } else {
-        blockContent.push(node);
-      }
+      const node = { type: 'hbBanner', attrs: { text: bannerMatch[1].trim() } };
+      if (!currentBlock) content.push(node);
+      else blockContent.push(node);
       continue;
     }
 
-    // Logo: {{logo CONTENT}} — content may include images like ![](url)
+    // Logo: {{logo ![](url)}} → hbLogo atom with src attr
     const logoMatch = trimmed.match(/^{{logo\s+(.+?)}}$/);
     if (logoMatch) {
       flushParagraph();
-      const innerContent = parseInlineMarks(logoMatch[1]);
-      const node = {
-        type: 'logoBlock',
-        content: [{ type: 'paragraph', content: innerContent }]
-      };
-      if (!currentBlock) {
-        content.push(node);
-      } else {
-        blockContent.push(node);
-      }
+      // Extract image src from ![alt](url) pattern, or use raw content as src
+      const imgMatch = logoMatch[1].match(/!\[([^\]]*)\]\(([^)]+)\)/);
+      const src = imgMatch ? imgMatch[2] : logoMatch[1].trim();
+      const node = { type: 'hbLogo', attrs: { src } };
+      if (!currentBlock) content.push(node);
+      else blockContent.push(node);
       continue;
     }
 
@@ -655,7 +665,7 @@ export function markdownToTiptap(markdown) {
     }
 
     // Standalone image line: ![alt](url) or ![alt](url){styles}
-    // Block-level image — avoids wrapping in a paragraph (imageWithAttributes is group: block)
+    // Block-level: styled images → hbBackgroundImage atom, plain images → image node
     const standaloneImgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)(?:\s*\{([^}]+)\})?$/);
     if (standaloneImgMatch) {
       flushParagraph();
@@ -663,7 +673,7 @@ export function markdownToTiptap(markdown) {
       const alt = standaloneImgMatch[1] || '';
       let imgNode;
       if (standaloneImgMatch[3]) {
-        // Has {k:v,...} style block → imageWithAttributes
+        // Has {k:v,...} style block → hbBackgroundImage atom
         const parsed = parseStyleTags(standaloneImgMatch[3].trim());
         const style = parsed.styles || {};
         if (parsed.classes) {
@@ -672,16 +682,13 @@ export function markdownToTiptap(markdown) {
             else if (cls === 'wrapRight') style.float = 'right';
           });
         }
-        imgNode = { type: 'imageWithAttributes', attrs: { src, alt, style } };
+        imgNode = { type: 'hbBackgroundImage', attrs: { src, alt, style } };
       } else {
         // No style block → basic image
         imgNode = { type: 'image', attrs: { src, alt } };
       }
-      if (!currentBlock) {
-        content.push(imgNode);
-      } else {
-        blockContent.push(imgNode);
-      }
+      if (!currentBlock) content.push(imgNode);
+      else blockContent.push(imgNode);
       continue;
     }
 
