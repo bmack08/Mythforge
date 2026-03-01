@@ -68,9 +68,16 @@ export default Node.create({
             type: this.name,
             attrs,
             content: [
-              { type: 'heading', attrs: { level: 4 }, content: [{ type: 'text', text: 'Feature Name' }] },
+              { type: 'heading', attrs: { level: 4 }, content: [{ type: 'text', text: 'Martial Archetype' }] },
               { type: 'paragraph', content: [
-                { type: 'text', text: 'Describe your class or race feature here. This block is styled with a tan/parchment background and a decorative border.' }
+                { type: 'text', text: 'At 3rd level, you choose an archetype that you strive to emulate in your combat styles and techniques. Choose one of the following options. Your archetype grants you features at 3rd level and again at 7th, 10th, 15th, and 18th level.' },
+              ]},
+              { type: 'heading', attrs: { level: 5 }, content: [{ type: 'text', text: 'Action Surge' }] },
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Starting at 2nd level, you can push yourself beyond your normal limits for a moment. On your turn, you can take one additional action on top of your regular action and a possible bonus action.' },
+              ]},
+              { type: 'paragraph', content: [
+                { type: 'text', text: 'Once you use this feature, you must finish a short or long rest before you can use it again. Starting at 17th level, you can use it twice before a rest, but only once on the same turn.' },
               ]},
             ],
           })

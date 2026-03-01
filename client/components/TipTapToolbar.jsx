@@ -253,6 +253,30 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           <i className="fas fa-arrows-alt-h" />
           <span className="tiptap-toolbar__btn-label">Wide</span>
         </TBtn>
+
+        <Divider />
+
+        <TBtn
+          editor={editor}
+          onClick={() => chain().setPageNumber().run()}
+          title="Page Number (auto)"
+        >
+          <i className="fas fa-hashtag" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().insertVerticalSpacing().run()}
+          title="Vertical Spacing (1cm)"
+        >
+          <i className="fas fa-arrows-alt-v" />
+        </TBtn>
+        <TBtn
+          editor={editor}
+          onClick={() => chain().setFooter().run()}
+          title="Footer"
+        >
+          <i className="fas fa-window-minimize" />
+        </TBtn>
       </div>
 
       <Divider />
@@ -262,21 +286,15 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
         <ToolbarDropdown label="Images" icon="fas fa-image">
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => {
-              const url = window.prompt('Image URL:');
-              if (url) chain().setImage({ src: url }).run();
-            }}
-            title="Insert an image"
+            onClick={() => chain().setImage({ src: 'https://i.imgur.com/hMna6G0.png' }).run()}
+            title="Insert an image (edit src in widget)"
           >
             <i className="fas fa-image" />
             <span>Image</span>
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => {
-              const url = window.prompt('Image URL:');
-              if (url) chain().insertImageWrapLeft(url).run();
-            }}
+            onClick={() => chain().insertImageWrapLeft('https://i.imgur.com/hMna6G0.png').run()}
             title="Insert image with text wrapping on left"
           >
             <i className="fas fa-align-left" />
@@ -284,10 +302,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => {
-              const url = window.prompt('Image URL:');
-              if (url) chain().insertImageWrapRight(url).run();
-            }}
+            onClick={() => chain().insertImageWrapRight('https://i.imgur.com/hMna6G0.png').run()}
             title="Insert image with text wrapping on right"
           >
             <i className="fas fa-align-right" />
@@ -295,10 +310,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           </button>
           <button
             className="tiptap-toolbar__dropdown-item"
-            onClick={() => {
-              const url = window.prompt('Background image URL:');
-              if (url) chain().insertBackgroundImage(url).run();
-            }}
+            onClick={() => chain().insertHbBackgroundImage({ src: 'https://i.imgur.com/hMna6G0.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } }).run()}
             title="Full-page background image (position: absolute)"
           >
             <i className="fas fa-expand" />
@@ -538,6 +550,49 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
         >
           <i className="fas fa-table" />
         </TBtn>
+        {active('table') && (
+          <>
+            <TBtn
+              editor={editor}
+              onClick={() => chain().addRowAfter().run()}
+              title="Add Row After"
+            >
+              <i className="fas fa-plus" />
+              <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Row</span>
+            </TBtn>
+            <TBtn
+              editor={editor}
+              onClick={() => chain().deleteRow().run()}
+              title="Delete Row"
+            >
+              <i className="fas fa-minus" />
+              <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Row</span>
+            </TBtn>
+            <TBtn
+              editor={editor}
+              onClick={() => chain().addColumnAfter().run()}
+              title="Add Column After"
+            >
+              <i className="fas fa-plus" />
+              <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Col</span>
+            </TBtn>
+            <TBtn
+              editor={editor}
+              onClick={() => chain().deleteColumn().run()}
+              title="Delete Column"
+            >
+              <i className="fas fa-minus" />
+              <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Col</span>
+            </TBtn>
+            <TBtn
+              editor={editor}
+              onClick={() => chain().deleteTable().run()}
+              title="Delete Table"
+            >
+              <i className="fas fa-trash" />
+            </TBtn>
+          </>
+        )}
         <TBtn
           editor={editor}
           onClick={() => chain().insertFootnote().run()}
