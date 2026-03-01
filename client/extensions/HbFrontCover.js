@@ -162,7 +162,9 @@ export default Node.create({
           { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'Book Title' }] },
           { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Subtitle' }] },
           { type: 'horizontalRule' },
-          { type: 'hbBackgroundImage', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          { type: 'imageMaskBlock', attrs: { maskType: 'center', maskNumber: 11, offsetX: '0%', offsetY: '0%', rotation: '0' }, content: [
+            { type: 'imageWithAttributes', attrs: { src: '/dragonBackground.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } } },
+          ]},
           { type: 'pageBreak' },
         ]).run();
       },

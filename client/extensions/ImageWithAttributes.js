@@ -187,15 +187,6 @@ export default Node.create({
       // Mutable reference to the current node (updated in update() callback)
       let currentNode = node;
 
-      // --- Helper: build Homebrewery-style style summary string ---
-      const buildStyleString = (attrs) => {
-        const style = attrs.style || {};
-        const entries = Object.entries(style).sort(([a], [b]) => a.localeCompare(b));
-        return entries.length > 0
-          ? `{${entries.map(([k, v]) => `${k}:${v}`).join(', ')}}`
-          : '';
-      };
-
       // --- Prevent ProseMirror from swallowing input events ---
       const shieldInput = (input) => {
         // Stop ALL events ProseMirror intercepts so typing stays in the input
@@ -290,13 +281,56 @@ export default Node.create({
       altRow.appendChild(altInput);
       fields.appendChild(altRow);
 
-      // -- style summary --
-      const styleInfo = document.createElement('div');
-      styleInfo.className = 'image-attr-style';
-      styleInfo.textContent = buildStyleString(node.attrs);
-      if (styleInfo.textContent) {
-        fields.appendChild(styleInfo);
-      }
+      // -- editable style properties --
+      const styleContainer = document.createElement('div');
+      styleContainer.className = 'image-attr-style-fields';
+
+      const styleInputs = {};
+
+      const buildStyleRows = (styleObj) => {
+        styleContainer.innerHTML = '';
+        Object.keys(styleInputs).forEach((k) => delete styleInputs[k]);
+
+        const entries = Object.entries(styleObj || {})
+          .filter(([key, value]) => key && value !== undefined && value !== null && String(value) !== '')
+          .sort(([a], [b]) => a.localeCompare(b));
+
+        for (const [key, value] of entries) {
+          const row = document.createElement('div');
+          row.className = 'image-attr-row';
+          const label = document.createElement('span');
+          label.className = 'image-attr-label';
+          label.textContent = key;
+          row.appendChild(label);
+          const input = document.createElement('input');
+          input.className = 'image-attr-input';
+          input.type = 'text';
+          input.value = value;
+          shieldInput(input);
+          input.addEventListener('change', () => {
+            const pos = getPos();
+            if (typeof pos !== 'number') return;
+            const newStyle = { ...currentNode.attrs.style };
+            if (input.value.trim()) {
+              newStyle[key] = input.value.trim();
+            } else {
+              delete newStyle[key];
+            }
+            editor.view.dispatch(
+              editor.view.state.tr.setNodeMarkup(pos, undefined, {
+                ...currentNode.attrs,
+                style: newStyle,
+              })
+            );
+          });
+          row.appendChild(input);
+          styleContainer.appendChild(row);
+          styleInputs[key] = input;
+        }
+      };
+
+      buildStyleRows(node.attrs.style || {});
+      fields.appendChild(styleContainer);
 
       dom.appendChild(fields);
 
@@ -314,13 +348,7 @@ export default Node.create({
             ? 'image-attr-badge bg'
             : 'image-attr-badge';
           badge.textContent = updatedIsBackground ? 'BG IMAGE' : 'IMAGE';
-          const newStyleStr = buildStyleString(updatedNode.attrs);
-          styleInfo.textContent = newStyleStr;
-          if (newStyleStr && !styleInfo.parentNode) {
-            fields.appendChild(styleInfo);
-          } else if (!newStyleStr && styleInfo.parentNode) {
-            styleInfo.remove();
-          }
+          buildStyleRows(updatedStyle);
           return true;
         },
       };
