@@ -84,3 +84,7 @@ storage/
 todo.md
 startDB.bat
 startMViewer.bat
+# Reference books and dialog dumps moved off-repo (Oct 19, 2026) to ..\_mythforge-reference-offrepo\
+/docs/reference/
+/docs/sourcebooks/
+/docs/Dialogs-*
