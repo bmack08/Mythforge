@@ -2,6 +2,64 @@
 import { AIService } from './index.js';
 
 // ============================================================================
+// CONFIG
+// ============================================================================
+
+// The campaign wizard sends `campaignLength` (an id), NOT a numeric
+// `sessionCount`. Map it here so the chapter loop and cover page have a real
+// number. (Mirror of CAMPAIGN_LENGTHS in client campaignWizard.jsx.)
+const LENGTH_TO_SESSIONS = {
+  oneshot: 1,
+  short: 4,
+  medium: 10,
+  long: 20,
+  epic: 40
+};
+
+// Hard cap on generated chapters. Each chapter is one AI call; an "epic"
+// (40 sessions) would otherwise fire 40 calls. Cap keeps generation cost and
+// time bounded; chapters beyond this are summarized in the outline rather than
+// fully written. Override with MYTHWRIGHT_MAX_CHAPTERS.
+const MAX_CHAPTERS = parseInt(process.env.MYTHWRIGHT_MAX_CHAPTERS || '8', 10);
+
+// Resolve a usable session count from whatever the request provided.
+function resolveSessionCount(parameters) {
+  // Explicit numeric sessionCount wins, then campaignLength id, then default.
+  const explicit = parseInt(parameters.sessionCount, 10);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+  const mapped = LENGTH_TO_SESSIONS[parameters.campaignLength];
+  if (mapped) return mapped;
+  return 4; // sensible default (short arc)
+}
+
+// System prompt for NARRATIVE content (outline, chapters, tables, handouts).
+// The default provider system prompt (buildSystemPrompt) forces "always respond
+// with valid JSON", which fights our need for ready-to-render Homebrewery
+// markdown. We pass this via context.customSystemPrompt + skipDefaultSystemPrompt
+// + responseFormat:'text' so the model returns clean markdown, not JSON.
+const MARKDOWN_SYSTEM_PROMPT = `You are an expert D&D 5e adventure writer producing content for The Homebrewery (a Markdown-to-PHB renderer). Output ONLY ready-to-render Homebrewery Markdown — no JSON, no code fences, no preamble, no commentary, no explanations.
+
+Use these Homebrewery constructs:
+- Headings: "# Title", "## Section", "### Subsection".
+- Read-aloud / boxed text: a {{descriptive}} block, e.g.
+  {{descriptive
+  The boxed text players hear, in italicized prose.
+  }}
+- DM-only guidance: a {{note}} block, e.g.
+  {{note
+  ##### DM Note
+  Guidance for the DM.
+  }}
+- Tables: real Markdown pipe tables with a header row and a |:---:| separator row. Never output a table as JSON.
+- Stat blocks: a {{monster,frame}} block with the standard 5e fields and "::" leader lines.
+- Page breaks: "\\page" between major sections.
+
+Rules:
+- SRD-safe only — never use Product Identity names (use "gaze tyrant", not "beholder").
+- Write complete, runnable content with concrete names, DCs, and read-aloud text.
+- Begin chapter content with its own "# Chapter N: <Title>" heading.`;
+
+// ============================================================================
 // XP BUDGET CALCULATOR  
 // ============================================================================
 
@@ -111,32 +169,44 @@ export class ContentGenerationOrchestrator {
   }
 
   async generateCampaign(parameters) {
-    console.log(`🎲 Starting campaign generation: "${parameters.title}"`);
-    
+    // Normalize the session count BEFORE anything reads it (XP budget, cover
+    // page, and the chapter loop all depend on it). This is the root fix for
+    // "0 chapters" + "undefined session": the request carries `campaignLength`,
+    // not a numeric `sessionCount`.
+    const sessionCount = resolveSessionCount(parameters);
+    const chapterCount = Math.min(sessionCount, MAX_CHAPTERS);
+    parameters.sessionCount = sessionCount; // propagate to sub-methods
+    if (sessionCount > chapterCount) {
+      console.warn(`⚠️ Session count ${sessionCount} exceeds MAX_CHAPTERS (${MAX_CHAPTERS}); generating ${chapterCount} chapters.`);
+    }
+    console.log(`🎲 Starting campaign generation: "${parameters.title}" (${chapterCount} chapters)`);
+
     // Calculate XP budget and system design
     const xpBudget = XPBudgetCalculator.calculateBudget(parameters);
-    
+
     // Generate campaign outline
     const outline = await this.generateCampaignOutline(parameters, xpBudget);
-    
+
     // Generate content chapter by chapter
     const chapters = [];
-    
-    for (let i = 0; i < parameters.sessionCount; i++) {
-      console.log(`📖 Generating Chapter ${i + 1}/${parameters.sessionCount}`);
+
+    for (let i = 0; i < chapterCount; i++) {
+      console.log(`📖 Generating Chapter ${i + 1}/${chapterCount}`);
       const chapter = await this.generateChapter(i + 1, outline, parameters, xpBudget);
       chapters.push(chapter);
-      
+
       // Small delay to prevent API rate limiting
       await this.delay(1000);
     }
+
+    if (chapters.length === 0) {
+      // Fail loud rather than returning an empty-but-"successful" book.
+      throw new Error('Campaign generation produced 0 chapters — check sessionCount/campaignLength mapping.');
+    }
     
-    // Generate appendices
+    // Generate appendices (random tables + player handouts, folded in)
     const appendices = await this.generateAppendices(chapters, parameters, xpBudget);
-    
-    // Generate handouts
-    const handouts = await this.generateHandouts(chapters, parameters);
-    
+
     // Create table of contents
     const tableOfContents = this.generateTableOfContents(chapters, appendices);
     
@@ -151,7 +221,6 @@ export class ContentGenerationOrchestrator {
       tableOfContents,
       chapters,
       appendices,
-      handouts,
       metadata: {
         xpBudget,
         estimatedPlayTime: parameters.sessionCount * 4, // 4 hours per session
@@ -179,13 +248,13 @@ XP BUDGET: ${xpBudget.totalXPBudget} total XP
 
 Generate a cohesive story arc with:
 1. Main plot hook and central conflict
-2. Chapter-by-chapter breakdown with session goals
+2. A chapter-by-chapter breakdown (one bullet per chapter, with its session goal)
 3. Key NPCs and their motivations
 4. Major locations and their significance
 5. Escalating threats and challenges
 6. Satisfying climax and resolution
 
-Return as JSON with detailed structure.`;
+Write it as a tight planning outline in plain Markdown (headings + bullets). This is an internal planning brief that will guide chapter writing — keep it concise.`;
 
     // Include DM's reference materials as additional context
     if (parameters.referenceContext) {
@@ -195,12 +264,22 @@ ${parameters.referenceContext}`;
     }
 
     const response = await this.aiService.generateContent({
-      type: 'custom',
+      type: 'description',
       prompt,
-      context: { systemBudget: xpBudget }
+      context: {
+        systemBudget: xpBudget,
+        customSystemPrompt: MARKDOWN_SYSTEM_PROMPT,
+        skipDefaultSystemPrompt: true,
+        responseFormat: 'text'
+      }
     });
 
-    return response.content || {};
+    if (!response.success) {
+      throw new Error(`Campaign outline generation failed: ${response.error?.message || 'unknown error'}`);
+    }
+
+    // Always a markdown string now (responseFormat:'text').
+    return typeof response.content === 'string' ? response.content : '';
   }
 
   async generateChapter(chapterNumber, outline, parameters, xpBudget) {
@@ -236,61 +315,80 @@ ${parameters.referenceContext}`;
   }
 
   async generateChapterContent(chapterNumber, outline, parameters, xpBudget) {
-    
-    const prompt = `Generate Chapter ${chapterNumber} content for "${parameters.title}".
-
-Use proper Homebrewery markdown formatting with:
-- Chapter heading: # Chapter ${chapterNumber}: [Title]
-- Descriptive boxed text: {{descriptive}} blocks for read-aloud sections
-- Note boxes: {{note}} for DM information
-- Page breaks: \\page where appropriate
-- Column breaks: \\column for layout
-- Proper section headers: ## and ###
-
-Include:
-1. Opening scene with descriptive boxed text
-2. Key locations with room descriptions
-3. Important NPCs with motivations
-4. Plot advancement opportunities
-5. Skill challenge suggestions
-6. Transition to next chapter
+    const prompt = `Write Chapter ${chapterNumber} of "${parameters.title}" as complete, ready-to-run Homebrewery Markdown.
 
 Adventure Type: ${parameters.adventureType}
-Theme: ${parameters.theme}
-Session Goals: [Based on outline chapter ${chapterNumber}]
+Theme: ${parameters.theme}${parameters.tone ? `\nTone: ${parameters.tone}` : ''}
+Party: ${xpBudget.partySize} players, around level ${xpBudget.partyLevel}.
 
-Format as professional Homebrewery content ready for play.`;
+CAMPAIGN OUTLINE (follow this arc; write the portion for chapter ${chapterNumber}):
+${outline || '(no outline available — invent a coherent chapter that fits the theme)'}
+
+Include, in this order:
+1. A "# Chapter ${chapterNumber}: <evocative title>" heading.
+2. An opening {{descriptive}} read-aloud box.
+3. Two to four keyed locations with "## " headings, each with sensory description and at least one DC'd skill check (e.g. "DC 14 Wisdom (Perception)").
+4. At least one important NPC (name + motivation) in a {{note}} box.
+5. At least one encounter or skill challenge with concrete numbers.
+6. A short hook transitioning to the next chapter.
+
+Output ONLY Homebrewery Markdown — no JSON, no code fences, no commentary.`;
 
     const response = await this.aiService.generateContent({
       type: 'description',
       prompt,
-      context: { systemBudget: xpBudget }
+      context: {
+        systemBudget: xpBudget,
+        customSystemPrompt: MARKDOWN_SYSTEM_PROMPT,
+        skipDefaultSystemPrompt: true,
+        responseFormat: 'text'
+      }
     });
 
-    const content = response.content || {};
+    if (!response.success) {
+      throw new Error(`Chapter ${chapterNumber} generation failed: ${response.error?.message || 'unknown error'}`);
+    }
+
+    const markdown = this.formatAsHomebrewery(response.content, chapterNumber);
     return {
-      title: content?.title || `Session ${chapterNumber}`,
-      homebreweryMarkdown: this.formatAsHomebrewery(content, chapterNumber)
+      title: this.extractTitle(markdown, chapterNumber),
+      homebreweryMarkdown: markdown
     };
   }
 
-  formatAsHomebrewery(content, chapterNumber) {
-    return `# Chapter ${chapterNumber}: ${content?.title || 'Adventure Continues'}
+  // Use the AI's Homebrewery markdown DIRECTLY; only guarantee structure — a
+  // chapter heading at the top and a trailing \page. (Previously this discarded
+  // the AI output and emitted a generic template; that was the "no chapters"
+  // bug's sibling — generic boilerplate instead of real content.)
+  formatAsHomebrewery(markdown, chapterNumber) {
+    let md = (typeof markdown === 'string' ? markdown : '').trim();
 
-{{descriptive
-${content?.readAloudText || content?.description || 'The adventure continues as our heroes face new challenges...'}
-}}
+    // Defensive: strip a wrapping ```...``` code fence if the model added one
+    // despite instructions (this was the raw-JSON-dump failure mode).
+    const fence = md.match(/^```[a-z]*\s*([\s\S]*?)\s*```$/i);
+    if (fence) md = fence[1].trim();
 
-${content?.description || ''}
+    if (!md) {
+      // Fail-soft but VISIBLE — never silently emit a generic chapter.
+      return `# Chapter ${chapterNumber}\n\n{{note\n##### Generation Note\nThis chapter returned empty from the AI and should be regenerated.\n}}\n\n\\page`;
+    }
 
-{{note
-##### DM Notes
-- Adjust difficulty based on party performance
-- Use environmental details to enhance immersion
-- Encourage creative problem solving
-}}
+    // Guarantee a chapter heading on the first line.
+    const firstLine = md.split('\n', 1)[0] || '';
+    if (!/^#\s+chapter\s+\d+/i.test(firstLine)) {
+      md = `# Chapter ${chapterNumber}\n\n${md}`;
+    }
 
-\\page`;
+    // Guarantee a trailing page break between chapters.
+    if (!/\\page\s*$/.test(md)) {
+      md = `${md}\n\n\\page`;
+    }
+    return md;
+  }
+
+  extractTitle(markdown, chapterNumber) {
+    const m = String(markdown || '').match(/^#\s+Chapter\s+\d+:\s*(.+)$/im);
+    return m ? m[1].trim() : `Session ${chapterNumber}`;
   }
 
   async generateAppendices(chapters, parameters, xpBudget) {
@@ -304,28 +402,52 @@ ${content?.description || ''}
       type: 'random-tables'
     });
 
+    // Player handouts appendix (folded in here so it actually renders).
+    const handoutsContent = await this.generateHandouts(parameters);
+    if (handoutsContent) {
+      appendices.push({
+        title: 'Appendix B: Player Handouts',
+        content: handoutsContent,
+        type: 'handouts'
+      });
+    }
+
     return appendices;
   }
 
   async generateRandomTables(parameters, xpBudget) {
-    
-    const prompt = `Create useful random tables for "${parameters.title}".
+    const prompt = `Create useful random tables for "${parameters.title}" as Homebrewery Markdown pipe tables — NOT JSON.
 
-TABLES NEEDED:
-- Random encounters table (1d20)
-- NPC personality traits (1d10)
-- Environmental complications (1d12)
-- Treasure variations (1d8)
-- Plot complications (1d6)
+Begin with a "# Appendix A: Random Tables" heading, then provide each table with a "## " heading, a header row, and a |:---:| separator row:
+- Random Encounters (1d20)
+- NPC Personality Traits (1d10)
+- Environmental Complications (1d12)
+- Treasure Variations (1d8)
+- Plot Complications (1d6)
 
 Theme: ${parameters.theme}
 Adventure Type: ${parameters.adventureType}
 
-Format as proper Homebrewery tables with dice notation.`;
+Output ONLY Homebrewery Markdown tables.`;
 
-    const response = await this.aiService.generateRandomTable(prompt);
-    
-    return response.content || `# Random Tables
+    const response = await this.aiService.generateContent({
+      type: 'description',
+      prompt,
+      context: {
+        systemBudget: xpBudget,
+        customSystemPrompt: MARKDOWN_SYSTEM_PROMPT,
+        skipDefaultSystemPrompt: true,
+        responseFormat: 'text'
+      }
+    });
+
+    let md = (response.success && typeof response.content === 'string') ? response.content.trim() : '';
+    const fence = md.match(/^```[a-z]*\s*([\s\S]*?)\s*```$/i);
+    if (fence) md = fence[1].trim();
+
+    if (!md) {
+      console.warn('⚠️ Random tables generation failed/empty; using fallback tables.');
+      md = `# Appendix A: Random Tables
 
 ## Random Encounters
 | d20 | Encounter |
@@ -348,31 +470,43 @@ Format as proper Homebrewery tables with dice notation.`;
 | 8 | Tells terrible jokes |
 | 9 | Hums constantly |
 | 10 | Collects unusual items |`;
+    }
+    return md;
   }
 
-  async generateHandouts(chapters, parameters) {
-    const handouts = [];
-    
-    // Generate a few key handouts
+  // Returns a single Homebrewery-markdown string of player handouts (each in a
+  // {{descriptive}} box), or '' if none generated. Folded into the appendices by
+  // generateAppendices so the content actually renders (previously these calls
+  // were made but the result was never assembled into the document).
+  async generateHandouts(parameters) {
     const handoutPrompts = [
-      'A mysterious letter that starts the adventure',
-      'An ancient map with cryptic markings',
-      'A journal entry revealing important backstory'
+      'A mysterious letter that helps kick off the adventure',
+      'An ancient map page with cryptic markings (describe it as a labelled legend)',
+      'A torn journal entry revealing important backstory'
     ];
 
-    for (const prompt of handoutPrompts) {
-      const response = await this.aiService.generateDescription(
-        `Create a handout: ${prompt}. Theme: ${parameters.theme}. Format as in-world document.`
-      );
-      
-      if (response.success) {
-        handouts.push(response.content || prompt);
+    const sections = [];
+    for (const p of handoutPrompts) {
+      const response = await this.aiService.generateContent({
+        type: 'description',
+        prompt: `Write a single player handout: ${p}. Theme: ${parameters.theme}. It is an in-world document — write the ACTUAL in-world text only (no narration about it). Put a "### " title line, then the document text inside a {{descriptive}} box. Output only Homebrewery Markdown.`,
+        context: {
+          customSystemPrompt: MARKDOWN_SYSTEM_PROMPT,
+          skipDefaultSystemPrompt: true,
+          responseFormat: 'text'
+        }
+      });
+
+      if (response.success && typeof response.content === 'string' && response.content.trim()) {
+        let md = response.content.trim();
+        const fence = md.match(/^```[a-z]*\s*([\s\S]*?)\s*```$/i);
+        if (fence) md = fence[1].trim();
+        sections.push(md);
       }
-      
       await this.delay(500);
     }
 
-    return handouts;
+    return sections.length ? `# Appendix B: Player Handouts\n\n${sections.join('\n\n')}` : '';
   }
 
   generateTableOfContents(chapters, appendices) {

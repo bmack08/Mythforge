@@ -3,6 +3,7 @@ import './newPage.less';
 import React from 'react';
 import createClass from 'create-react-class';
 import request from '../../utils/request-middleware.js';
+import { prefixPath, stripPrefix } from '../../utils/basePath.js';
 
 // Removed: import Markdown from 'naturalcrit/markdown.js';
 // Validation disabled for TipTap - editor handles it
@@ -102,8 +103,8 @@ const NewPage = createClass({
 		if(brew.style)
 			localStorage.setItem(STYLEKEY, brew.style);
 		localStorage.setItem(METAKEY, JSON.stringify({ 'renderer': brew.renderer, 'theme': brew.theme, 'lang': brew.lang }));
-		if(window.location.pathname != '/new') {
-			window.history.replaceState({}, window.location.title, '/new/');
+		if(stripPrefix(window.location.pathname) != '/new') {
+			window.history.replaceState({}, window.location.title, prefixPath('/new/'));
 		}
 	},
 	componentWillUnmount : function() {
@@ -230,7 +231,7 @@ const NewPage = createClass({
 		
 		// Navigate to edit page
 		const editId = res.body.brew?.editId || res.body.editId;
-		window.location = `/edit/${editId}`;
+		window.location = prefixPath(`/edit/${editId}`);
 	},
 
 	renderSaveButton : function(){

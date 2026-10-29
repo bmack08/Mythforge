@@ -3,8 +3,12 @@ import OpenAI from 'openai';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables
-dotenv.config({ path: path.join(process.cwd(), 'config', '.env') });
+// Load environment variables.
+// Root .env holds the real keys (OPENAI_API_KEY, DATABASE_URL); config/.env is an
+// optional override if present. Loading root first ensures the AI providers are
+// actually configured at runtime.
+dotenv.config(); // loads ./.env from the project root
+dotenv.config({ path: path.join(process.cwd(), 'config', '.env') }); // optional override
 import { z } from 'zod';
 import type { 
   GenerationSettings, 

@@ -1,6 +1,7 @@
 import React from 'react';
 import createClass from 'create-react-class';
 import Navbar from '../../navbar/navbar.jsx';
+import { prefixPath } from '../../utils/basePath.js';
 
 const ProjectsPage = createClass({
 	displayName: 'ProjectsPage',
@@ -20,7 +21,7 @@ const ProjectsPage = createClass({
 	loadProjects: function() {
 		this.setState({ loading: true, error: null });
 		
-		fetch('/api/projects')
+		fetch(prefixPath('/api/projects'))
 			.then(response => response.json())
 			.then(data => {
 				if (data.success) {
@@ -66,7 +67,7 @@ const ProjectsPage = createClass({
 					<a href={project.url} className="btn btn-primary">
 						<i className="fas fa-edit"></i> Edit
 					</a>
-					<a href={`/share/${project.shareId}`} className="btn btn-secondary" target="_blank">
+					<a href={prefixPath(`/share/${project.shareId}`)} className="btn btn-secondary" target="_blank">
 						<i className="fas fa-share"></i> Share
 					</a>
 					<button 
@@ -82,7 +83,7 @@ const ProjectsPage = createClass({
 
 	deleteProject: function(editId) {
 		if (confirm('Are you sure you want to delete this project? This action cannot be undone.')) {
-			fetch(`/api/brews/${encodeURIComponent(editId)}`, { method: 'DELETE' })
+			fetch(prefixPath(`/api/brews/${encodeURIComponent(editId)}`), { method: 'DELETE' })
 				.then(response => {
 					if (response.ok) {
 						// Optimistic removal from local state
@@ -115,7 +116,7 @@ const ProjectsPage = createClass({
 						<p>Manage your AI-generated campaigns and adventures</p>
 						<button 
 							className="btn btn-primary"
-							onClick={() => window.location.href = '/new'}
+							onClick={() => window.location.href = prefixPath('/new')}
 						>
 							<i className="fas fa-plus"></i> New Campaign
 						</button>
@@ -141,7 +142,7 @@ const ProjectsPage = createClass({
 							<i className="fas fa-folder-open"></i>
 							<h3>No projects yet</h3>
 							<p>Create your first AI-generated campaign to get started!</p>
-							<a href="/new" className="btn btn-primary">
+							<a href={prefixPath("/new")} className="btn btn-primary">
 								<i className="fas fa-plus"></i> Create Campaign
 							</a>
 						</div>

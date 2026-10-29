@@ -2,6 +2,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import Nav from 'naturalcrit/nav/nav.jsx';
 import request from 'superagent';
+import { prefixPath } from '../utils/basePath.js';
 
 const Account = createClass({
 	displayName     : 'AccountNavItem',
@@ -33,7 +34,7 @@ const Account = createClass({
 				domain = domainArray.join('.');
 			}
 			document.cookie = `nc_session=;expires=Thu, 01 Jan 1970 00:00:01 GMT;path=/;samesite=lax;${domain ? `domain=${domain}` : ''}`;
-			window.location = '/';
+			window.location = prefixPath('/');
 		}
 	},
 
@@ -44,7 +45,7 @@ const Account = createClass({
 		const expiry = new Date;
 		expiry.setFullYear(expiry.getFullYear() + 1);
 
-		const token = await request.post('/local/login')
+		const token = await request.post(prefixPath('/local/login'))
 				.send({ username })
 				.then((response)=>{
 					return response.body;

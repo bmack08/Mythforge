@@ -5,6 +5,7 @@ import _ from 'lodash';
 import cx from 'classnames';
 
 import NaturalCritIcon from 'naturalcrit/svg/naturalcrit.svg.jsx';
+import { prefixPath } from 'client/homebrew/utils/basePath.js';
 
 const Nav = {
 	base : createClass({
@@ -56,7 +57,7 @@ const Nav = {
 			const props = _.omit(this.props, ['newTab']);
 
 			if(this.props.href){
-				return <a {...props} className={classes} target={this.props.newTab ? '_blank' : '_self'} >
+				return <a {...props} href={prefixPath(this.props.href)} className={classes} target={this.props.newTab ? '_blank' : '_self'} >
 					{this.props.children}
 					{icon}
 				</a>;

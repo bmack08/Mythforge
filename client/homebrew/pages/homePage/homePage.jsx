@@ -3,6 +3,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import cx from 'classnames';
 import request from '../../utils/request-middleware.js';
+import { prefixPath } from '../../utils/basePath.js';
 import { Meta } from 'vitreum/headtags';
 
 import Nav from 'naturalcrit/nav/nav.jsx';
@@ -58,7 +59,7 @@ const HomePage = createClass({
 					return;
 				}
 				const brew = res.body;
-				window.location = `/edit/${brew.editId}`;
+				window.location = prefixPath(`/edit/${brew.editId}`);
 			});
 	},
 	handleSplitMove : function(){
@@ -161,7 +162,7 @@ const HomePage = createClass({
 				Save current <i className='fas fa-save' />
 			</div>
 
-			<a href='/new' className='floatingNewButton'>
+			<a href={prefixPath('/new')} className='floatingNewButton'>
 				Create your own <i className='fas fa-magic' />
 			</a>
 		</div>;

@@ -3,8 +3,12 @@ import OpenAI from 'openai';
 import * as dotenv from 'dotenv';
 import path from 'path';
 
-// Load environment variables
-dotenv.config({ path: path.join(process.cwd(), 'config', '.env') });
+// Load environment variables.
+// Root .env holds the real keys (OPENAI_API_KEY, DATABASE_URL); config/.env is an
+// optional override if present. Loading root first ensures the AI providers are
+// actually configured at runtime.
+dotenv.config(); // loads ./.env from the project root
+dotenv.config({ path: path.join(process.cwd(), 'config', '.env') }); // optional override
 
 // ============================================================================
 // AI SERVICE CONFIGURATION
@@ -49,6 +53,24 @@ export class AIServiceConfig {
         defaultModel: process.env.ANTHROPIC_DEFAULT_MODEL || 'claude-3-sonnet-20240229',
         maxTokens: parseInt(process.env.ANTHROPIC_MAX_TOKENS || '4000'),
         temperature: parseFloat(process.env.ANTHROPIC_TEMPERATURE || '0.8'),
+        enabled: true
+      });
+    }
+
+    // TaleForge bridge (Phase 1). Routes generation through TaleForge's
+    // backend so AI runs on Anthropic Claude with centralized spend caps and
+    // logging. Registered only when both the bridge URL and the shared service
+    // token are configured, so the OpenAI baseline keeps working until the
+    // operator opts in (set AI_PROVIDER_PRIMARY=taleforge to make it default).
+    const taleforgeUrl = process.env.TALEFORGE_AI_URL;
+    const taleforgeToken = process.env.TALEFORGE_SERVICE_TOKEN;
+    if (taleforgeUrl && taleforgeToken) {
+      this.config.set('taleforge', {
+        name: 'TaleForge (Anthropic)',
+        baseURL: taleforgeUrl.replace(/\/+$/, ''),
+        apiKey: taleforgeToken, // shared service token, sent as X-Service-Token
+        defaultModel: process.env.TALEFORGE_AI_MODEL || 'claude-sonnet-4-20250514',
+        maxTokens: parseInt(process.env.TALEFORGE_MAX_TOKENS || '4096'),
         enabled: true
       });
     }
@@ -317,6 +339,152 @@ Ensure content is appropriate for this party configuration and follows the speci
 }
 
 // ============================================================================
+// TALEFORGE PROVIDER (Phase 1 bridge — routes to Anthropic Claude via TaleForge)
+// ============================================================================
+
+export class TaleForgeProvider {
+  constructor(config) {
+    this.config = config;
+  }
+
+  async generateContent(request) {
+    const startTime = Date.now();
+
+    try {
+      const context = request.context || {};
+
+      // Reuse OpenAIProvider's system-prompt builder verbatim (it depends only
+      // on its arguments, not on `this`), so output parity is preserved and the
+      // orchestrator runs unchanged regardless of provider.
+      const includeDefaultPrompt = !context.skipDefaultSystemPrompt;
+      const defaultSystemPrompt = includeDefaultPrompt
+        ? OpenAIProvider.prototype.buildSystemPrompt.call(this, request.type, context)
+        : '';
+      const systemPrompt = context.customSystemPrompt
+        ? (includeDefaultPrompt && defaultSystemPrompt
+          ? `${defaultSystemPrompt}\n\n${context.customSystemPrompt}`.trim()
+          : context.customSystemPrompt)
+        : defaultSystemPrompt;
+
+      const responseFormatPreference = context.responseFormat;
+      const needsJsonMode = responseFormatPreference === 'json'
+        ? true
+        : responseFormatPreference === 'text'
+          ? false
+          : ['statblock', 'npc', 'magicitem', 'encounter'].includes(request.type);
+
+      // Only forward a model hint if it's a Claude model; otherwise use our
+      // configured Claude model. The orchestrator may pass an OpenAI model name
+      // (e.g. gpt-4o-mini) which must never be sent to Anthropic.
+      const requestedModel = request.options?.model;
+      const model = (typeof requestedModel === 'string' && requestedModel.startsWith('claude'))
+        ? requestedModel
+        : this.config.defaultModel;
+      const maxTokens = request.options?.maxTokens || this.config.maxTokens;
+
+      const res = await fetch(`${this.config.baseURL}/api/v1/internal/ai/complete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Service-Token': this.config.apiKey
+        },
+        body: JSON.stringify({
+          prompt: request.prompt,
+          system: systemPrompt || undefined,
+          model,
+          max_tokens: maxTokens,
+          summary: request.type
+        })
+      });
+
+      if (!res.ok) {
+        let detail = '';
+        try { detail = JSON.stringify(await res.json()); }
+        catch { detail = await res.text().catch(() => ''); }
+        throw new Error(`TaleForge bridge HTTP ${res.status}: ${detail}`);
+      }
+
+      const data = await res.json(); // { success, content, model, usage }
+      const duration = Date.now() - startTime;
+      const usage = data.usage || {};
+      const tokensUsed = (usage.input_tokens || 0) + (usage.output_tokens || 0);
+
+      const rawContent = typeof data.content === 'string' ? data.content : '';
+      let parsedContent;
+      if (needsJsonMode) {
+        const extracted = this._extractJson(rawContent);
+        if (extracted !== null) {
+          parsedContent = extracted;
+        } else {
+          console.warn(`JSON parsing failed for ${request.type} (TaleForge), falling back to raw content`);
+          parsedContent = { content: rawContent, type: request.type, parseFailed: true };
+        }
+      } else {
+        parsedContent = rawContent;
+      }
+
+      return {
+        success: true,
+        content: parsedContent,
+        rawResponse: rawContent,
+        metadata: {
+          provider: 'taleforge',
+          model: data.model || model,
+          tokensUsed,
+          // TaleForge's AISpendLog is the authoritative USD ledger; keep the
+          // Mythforge-local cost at 0 to avoid double-counting in any local UI.
+          cost: 0,
+          duration,
+          timestamp: new Date()
+        }
+      };
+
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      const message = error instanceof Error ? error.message : String(error);
+      return {
+        success: false,
+        metadata: {
+          provider: 'taleforge',
+          model: request.options?.model || this.config.defaultModel,
+          tokensUsed: 0,
+          cost: 0,
+          duration,
+          timestamp: new Date()
+        },
+        error: {
+          code: error instanceof Error ? error.name : 'UNKNOWN_ERROR',
+          message,
+          details: error
+        }
+      };
+    }
+  }
+
+  // Tolerant JSON extraction — Claude has no native json_object mode, so a
+  // response may wrap JSON in ```json fences or surrounding prose. Strip fences,
+  // then fall back to the first balanced {...}/[...] span.
+  _extractJson(text) {
+    if (!text) return null;
+    let s = String(text).trim();
+    const fence = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (fence) s = fence[1].trim();
+    try { return JSON.parse(s); } catch { /* fall through */ }
+    const firstObj = s.indexOf('{');
+    const firstArr = s.indexOf('[');
+    let start;
+    if (firstObj === -1) start = firstArr;
+    else if (firstArr === -1) start = firstObj;
+    else start = Math.min(firstObj, firstArr);
+    if (start === -1) return null;
+    const close = s[start] === '{' ? '}' : ']';
+    const end = s.lastIndexOf(close);
+    if (end <= start) return null;
+    try { return JSON.parse(s.slice(start, end + 1)); } catch { return null; }
+  }
+}
+
+// ============================================================================
 // MAIN AI SERVICE
 // ============================================================================
 
@@ -343,6 +511,10 @@ export class AIService {
     const openaiConfig = this.config.getProvider('openai');
     if (openaiConfig) {
       this.providers.set('openai', new OpenAIProvider(openaiConfig));
+    }
+    const taleforgeConfig = this.config.getProvider('taleforge');
+    if (taleforgeConfig) {
+      this.providers.set('taleforge', new TaleForgeProvider(taleforgeConfig));
     }
   }
 
@@ -378,10 +550,20 @@ export class AIService {
       };
     }
 
-    // Select provider
-    const providerName = request.options?.provider || 'openai';
-    const provider = this.providers.get(providerName);
-    
+    // Select provider. Explicit request.options.provider wins; otherwise use
+    // AI_PROVIDER_PRIMARY (set to 'taleforge' to route through Claude), falling
+    // back to 'openai'. If the chosen provider isn't registered, fall back to
+    // any available provider so a misconfiguration degrades instead of failing.
+    let providerName = request.options?.provider || process.env.AI_PROVIDER_PRIMARY || 'openai';
+    let provider = this.providers.get(providerName);
+
+    if (!provider && this.providers.size > 0) {
+      const fallbackName = this.providers.keys().next().value;
+      console.warn(`Provider '${providerName}' not registered; falling back to '${fallbackName}'.`);
+      providerName = fallbackName;
+      provider = this.providers.get(fallbackName);
+    }
+
     if (!provider) {
       return {
         success: false,

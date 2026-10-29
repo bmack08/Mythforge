@@ -29,6 +29,13 @@
       "baseSnippets": false,
       "path": "Blank"
     },
+    "CommercialSafe": {
+      "name": "Commercial-Safe (print)",
+      "renderer": "V3",
+      "baseTheme": "Blank",
+      "baseSnippets": "5ePHB",
+      "path": "CommercialSafe"
+    },
     "Journal": {
       "name": "Journal",
       "renderer": "V3",

@@ -49,6 +49,8 @@ import { Highlight } from '@tiptap/extension-highlight';
 
 // Custom heading with auto-ID for anchor links (D&D Beyond style)
 import HeadingWithId from './HeadingWithId.js';
+// Collapsible heading sections (view-only decorations; never mutates the doc)
+import HeadingFold from './HeadingFold.js';
 
 // Block extensions - D&D 5e PHB content blocks
 import QuoteBlock from './QuoteBlock.js';
@@ -110,6 +112,9 @@ import TableBlock from './TableBlock.js';
 // Inline marks - D&D reference marks
 import IconMark from './IconMark.js';
 import IconSuggestion from './IconSuggestion.js';
+import SlashCommandSuggestion from './SlashCommandSuggestion.js';
+// Inline highlighting of known knowledge-graph entities (NPCs, locations…)
+import EntityHighlight from './EntityHighlight.js';
 import Emoji from './Emoji.js';
 import SpellMark from './SpellMark.js';
 import AbilityMark from './AbilityMark.js';
@@ -140,7 +145,10 @@ const baseExtensions = [
   HeadingWithId.configure({
     levels: [1, 2, 3, 4, 5, 6],
   }),
-  
+
+  // Collapsible heading sections (fold chevrons via decorations)
+  HeadingFold,
+
   // Media & Styling
   Image,
   ImageWithAttributes,
@@ -205,6 +213,8 @@ const baseExtensions = [
   // Inline Marks & Nodes
   IconMark,
   IconSuggestion,
+  SlashCommandSuggestion,
+  EntityHighlight,
   Emoji,
   SpellMark,
   AbilityMark,

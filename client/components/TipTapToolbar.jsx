@@ -104,7 +104,7 @@ function Divider() {
 // Main Toolbar
 // ---------------------------------------------------------------------------
 
-export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNumbers, inkFriendly, onToggleInkFriendly }) {
+export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNumbers, inkFriendly, onToggleInkFriendly, uxFlags, onToggleUxFlag }) {
   const forceUpdate = useForceUpdate();
   const [iconPickerOpen, setIconPickerOpen] = useState(false);
 
@@ -220,63 +220,31 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
 
       <Divider />
 
-      {/* ── Group 2: Structure ─────────────────────────────────── */}
+      {/* ── Group 2: Structure (dropdown — de-chunked) ─────────── */}
       <div className="tiptap-toolbar__group" data-group="structure">
-        <TBtn
-          editor={editor}
-          onClick={() => chain().setHorizontalRule().run()}
-          title="Horizontal Rule"
-        >
-          <i className="fas fa-minus" />
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().setPageBreak().run()}
-          title="Page Break (\page)"
-        >
-          <i className="fas fa-file" />
-          <span className="tiptap-toolbar__btn-label">Page</span>
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().setColumnBreak().run()}
-          title="Column Break (\column)"
-        >
-          <i className="fas fa-columns" />
-          <span className="tiptap-toolbar__btn-label">Column</span>
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().insertWide().run()}
-          title="Wide Block (spans both columns)"
-        >
-          <i className="fas fa-arrows-alt-h" />
-          <span className="tiptap-toolbar__btn-label">Wide</span>
-        </TBtn>
-
-        <Divider />
-
-        <TBtn
-          editor={editor}
-          onClick={() => chain().setPageNumber().run()}
-          title="Page Number (auto)"
-        >
-          <i className="fas fa-hashtag" />
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().insertVerticalSpacing().run()}
-          title="Vertical Spacing (1cm)"
-        >
-          <i className="fas fa-arrows-alt-v" />
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().setFooter().run()}
-          title="Footer"
-        >
-          <i className="fas fa-window-minimize" />
-        </TBtn>
+        <ToolbarDropdown label="Structure" icon="fas fa-stream">
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setPageBreak().run()} title="Page Break (\page)">
+            <i className="fas fa-file" /><span>Page Break</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setColumnBreak().run()} title="Column Break (\column)">
+            <i className="fas fa-columns" /><span>Column Break</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertWide().run()} title="Wide Block (spans both columns)">
+            <i className="fas fa-arrows-alt-h" /><span>Wide Block</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setHorizontalRule().run()} title="Horizontal Rule">
+            <i className="fas fa-minus" /><span>Horizontal Rule</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setPageNumber().run()} title="Page Number (auto)">
+            <i className="fas fa-hashtag" /><span>Page Number</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertVerticalSpacing().run()} title="Vertical Spacing (1cm)">
+            <i className="fas fa-arrows-alt-v" /><span>Vertical Spacing</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setFooter().run()} title="Footer">
+            <i className="fas fa-window-minimize" /><span>Footer</span>
+          </button>
+        </ToolbarDropdown>
       </div>
 
       <Divider />
@@ -595,26 +563,20 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
         )}
         <TBtn
           editor={editor}
-          onClick={() => chain().insertFootnote().run()}
-          title="Insert Footnote"
-        >
-          <i className="fas fa-superscript" />
-        </TBtn>
-        <TBtn
-          editor={editor}
-          onClick={() => chain().insertComment().run()}
-          title="Insert Comment (hidden in preview)"
-        >
-          <i className="fas fa-comment" />
-        </TBtn>
-        <TBtn
-          editor={editor}
           isActive={active('link')}
           onClick={handleInsertLink}
           title="Insert / Edit Link"
         >
           <i className="fas fa-link" />
         </TBtn>
+        <ToolbarDropdown label="More" icon="fas fa-plus">
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertFootnote().run()} title="Insert Footnote">
+            <i className="fas fa-superscript" /><span>Footnote</span>
+          </button>
+          <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertComment().run()} title="Insert Comment (hidden in preview)">
+            <i className="fas fa-comment" /><span>Comment</span>
+          </button>
+        </ToolbarDropdown>
         <div className="tiptap-toolbar__icon-picker-wrap">
           <TBtn
             editor={editor}
@@ -655,6 +617,29 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           <i className="fas fa-tint" style={{ opacity: 0.7 }} />
           <span className="tiptap-toolbar__btn-label">Ink</span>
         </TBtn>
+        {/* UX-polish (closed alpha) toggles — only shown when the master flag is on */}
+        {uxFlags?.master && (
+          <>
+            <TBtn
+              editor={editor}
+              isActive={uxFlags.outline}
+              onClick={() => onToggleUxFlag?.('outline')}
+              title="Toggle Outline panel"
+            >
+              <i className="fas fa-stream" style={{ opacity: 0.7 }} />
+              <span className="tiptap-toolbar__btn-label">Outline</span>
+            </TBtn>
+            <TBtn
+              editor={editor}
+              isActive={uxFlags.entities}
+              onClick={() => onToggleUxFlag?.('entities')}
+              title="Highlight story entities (NPCs, locations…) inline"
+            >
+              <i className="fas fa-project-diagram" style={{ opacity: 0.7 }} />
+              <span className="tiptap-toolbar__btn-label">Entities</span>
+            </TBtn>
+          </>
+        )}
       </div>
     </div>
   );

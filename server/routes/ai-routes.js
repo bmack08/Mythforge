@@ -15,8 +15,10 @@ router.post('/api/ai-request', asyncHandler(async (req, res) => {
         prompt,
         options: {
             ...options,
-            provider: 'openai',
-            model: process.env.OPENAI_DEFAULT_MODEL
+            // Honor the configured primary provider (set AI_PROVIDER_PRIMARY=
+            // taleforge to route through Claude). Each provider supplies its
+            // own default model, so we no longer pin an OpenAI model here.
+            provider: process.env.AI_PROVIDER_PRIMARY || 'openai'
         }
     });
 
@@ -77,8 +79,7 @@ router.post('/api/story-assistant', asyncHandler(async (req, res) => {
             responseFormat: 'text' // Don't force JSON for story assistant
         },
         options: {
-            provider: 'openai',
-            model: process.env.OPENAI_DEFAULT_MODEL,
+            provider: process.env.AI_PROVIDER_PRIMARY || 'openai',
             temperature: 0.7
         }
     });

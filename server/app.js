@@ -21,6 +21,7 @@ import api, { homebrewApi, getBrew, getUsersBrewThemes, getCSS } from './homebre
 import adminApi                    from './admin.api.simple.js';
 import vaultApi                    from './vault.api.simple.js';
 import aiRoutes                    from './routes/ai-routes.js';
+import generateRoutes              from './routes/generate-routes.js';
 import chapterRoutes               from './routes/chapters.js';
 import GoogleActions               from './googleActions.js';
 import serveCompressedStaticAssets from './static-assets.mv.js';
@@ -143,6 +144,7 @@ const corsOptions = {
 			'https://homebrewery-stage.herokuapp.com',
 			'http://localhost:8000',
 			'http://localhost:3000',
+			'http://localhost:5173', // TaleForge Vite dev server (proxy origin)
 			'http://localhost:8081', // Vite dev server
 		];
 
@@ -186,6 +188,7 @@ app.use(homebrewApi);
 app.use(adminApi);
 app.use(vaultApi);
 // app.use(aiRoutes); // Temporarily disabled
+app.use(generateRoutes); // In-editor structured generators (/api/generate/:type)
 
 // Chapter routes for D&D Beyond-style navigation
 app.use('/api/projects/:projectId/chapters', chapterRoutes);

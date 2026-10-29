@@ -470,6 +470,8 @@ const Editor = createClass({
 						onCursorPageChange={this.props.onCursorPageChange}
 						onViewPageChange={this.props.onViewPageChange}
 						renderer={this.props.renderer}
+						brewId={this.props.brew.editId || this.props.brew.shareId}
+						srdSafe={this.props.brew.theme === 'CommercialSafe'}
 					/>
 				</div>
 			</>;

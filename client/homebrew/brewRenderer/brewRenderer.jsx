@@ -3,6 +3,7 @@ import './brewRenderer.less';
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import _ from 'lodash';
+import BASE_PATH, { prefixPath } from '../utils/basePath.js';
 
 import MarkdownLegacy from 'naturalcrit/markdownLegacy.js';
 // Now using contentAdapter.toHTML() for rendering with full extension registry
@@ -75,8 +76,8 @@ const toReactStyle = (styles = {})=>{
 const getInitialContent = (renderer = 'V3', theme = '5ePHB') => dedent`
 	<!DOCTYPE html><html><head>
 	<link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,600,700" rel="stylesheet" type="text/css" />
-	<link href='/homebrew/bundle.css' type="text/css" rel='stylesheet' />
-	<link href='/themes/${renderer}/${theme}/style.css' type="text/css" rel='stylesheet' />
+	<link href='${prefixPath('/homebrew/bundle.css')}' type="text/css" rel='stylesheet' />
+	<link href='${prefixPath(`/themes/${renderer}/${theme}/style.css`)}' type="text/css" rel='stylesheet' />
 	<base target=_blank>
 	</head><body style='overflow: hidden'><div></div></body></html>`;
 
@@ -394,7 +395,20 @@ const BrewRenderer = (props)=>{
 	};
 
 	const renderStyle = ()=>{
-		const themeStyles = props.themeBundle?.joinedStyles ?? '<style>@import url("/themes/V3/Blank/style.css");</style>';
+		let themeStyles = props.themeBundle?.joinedStyles ?? `<style>@import url("${prefixPath('/themes/V3/Blank/style.css')}");</style>`;
+
+		// Fix URLs in inline theme CSS for base path compatibility.
+		// Theme CSS has root-relative image URLs (url('/image.png')) and relative font
+		// URLs (url('../../../fonts/...')) that don't resolve correctly in the iframe
+		// when running under a base path like /mythforge/.
+		if (BASE_PATH !== '/') {
+			// Root-relative URLs: url('/foo') → url('/mythforge/foo')
+			// Negative lookahead avoids matching protocol-relative URLs (//fonts.googleapis.com)
+			themeStyles = themeStyles.replace(/url\(\s*['"]?\/(?!\/)/g, `url('${BASE_PATH}/`);
+			// Relative font URLs that traverse up to the fonts directory
+			themeStyles = themeStyles.replace(/url\(\s*['"]?(?:\.\.\/)+fonts\//g, `url('${BASE_PATH}/fonts/`);
+		}
+
 		const cleanStyle = safeHTML(`${themeStyles} \n\n <style> ${props.style} </style>`);
 		return <div style={{ display: 'none' }} dangerouslySetInnerHTML={{ __html: cleanStyle }} />;
 	};

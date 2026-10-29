@@ -1,21 +1,15 @@
 import { Heading } from '@tiptap/extension-heading';
 import { mergeAttributes } from '@tiptap/core';
+import slugify from './slugify.js';
 
 /**
  * HeadingWithId Extension
  * Extends TipTap's Heading to automatically generate and manage ID attributes
  * for anchor linking and table of contents functionality (D&D Beyond style)
+ *
+ * NOTE: `slugify` is shared with OutlinePanel (client/extensions/slugify.js) so
+ * the ids this NodeView writes always match the anchors the outline jumps to.
  */
-
-// Simple slugify function
-const slugify = (text) => {
-	return text
-		.toLowerCase()
-		.trim()
-		.replace(/[^\w\s-]/g, '') // Remove non-word chars
-		.replace(/[\s_-]+/g, '-') // Replace spaces/underscores with single dash
-		.replace(/^-+|-+$/g, ''); // Remove leading/trailing dashes
-};
 
 export default Heading.extend({
 	name: 'heading',

@@ -2,6 +2,7 @@ import './campaignWizard.less';
 import React from 'react';
 import createClass from 'create-react-class';
 import Nav from '../../navbar/navbar.jsx';
+import { prefixPath } from '../../utils/basePath.js';
 
 const ADVENTURE_TYPES = [
 	{ id: 'dungeon',    label: 'Dungeon Crawl',       icon: 'fas fa-dungeon',       desc: 'Classic dungeon exploration with traps, puzzles, and combat encounters.' },
@@ -152,7 +153,7 @@ const CampaignWizard = createClass({
 
 			// Redirect to the editor with the new brew
 			setTimeout(()=>{
-				window.location.href = `/edit/${data.editId}`;
+				window.location.href = prefixPath(`/edit/${data.editId}`);
 			}, 1000);
 
 		} catch (err) {

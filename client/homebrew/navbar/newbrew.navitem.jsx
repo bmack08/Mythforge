@@ -2,6 +2,7 @@ import React from 'react';
 import _ from 'lodash';
 import Nav from 'naturalcrit/nav/nav.jsx';
 import { splitTextStyleAndMetadata } from '../../../shared/helpers.js'; // Importing the function from helpers.js
+import { prefixPath } from '../utils/basePath.js';
 
 const BREWKEY  = 'homebrewery-new';
 const STYLEKEY = 'homebrewery-new-style';
@@ -23,7 +24,7 @@ const NewBrew = ()=>{
 					localStorage.setItem(BREWKEY, newBrew.text);
 					localStorage.setItem(STYLEKEY, newBrew.style);
 					localStorage.setItem(METAKEY, JSON.stringify(_.pick(newBrew, ['title', 'description', 'tags', 'systems', 'renderer', 'theme', 'lang'])));
-					window.location.href = '/new';
+					window.location.href = prefixPath('/new');
 				} else {
 					alert('This file is invalid, please, enter a valid file');
 				}

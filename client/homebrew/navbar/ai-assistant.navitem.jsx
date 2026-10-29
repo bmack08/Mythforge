@@ -2,6 +2,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import Nav from 'naturalcrit/nav/nav.jsx';
+import { stripPrefix } from '../utils/basePath.js';
 
 const AIAssistantNavItem = createClass({
   displayName: 'AIAssistantNavItem',
@@ -105,11 +106,12 @@ const AIAssistantNavItem = createClass({
 
   getCurrentDocumentMetadata: function() {
     // Extract metadata from the current page
+    const cleanPath = stripPrefix(window.location.pathname);
     return {
       title: document.title,
       url: window.location.href,
-      editId: window.location.pathname.includes('/edit/') ? 
-        window.location.pathname.split('/edit/')[1] : null
+      editId: cleanPath.includes('/edit/') ?
+        cleanPath.split('/edit/')[1] : null
     };
   },
 

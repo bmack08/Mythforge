@@ -2,6 +2,7 @@ import './error-navitem.less';
 import React from 'react';
 import Nav from 'naturalcrit/nav/nav.jsx';
 import createClass from 'create-react-class';
+import { prefixPath } from '../utils/basePath.js';
 
 const ErrorNavItem = createClass({
 	getDefaultProps : function() {
@@ -111,7 +112,7 @@ const ErrorNavItem = createClass({
 				<div className='errorContainer' onClick={clearError}>
 					Looks like there was a problem retreiving
 					the theme, or a theme that it inherits,
-					for this brew. Verify that brew <a className='lowercase' target='_blank' rel='noopener noreferrer' href={`/share/${response.body.brewId}`}>
+					for this brew. Verify that brew <a className='lowercase' target='_blank' rel='noopener noreferrer' href={prefixPath(`/share/${response.body.brewId}`)}>
 						{response.body.brewId}</a> still exists!
 				</div>
 			</Nav.item>;
@@ -124,7 +125,7 @@ const ErrorNavItem = createClass({
 					Looks like the brew you have selected
 					as a theme is not tagged for use as a
 					theme. Verify that
-					brew <a className='lowercase' target='_blank' rel='noopener noreferrer' href={`/share/${response.body.brewId}`}>
+					brew <a className='lowercase' target='_blank' rel='noopener noreferrer' href={prefixPath(`/share/${response.body.brewId}`)}>
 						{response.body.brewId}</a> has the <span className='lowercase'>meta:theme</span> tag!
 				</div>
 			</Nav.item>;

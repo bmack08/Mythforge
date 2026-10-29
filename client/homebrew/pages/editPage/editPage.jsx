@@ -6,6 +6,7 @@ import createClass from 'create-react-class';
 // Removed: import * as diffMatchPatch, md5, gzipSync - no longer needed with JSON-based saves
 
 import request from '../../utils/request-middleware.js';
+import { prefixPath, stripPrefix } from '../../utils/basePath.js';
 import { Meta } from 'vitreum/headtags';
 import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 
@@ -174,7 +175,7 @@ const EditPage = createClass({
 		this.savedBrew = JSON.parse(JSON.stringify(this.props.brew)); //Deep copy
 
 		// In dev mode (Vite), /edit/:id loads client-only. Ensure we fetch the brew before autosave triggers.
-		const pathMatch = window.location.pathname.match(/^\/edit\/([^/]+)$/);
+		const pathMatch = stripPrefix(window.location.pathname).match(/^\/edit\/([^/]+)$/);
 		if (pathMatch && (!this.props.brew || !this.props.brew.editId)) {
 			const editId = pathMatch[1];
 			this.setState({ _loadingBrew: true });
@@ -406,7 +407,7 @@ const EditPage = createClass({
 			console.log('[Save] brewState.text:', brewState.text);
 			console.log('[Save] brewState.text type:', typeof brewState.text);
 
-			const isEditRoute = /^\/edit\//.test(window.location.pathname);
+			const isEditRoute = /^\/edit\//.test(stripPrefix(window.location.pathname));
 			if (isEditRoute) {
 				console.warn('[Save] Refusing to create a new brew while on /edit route with missing id.');
 				try { window.NCToast?.show?.({ message: 'Cannot save yet—loading project…', type: 'error', duration: 2500 }); } catch(_) {}
@@ -444,7 +445,7 @@ const EditPage = createClass({
 			this.setState({ unsavedChanges: false, isSaving: false }, ()=>{
 				window.onbeforeunload = null; // explicitly clear
 				// Use replace so back button doesn't go to temporary unsaved page
-				window.location.replace(`/edit/${editId}`);
+				window.location.replace(prefixPath(`/edit/${editId}`));
 			});
 			return;
 		}
@@ -502,7 +503,7 @@ const EditPage = createClass({
 			}
 		});
 
-		history.replaceState(null, null, `/edit/${this.savedBrew.editId}`);
+		history.replaceState(null, null, prefixPath(`/edit/${this.savedBrew.editId}`));
 	},
 
 	renderGoogleDriveIcon : function(){

@@ -60,10 +60,23 @@ export class KnowledgeGraph {
    * Insert or update a story chunk.
    * Detects conflicts if content changed since last save.
    */
+  // Small deterministic string hash (fallback for chunk ids without a position).
+  _hashString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) { h = (h << 5) - h + str.charCodeAt(i); h |= 0; }
+    return h;
+  }
+
   async insertChunk(storyId, chunk) {
     return new Promise((resolve, reject) => {
-      // ✅ Validate required fields
-      if (!chunk.id || !chunk.type || !chunk.content) {
+      // The entity parser builds chunks without an id (chunkDocument), but
+      // chunks.id is the global PRIMARY KEY — derive a stable, globally-unique
+      // id from storyId + position so chunks from different brews never collide.
+      const chunkId = chunk.id
+        || `${storyId}-${chunk.position_start != null ? chunk.position_start : Math.abs(this._hashString(String(chunk.content || '')))}`;
+
+      // ✅ Validate required fields (content/type come from the parser)
+      if (!chunkId || !chunk.type || !chunk.content) {
         return reject(new Error("❌ insertChunk: Missing required fields (id, type, content)"));
       }
 
@@ -79,7 +92,7 @@ export class KnowledgeGraph {
       `);
 
       stmt.run(
-        chunk.id,
+        chunkId,
         storyId,
         chunk.type,
         JSON.stringify(chunk.content), // ✅ store structured JSON safely
@@ -175,17 +188,24 @@ export class KnowledgeGraph {
       await this.insertRelationship(projectId, relationship);
     }
     
-    // Insert chunks
+    // Insert chunks (best-effort: a single malformed chunk must not abort the
+    // whole indexing run — entities/relationships are the primary output).
+    let chunksInserted = 0;
     for (const chunk of parsed.chunks) {
-      await this.insertChunk(projectId, chunk);
+      try {
+        await this.insertChunk(projectId, chunk);
+        chunksInserted++;
+      } catch (e) {
+        console.warn(`⚠️ Skipping malformed chunk: ${e.message}`);
+      }
     }
-    
-    console.log(`✅ Processed ${parsed.entities.length} entities, ${parsed.relationships.length} relationships, ${parsed.chunks.length} chunks`);
-    
+
+    console.log(`✅ Processed ${parsed.entities.length} entities, ${parsed.relationships.length} relationships, ${chunksInserted}/${parsed.chunks.length} chunks`);
+
     return {
       entities: parsed.entities.length,
       relationships: parsed.relationships.length,
-      chunks: parsed.chunks.length
+      chunks: chunksInserted
     };
   }
 
@@ -201,11 +221,21 @@ export class KnowledgeGraph {
   }
 
   async clearProjectData(projectId) {
-    const tables = ['story_entities', 'story_relationships', 'chunks', 'story_terminology', 'story_edits'];
-    
-    for (const table of tables) {
+    // Most tables key on project_id; the `chunks` table keys on `story_id`
+    // (which stores the projectId — see insertChunk, getChunks, search*). Using
+    // project_id on chunks throws "no such column: project_id" and breaks the
+    // whole indexing run.
+    const deletes = [
+      { table: 'story_entities',      col: 'project_id' },
+      { table: 'story_relationships', col: 'project_id' },
+      { table: 'chunks',              col: 'story_id'   },
+      { table: 'story_terminology',   col: 'project_id' },
+      { table: 'story_edits',         col: 'project_id' },
+    ];
+
+    for (const { table, col } of deletes) {
       await new Promise((resolve, reject) => {
-        this.db.run(`DELETE FROM ${table} WHERE project_id = ?`, [projectId], (err) => {
+        this.db.run(`DELETE FROM ${table} WHERE ${col} = ?`, [projectId], (err) => {
           if (err) reject(err);
           else resolve();
         });

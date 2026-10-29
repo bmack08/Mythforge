@@ -1,6 +1,7 @@
 import './mythwright-project-wizard.less';
 import React from 'react';
 import createClass from 'create-react-class';
+import { prefixPath } from '../../utils/basePath.js';
 
 const MythwrightProjectWizard = createClass({
 	displayName : 'MythwrightProjectWizard',
@@ -168,7 +169,7 @@ const MythwrightProjectWizard = createClass({
 					console.log('✨ Campaign generated successfully:', data.title);
 					
 					// Redirect to the editor with the generated content
-					window.location.href = data.url || `/edit/${data.editId}`;
+					window.location.href = data.url || prefixPath(`/edit/${data.editId}`);
 				} else {
 					console.error('Campaign generation failed:', data.error);
 					alert(`Campaign generation failed: ${data.error || 'Unknown error'}\n\nDetails: ${data.details || 'Unknown error'}`);

@@ -2,6 +2,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import Moment from 'moment';
 import Nav from 'naturalcrit/nav/nav.jsx';
+import { prefixPath } from '../utils/basePath.js';
 
 
 const MetadataNav = createClass({
@@ -31,7 +32,7 @@ const MetadataNav = createClass({
 		return <>
 			{this.props.brew.authors.map((author, idx, arr)=>{
 				const spacer = arr.length - 1 == idx ? <></> : <span>, </span>;
-				return <span key={idx}><a className='userPageLink' href={`/user/${author}`}>{author}</a>{spacer}</span>;
+				return <span key={idx}><a className='userPageLink' href={prefixPath(`/user/${author}`)}>{author}</a>{spacer}</span>;
 			})}
 		</>;
 	},

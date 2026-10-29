@@ -6,15 +6,21 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Base path for sub-path deployment (e.g. /mythforge/ under TaleForge)
+// Set MYTHFORGE_BASE_PATH=/ for standalone development
+const basePath = process.env.MYTHFORGE_BASE_PATH || '/mythforge/';
+
 // https://vitejs.dev/config/
 export default defineConfig({
+	base: basePath,
+
 	plugins: [
 		react({
 			// Let Vite/esbuild handle JSX transforms - much faster than Babel
 			jsxRuntime: 'automatic'
 		})
 	],
-	
+
 	// Define global variables for compatibility
 	define: {
 		'global': 'window',
@@ -103,6 +109,49 @@ export default defineConfig({
 			'/api': {
 				target: 'http://localhost:3000',
 				changeOrigin: true
+			},
+
+			// ── /mythforge-prefixed twins of every entry above ──────────────
+			// basePath.js prefixes runtime requests with BASE_PATH ('/mythforge'),
+			// so the unprefixed rules above never see them and they fall through
+			// to index.html. Strip the prefix and forward to the Express server.
+			// Deliberately NOT a catch-all '/mythforge' — that would swallow the
+			// SPA's own routes (/mythforge/edit/:id) and Vite's dev module paths
+			// (/mythforge/@vite/client, /mythforge/@fs/..., /mythforge/src/...).
+			'/mythforge/themes': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/assets': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/fonts': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/staticFonts': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/staticImages': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/homebrew/bundle': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			// FA font files, at the prefix root or nested under it
+			// (e.g. /mythforge/fa-solid-900.woff2, /mythforge/themes/fonts/fa-brands-400.woff2)
+			'^/mythforge/(?:.*/)?fa-(?:solid-900|brands-400|regular-400)\\.woff2$': {
+				target: 'http://localhost:3000',
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/api': {
+				target: 'http://localhost:3000',
+				changeOrigin: true,
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			}
 		}
 	},

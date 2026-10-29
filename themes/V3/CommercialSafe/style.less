@@ -1,0 +1,127 @@
+// ============================================================================
+// Commercial-Safe (print) — a clean, professional, print-ready theme that does
+// NOT reproduce Wizards of the Coast trade dress: no parchment texture, none of
+// the PHB fonts/colors (no maroon headers, no ornate frames). Intended for
+// SRD-safe content a creator may legally sell.
+//
+// Base theme: Blank (page/column/table/TOC structure only). Everything below is
+// the professional visual layer + a per-page license/disclaimer footer.
+// ============================================================================
+
+:root {
+  --HB_Color_Background : #ffffff;
+  --CS_Text    : #1f2933; // near-black slate
+  --CS_Heading : #16222e; // deep slate
+  --CS_Accent  : #2f6f6a; // muted teal (deliberately NOT D&D maroon)
+  --CS_Rule    : #cdd6dc; // light gray rule
+  --CS_Muted   : #5b6770; // muted gray for captions/footer
+  --CS_BlockBg : #f5f7f8; // very light gray callout fill
+}
+
+.page {
+  background-color : #ffffff;
+  background-image : none; // strip any inherited parchment
+  color            : var(--CS_Text);
+  font-family      : 'Iowan Old Style', 'Palatino Linotype', Georgia, 'Times New Roman', serif;
+  font-size        : 0.34cm;
+  line-height      : 1.5;
+
+  p {
+    text-indent   : 0;
+    margin        : 0 0 0.5em;
+    overflow-wrap : break-word;
+  }
+
+  // ---- Headings: clean sans-serif, neutral slate, no maroon ----
+  h1, h2, h3, h4, h5, h6 {
+    font-family : 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    color       : var(--CS_Heading);
+    font-weight : 700;
+    line-height : 1.25;
+    margin      : 0.8em 0 0.3em;
+  }
+  h1 {
+    font-size      : 1.9em;
+    letter-spacing : 0.01em;
+    border-bottom  : 2px solid var(--CS_Accent);
+    padding-bottom : 0.12em;
+  }
+  h2 {
+    font-size      : 1.45em;
+    border-bottom  : 1px solid var(--CS_Rule);
+    padding-bottom : 0.08em;
+  }
+  h3 { font-size : 1.2em;  color : var(--CS_Accent); }
+  h4 { font-size : 1.02em; }
+  h5 { font-size : 0.92em; text-transform : uppercase; letter-spacing : 0.04em; color : var(--CS_Muted); }
+
+  a { color : var(--CS_Accent); text-decoration : none; }
+  a:hover { text-decoration : underline; }
+
+  strong { font-weight : 700; }
+  em { font-style : italic; }
+
+  hr {
+    border     : none;
+    border-top : 1px solid var(--CS_Rule);
+    margin     : 1em 0;
+  }
+
+  // ---- Tables: clean banded rows, accent header rule ----
+  table {
+    border-collapse : collapse;
+    width           : 100%;
+    margin          : 0.6em 0;
+    th, td {
+      padding    : 4px 8px;
+      border     : none;
+      border-bottom : 1px solid var(--CS_Rule);
+      text-align : left;
+    }
+    thead th { border-bottom : 2px solid var(--CS_Accent); color : var(--CS_Heading); }
+    tbody tr:nth-child(even) { background : var(--CS_BlockBg); }
+  }
+
+  blockquote {
+    border-left : 3px solid var(--CS_Rule);
+    padding     : 0.1em 0 0.1em 0.8em;
+    margin      : 0.6em 0;
+    color       : var(--CS_Muted);
+    font-style  : italic;
+  }
+
+  // ---- Homebrewery content blocks: clean professional callouts ----
+  // (Blank doesn't style these; we give plain bordered boxes — no PHB framing.)
+  .note, .descriptive, .sidebar, .quote, .monster, .spell, .feature {
+    background    : var(--CS_BlockBg);
+    border        : 1px solid var(--CS_Rule);
+    border-left   : 3px solid var(--CS_Accent);
+    border-radius : 3px;
+    padding       : 0.5em 0.75em;
+    margin        : 0.7em 0;
+    break-inside  : avoid;
+    h5, h4, h3 { margin-top : 0; }
+  }
+  .quote { font-style : italic; border-left-color : var(--CS_Muted); background : #fbfbfc; }
+  .monster { border-left-color : #7a5b3a; } // subtle earthy accent, not D&D red
+  .descriptive { border-left-color : #6b7f8c; }
+
+  // ---- Per-page license / disclaimer footer (the "cover-your-ass" line) ----
+  &::after {
+    content     : 'Includes material from the SRD 5.1, © Wizards of the Coast LLC, licensed under CC BY 4.0. Created with Mythforge — unofficial; not affiliated with or endorsed by Wizards of the Coast.';
+    position    : absolute;
+    left        : 1.9cm;
+    right       : 1.9cm;
+    bottom      : 0.45cm;
+    font-family : 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    font-size   : 6pt;
+    line-height : 1.25;
+    color       : var(--CS_Muted);
+    text-align  : center;
+  }
+  // Don't stamp the footer over cover/TOC pages.
+  &:has(.frontCover)::after,
+  &:has(.backCover)::after,
+  &:has(.insideCover)::after,
+  &:has(.toc)::after { content : none; }
+}

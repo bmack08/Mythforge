@@ -4,6 +4,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import _ from 'lodash';
 import request from '../../utils/request-middleware.js';
+import { prefixPath } from '../../utils/basePath.js';
 import Combobox from 'client/components/combobox.jsx';
 import TagInput from '../tagInput/tagInput.jsx';
 import Themes from 'themes/themes.json';
@@ -128,6 +129,15 @@ const MetadataEditor = createClass({
 		this.props.onChange(this.props.metadata, 'theme');
 	},
 
+	handleComplianceMode : function(mode){
+		// Compliance mode is derived from the chosen theme, so switching it just
+		// swaps the theme through the existing handleTheme path:
+		//   'commercial' => CommercialSafe (neutral, print-ready, disclaimer footer)
+		//   'personal'   => 5ePHB (D&D-styled, personal use only)
+		const path = mode === 'commercial' ? 'CommercialSafe' : '5ePHB';
+		this.handleTheme({ renderer : 'V3', path });
+	},
+
 	handleLanguage : function(languageCode){
 		this.props.metadata.lang = languageCode;
 		this.props.onChange(this.props.metadata);
@@ -148,7 +158,7 @@ const MetadataEditor = createClass({
 				if(err) {
 					this.props.reportError(err);
 				} else {
-					window.location.href = '/';
+					window.location.href = prefixPath('/');
 				}
 			});
 	},
@@ -203,6 +213,38 @@ const MetadataEditor = createClass({
 		</div>;
 	},
 
+	renderComplianceMode : function(){
+		if(!global.enable_themes) return;
+		const isCommercial = this.props.metadata.theme === 'CommercialSafe';
+		const btnStyle = (active)=>({
+			flex         : 1,
+			padding      : '7px 10px',
+			cursor       : 'pointer',
+			fontSize     : '0.85em',
+			border       : '1px solid #c0b283',
+			borderRadius : 4,
+			background   : active ? '#8a6d3b' : '#fff',
+			color        : active ? '#fff' : '#5a4a2f',
+			fontWeight   : active ? 700 : 400
+		});
+		return <div className='field compliance'>
+			<label>licensing</label>
+			<div className='value'>
+				<div style={{ display : 'flex', gap : 8 }}>
+					<button type='button' style={btnStyle(!isCommercial)} onClick={()=>this.handleComplianceMode('personal')}>
+						<i className='fas fa-dragon' style={{ marginRight : 6 }}></i>Personal — D&amp;D style
+					</button>
+					<button type='button' style={btnStyle(isCommercial)} onClick={()=>this.handleComplianceMode('commercial')}>
+						<i className='fas fa-store' style={{ marginRight : 6 }}></i>Commercial-safe
+					</button>
+				</div>
+				<small>{isCommercial
+					? 'Commercial-safe: a neutral, print-ready layout with an SRD attribution + disclaimer footer. Safe to sell.'
+					: 'D&D-styled themes reproduce the Player’s Handbook look — personal use only. Don’t sell output that uses a D&D-styled theme.'}</small>
+			</div>
+		</div>;
+	},
+
 	renderThemeDropdown : function(){
 		if(!global.enable_themes) return;
 
@@ -211,8 +253,8 @@ const MetadataEditor = createClass({
 		const listThemes = (renderer)=>{
 			return _.map(_.values(mergedThemes[renderer]), (theme)=>{
 				if(theme.path == this.props.metadata.shareId) return;
-				const preview = theme.thumbnail || `/themes/${theme.renderer}/${theme.path}/dropdownPreview.png`;
-				const texture = theme.thumbnail || `/themes/${theme.renderer}/${theme.path}/dropdownTexture.png`;
+				const preview = theme.thumbnail || prefixPath(`/themes/${theme.renderer}/${theme.path}/dropdownPreview.png`);
+				const texture = theme.thumbnail || prefixPath(`/themes/${theme.renderer}/${theme.path}/dropdownTexture.png`);
 				return <div className='item' key={`${renderer}_${theme.name}`} value={`${theme.author ?? renderer} : ${theme.name}`} data={theme} title={''}>
 					{theme.author ?? renderer} : {theme.name}
 					<div className='texture-container'>
@@ -328,7 +370,7 @@ const MetadataEditor = createClass({
 						onChange={(e)=>this.handleRenderer('V3', e)} />
 					V3
 				</label>
-				<small><a href='/legacy' target='_blank' rel='noopener noreferrer'>Click here to see the demo page for the old Legacy renderer!</a></small>
+				<small><a href={prefixPath('/legacy')} target='_blank' rel='noopener noreferrer'>Click here to see the demo page for the old Legacy renderer!</a></small>
 			</div>
 		</div>;
 	},
@@ -380,6 +422,8 @@ const MetadataEditor = createClass({
 
 			{this.renderLanguageDropdown()}
 
+			{this.renderComplianceMode()}
+
 			{this.renderThemeDropdown()}
 
 			{this.renderRenderOptions()}
@@ -402,7 +446,7 @@ const MetadataEditor = createClass({
 				<label>publish</label>
 				<div className='value'>
 					{this.renderPublish()}
-					<small>Published brews are searchable in <a href='/vault'>the Vault</a> and visible on your user page.  Unpublished brews are not indexed in the Vault or visible on your user page, but can still be shared and indexed by search engines.  You can unpublish a brew any time.</small>
+					<small>Published brews are searchable in <a href={prefixPath('/vault')}>the Vault</a> and visible on your user page.  Unpublished brews are not indexed in the Vault or visible on your user page, but can still be shared and indexed by search engines.  You can unpublish a brew any time.</small>
 				</div>
 			</div>
 

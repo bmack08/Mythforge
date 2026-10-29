@@ -3,6 +3,7 @@
 import './vaultPage.less';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { prefixPath } from '../../utils/basePath.js';
 
 import Nav from 'naturalcrit/nav/nav.jsx';
 import Navbar from '../../navbar/navbar.jsx';
@@ -412,8 +413,8 @@ const VaultPage = (props)=>{
 
 	return (
 		<div className='sitePage vaultPage'>
-			<link href='/themes/V3/Blank/style.css' rel='stylesheet' />
-			<link href='/themes/V3/5ePHB/style.css' rel='stylesheet' />
+			<link href={prefixPath('/themes/V3/Blank/style.css')} rel='stylesheet' />
+			<link href={prefixPath('/themes/V3/5ePHB/style.css')} rel='stylesheet' />
 			{renderNavItems()}
 			<div className='content'>
 				<SplitPane showDividerButtons={false}>

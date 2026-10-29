@@ -2,6 +2,7 @@ import './aiSidebar.less';
 import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import React from 'react';
 import createClass from 'create-react-class';
+import { stripPrefix } from '../../utils/basePath.js';
 
 const MAX_REFERENCE_SIZE = 1024 * 1024 * 30; // 30 MB per reference
 const MAX_REFERENCE_CHARS = 20000;
@@ -673,11 +674,12 @@ const AiSidebar = createClass({
 		}
 	},
 	getCurrentDocumentMetadata : function() {
+		const cleanPath = stripPrefix(window.location.pathname);
 		return {
 			title  : document.title,
 			url    : window.location.href,
-			editId : window.location.pathname.includes('/edit/') ?
-				window.location.pathname.split('/edit/')[1] : null
+			editId : cleanPath.includes('/edit/') ?
+				cleanPath.split('/edit/')[1] : null
 		};
 	},
 	applyFullStoryUpdate : function(storyText, hasMore) {

@@ -1,0 +1,101 @@
+// OutlinePanel — document outline / navigation rail.
+// Lives as a flex sibling of .tiptap-editor__content (see tiptap.less __body).
+
+.tiptap-editor__outline {
+  flex: 0 0 232px;
+  width: 232px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: #faf8f2;
+  border-left: 1px solid #e7dcc0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  user-select: none;
+
+  .mf-outline__header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 12px;
+    position: sticky;
+    top: 0;
+    background: #f3eedf;
+    border-bottom: 1px solid #e7dcc0;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: #6b5a37;
+    z-index: 1;
+
+    i { color: #8a6d3b; font-size: 12px; }
+  }
+
+  .mf-outline__empty {
+    padding: 16px 14px;
+    font-size: 12px;
+    line-height: 1.5;
+    color: #9a8a6a;
+  }
+
+  .mf-outline__list {
+    list-style: none;
+    margin: 4px 0 12px;
+    padding: 0;
+  }
+
+  .mf-outline__item {
+    display: flex;
+    align-items: center;
+    padding-top: 4px;
+    padding-bottom: 4px;
+    padding-right: 10px;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    color: #4a4030;
+    line-height: 1.3;
+
+    &:hover { background: #f0e8d4; }
+
+    &.is-active {
+      background: #eadfbf;
+      border-left-color: #8a6d3b;
+      color: #2a2418;
+      font-weight: 600;
+    }
+
+    .mf-outline__label {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+
+  .mf-outline__fold {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    margin-right: 4px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #b59b63;
+    cursor: pointer;
+    border-radius: 3px;
+
+    i { font-size: 9px; }
+
+    &:hover { background: #e6dcc2; color: #58180d; }
+    &.is-folded { color: #8a6d3b; }
+  }
+
+  // Level-based type scale — bigger/bolder for top-level sections.
+  .mf-outline__item--h1 .mf-outline__label { font-size: 13px; font-weight: 700; }
+  .mf-outline__item--h2 .mf-outline__label { font-size: 12.5px; font-weight: 600; }
+  .mf-outline__item--h3 .mf-outline__label { font-size: 12px; }
+  .mf-outline__item--h4 .mf-outline__label,
+  .mf-outline__item--h5 .mf-outline__label,
+  .mf-outline__item--h6 .mf-outline__label { font-size: 11.5px; color: #6b6048; }
+}

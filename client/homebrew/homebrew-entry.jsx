@@ -14,6 +14,20 @@ import '../styles/iconFonts.less';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';
+import BASE_PATH, { prefixPath, stripPrefix } from './utils/basePath.js';
+
+// Global fetch interceptor: auto-prefix internal paths with BASE_PATH.
+// This catches all fetch('/api/...') and fetch('/themes/...') calls across
+// the entire app without needing to modify each file individually.
+if (typeof window !== 'undefined' && BASE_PATH !== '/') {
+	const _origFetch = window.fetch;
+	window.fetch = (url, ...args) => {
+		if (typeof url === 'string' && url.startsWith('/') && !url.startsWith('//')) {
+			return _origFetch(prefixPath(url), ...args);
+		}
+		return _origFetch(url, ...args);
+	};
+}
 
 import HomePage    from './pages/homePage/homePage.jsx';
 import EditPage    from './pages/editPage/editPage.jsx';
@@ -63,8 +77,12 @@ const Homebrew = (props)=>{
 	global.enable_themes = enable_themes;
 	global.config        = config;
 
+	// basename tells React Router that all routes are mounted under this prefix;
+	// it handles stripping the prefix internally before matching routes.
+	const basename = BASE_PATH === '/' ? undefined : BASE_PATH;
+
 	return (
-		<Router location={url}>
+		<Router location={url} basename={basename}>
 			<div className='homebrew'>
 				<Routes>
 					<Route path='/edit/:id' element={<WithRoute el={EditPage} brew={brew} userThemes={userThemes}/>} />
@@ -94,7 +112,7 @@ const root = document.getElementById('reactRoot');
 if (root) {
 	const reactRoot = createRoot(root);
 	reactRoot.render(
-		<Homebrew 
+		<Homebrew
 			url={window.location.pathname + window.location.search}
 			version="3.19.3"
 			enable_v3={true}

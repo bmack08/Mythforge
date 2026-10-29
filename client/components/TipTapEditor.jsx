@@ -7,11 +7,38 @@ import { normalizeTipTapDoc } from 'shared/helpers/normalizeDoc.js';
 import LineNumberGutter from './LineNumberGutter.jsx';
 import TipTapToolbar from './TipTapToolbar.jsx';
 import IconSuggestionList from './IconSuggestionList.jsx';
+import SlashCommandList from './SlashCommandList.jsx';
+import OutlinePanel from './OutlinePanel.jsx';
+import EntityPopup from './EntityPopup.jsx';
+import { setEntities } from 'client/extensions/EntityHighlight.js';
+
+// ── UX-polish feature flags (closed-alpha) ────────────────────────────────
+// Read from localStorage so testers can flip features by clicking the View
+// toggles (which persist here) — no page.evaluate injection needed. The master
+// flag (MF_UX_POLISH) defaults ON in dev so the alpha surface is visible while
+// building; in prod it stays off until a tester opts in.
+const isDevBuild = (() => { try { return !!import.meta.env?.DEV; } catch { return false; } })();
+const readUxFlag = (key, dflt) => {
+  try {
+    const v = window.localStorage.getItem(key);
+    return v === null ? dflt : v === '1';
+  } catch { return dflt; }
+};
+const initialUxFlags = () => {
+  const master = readUxFlag('MF_UX_POLISH', isDevBuild);
+  return {
+    master,
+    outline: readUxFlag('MF_UX_OUTLINE', true),
+    fold: readUxFlag('MF_UX_FOLD', true),
+    entities: readUxFlag('MF_UX_ENTITIES', false),
+  };
+};
+const UX_FLAG_KEYS = { master: 'MF_UX_POLISH', outline: 'MF_UX_OUTLINE', fold: 'MF_UX_FOLD', entities: 'MF_UX_ENTITIES' };
 
 
 // value: TipTap JSON doc OR legacy markdown string
 // onChange: emits TipTap JSON as source of truth
-const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChange = () => {}, onViewPageChange = () => {}, renderer = 'V3' }, ref) => {
+const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChange = () => {}, onViewPageChange = () => {}, renderer = 'V3', brewId = null, srdSafe = false }, ref) => {
   const initialContent = (() => {
     // Debug logging
     console.log('[TipTap] Initial value type:', typeof value);
@@ -65,6 +92,15 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   const [showLineNumbers, setShowLineNumbers] = useState(true);
   const [inkFriendly, setInkFriendly] = useState(false);
   const [proseMirrorRoot, setProseMirrorRoot] = useState(null);
+  const [uxFlags, setUxFlags] = useState(initialUxFlags);
+  const [entityGraph, setEntityGraph] = useState(null); // { nodes, edges } from the knowledge graph
+
+  // Toggle a UX-polish flag and persist it so the choice sticks across reloads.
+  const toggleUxFlag = (key) => setUxFlags((prev) => {
+    const next = { ...prev, [key]: !prev[key] };
+    try { window.localStorage.setItem(UX_FLAG_KEYS[key], next[key] ? '1' : '0'); } catch (_) {}
+    return next;
+  });
 
   // Capture ProseMirror root once the editor is ready
   useEffect(()=>{
@@ -83,6 +119,43 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
 
     return () => clearTimeout(timer);
   }, [editor]);
+
+  // Load the brew's knowledge graph and feed entity names to EntityHighlight.
+  // Only runs in the closed alpha (master + entities flags) and when we have a
+  // brewId. On-demand indexing: if the graph is empty (brew never indexed), we
+  // process it once, then re-fetch — so "enable Entities → see highlights"
+  // works in a single action without per-save latency.
+  useEffect(() => {
+    if (!editor || !brewId) return;
+    if (!(uxFlags.master && uxFlags.entities)) {
+      setEntities(editor, []); // clear highlights if the flag was turned off
+      return;
+    }
+    let cancelled = false;
+    const id = encodeURIComponent(brewId);
+    const getGraph = () => fetch(`/api/story/graph/${id}`)
+      .then((r) => r.json())
+      .then((d) => (d && d.success && d.graph ? d.graph : { nodes: [], edges: [] }));
+
+    (async () => {
+      try {
+        let graph = await getGraph();
+        if (!cancelled && (!graph.nodes || graph.nodes.length === 0)) {
+          // Index this brew on demand, then re-fetch.
+          await fetch(`/api/story/graph/process/${id}`, {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}',
+          }).catch(() => {});
+          if (!cancelled) graph = await getGraph();
+        }
+        if (cancelled) return;
+        setEntityGraph(graph);
+        setEntities(editor, graph.nodes || []);
+      } catch (_) {
+        if (!cancelled) setEntityGraph({ nodes: [], edges: [] });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [editor, brewId, uxFlags.master, uxFlags.entities]);
 
   // Hydrate when external value changes (JSON or markdown string)
   useEffect(() => {
@@ -248,22 +321,33 @@ const TipTapEditor = forwardRef(({ value, onChange = () => {}, onCursorPageChang
   }
 
   return (
-    <div className='tiptap-editor'>
+    <div className={`tiptap-editor${uxFlags.master ? ' mf-ux-polish' : ''}`}>
       <TipTapToolbar
         editor={editor}
         showLineNumbers={showLineNumbers}
         onToggleLineNumbers={() => setShowLineNumbers((v) => !v)}
         inkFriendly={inkFriendly}
         onToggleInkFriendly={() => setInkFriendly((v) => !v)}
+        uxFlags={uxFlags}
+        onToggleUxFlag={toggleUxFlag}
       />
-      <div className='tiptap-editor__content' ref={contentRef}>
-        <LineNumberGutter
-          contentEl={contentRef.current}
-          editorRoot={proseMirrorRoot}
-          enabled={showLineNumbers}
-        />
-        <EditorContent editor={editor} />
-        <IconSuggestionList editor={editor} />
+      <div className='tiptap-editor__body'>
+        <div className='tiptap-editor__content' ref={contentRef}>
+          <LineNumberGutter
+            contentEl={contentRef.current}
+            editorRoot={proseMirrorRoot}
+            enabled={showLineNumbers}
+          />
+          <EditorContent editor={editor} />
+          <IconSuggestionList editor={editor} />
+          <SlashCommandList editor={editor} srdSafe={srdSafe} />
+          {uxFlags.master && uxFlags.entities && (
+            <EntityPopup editor={editor} graph={entityGraph} />
+          )}
+        </div>
+        {uxFlags.master && uxFlags.outline && (
+          <OutlinePanel editor={editor} enabled={uxFlags.outline} foldEnabled={uxFlags.master && uxFlags.fold} />
+        )}
       </div>
     </div>
   );

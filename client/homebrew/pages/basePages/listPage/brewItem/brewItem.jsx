@@ -2,6 +2,7 @@ import './brewItem.less';
 import React, { useCallback } from 'react';
 import moment from 'moment';
 import request from '../../../../utils/request-middleware.js';
+import { prefixPath } from '../../../../utils/basePath.js';
 
 import googleDriveIcon from '../../../../googleDrive.svg';
 import homebreweryIcon from '../../../../thumbnail.svg';
@@ -52,7 +53,7 @@ const BrewItem = ({
 		if(brew.googleId && !brew.stubbed) editLink = brew.googleId + editLink;
 
 		return (
-			<a className='editLink' href={`/edit/${editLink}`} target='_blank' rel='noopener noreferrer'>
+			<a className='editLink' href={prefixPath(`/edit/${editLink}`)} target='_blank' rel='noopener noreferrer'>
 				<i className='fas fa-pencil-alt' title='Edit' />
 			</a>
 		);
@@ -67,7 +68,7 @@ const BrewItem = ({
 		}
 
 		return (
-			<a className='shareLink' href={`/share/${shareLink}`} target='_blank' rel='noopener noreferrer'>
+			<a className='shareLink' href={prefixPath(`/share/${shareLink}`)} target='_blank' rel='noopener noreferrer'>
 				<i className='fas fa-share-alt' title='Share' />
 			</a>
 		);
@@ -82,7 +83,7 @@ const BrewItem = ({
 		}
 
 		return (
-			<a className='downloadLink' href={`/download/${shareLink}`}>
+			<a className='downloadLink' href={prefixPath(`/download/${shareLink}`)}>
 				<i className='fas fa-download' title='Download' />
 			</a>
 		);
@@ -142,7 +143,7 @@ const BrewItem = ({
 								<span title="Username contained an email address; hidden to protect user's privacy">
 									{author}
 								</span>
-							) : (<a href={`/user/${author}`}>{author}</a>)}
+							) : (<a href={prefixPath(`/user/${author}`)}>{author}</a>)}
 							{index < brew.authors.length - 1 && ', '}
 						</React.Fragment>
 					))}
