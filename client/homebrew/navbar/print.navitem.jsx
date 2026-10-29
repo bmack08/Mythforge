@@ -4,7 +4,7 @@ import { printCurrentBrew } from 'shared/helpers.js';
 
 const PrintNavItem = function(){
 	return <Nav.item onClick={printCurrentBrew} color='purple' icon='far fa-file-pdf'>
-		get PDF
+		Get PDF
 	</Nav.item>;
 };
 

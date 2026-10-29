@@ -39,7 +39,7 @@ const NewBrew = ()=>{
 				className='new'
 				color='purple'
 				icon='fa-solid fa-plus-square'>
-                new
+                New
 			</Nav.item>
 			<Nav.item
 				className='fromBlank'
@@ -47,7 +47,7 @@ const NewBrew = ()=>{
 				newTab={true}
 				color='purple'
 				icon='fa-solid fa-file'>
-                from blank
+                From blank
 			</Nav.item>
 
 			<Nav.item
@@ -56,7 +56,7 @@ const NewBrew = ()=>{
 				icon='fa-solid fa-upload'
 				onClick={()=>{ document.getElementById('uploadTxt').click(); }}>
 				<input id='uploadTxt' className='newFromLocal' type='file' onChange={handleFileChange} style={{ display: 'none' }} />
-                from file
+                From file
 		</Nav.item>
 	</Nav.dropdown>
 	);

@@ -181,7 +181,7 @@ const RecentNavItemExports = {
 		return <RecentItems
 			brew={props.brew}
 			storageKey={props.storageKey}
-			text='recently edited'
+			text='Recently edited'
 			showEdit={true}
 		/>;
 	},
@@ -190,7 +190,7 @@ const RecentNavItemExports = {
 		return <RecentItems
 			brew={props.brew}
 			storageKey={props.storageKey}
-			text='recently viewed'
+			text='Recently viewed'
 			showView={true}
 		/>;
 	},
@@ -199,7 +199,7 @@ const RecentNavItemExports = {
 		return <RecentItems
 			brew={props.brew}
 			storageKey={props.storageKey}
-			text='recent brews'
+			text='Recent brews'
 			showEdit={true}
 			showView={true}
 		/>;

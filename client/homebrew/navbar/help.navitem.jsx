@@ -6,7 +6,7 @@ import Nav from 'naturalcrit/nav/nav.jsx';
 const HelpNavItem = function(props){
 	return <Nav.dropdown>
 		<Nav.item color='grey' icon='fas fa-question-circle'>
-			need help?
+			Need help?
 		</Nav.item>
 		<Nav.item color='red' icon='fas fa-fw fa-bug'
 			href={`https://www.reddit.com/r/homebrewery/submit?selftext=true&text=${encodeURIComponent(dedent`
@@ -16,7 +16,7 @@ const HelpNavItem = function(props){
 			- **Issue** :  `)}`}
 			newTab={true}
 			rel='noopener noreferrer'>
-			report issue
+			Report an issue
 		</Nav.item>
 		<Nav.item color='green' icon='fas fa-question-circle'
 			href='/faq'
@@ -28,7 +28,7 @@ const HelpNavItem = function(props){
 			href='/migrate'
 			newTab={true}
 			rel='noopener noreferrer'>
-			migrate
+			Migrate
 		</Nav.item>
 	</Nav.dropdown>;
 };
