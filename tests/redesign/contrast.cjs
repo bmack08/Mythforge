@@ -43,8 +43,21 @@
 const IGNORE_SELECTOR   = '[aria-hidden="true"], script, style, noscript';
 const DISABLED_SELECTOR = '[disabled], [aria-disabled="true"]';
 
-async function probes(page) {
-	return page.evaluate(({ ignoreSelector, disabledSelector })=>{
+/* Text lying under an opaque sticky bar is not text anyone is reading: the bar
+ * paints over it completely. Sampling it anyway makes the bar's own fill look
+ * like the paragraph's background and invents a failure - which is exactly what
+ * happened to the generator's level cards once a click had scrolled them under
+ * the Mythforge sub-bar. `clipTop` is the height of that chrome; a line whose
+ * rect starts above it is skipped, and the same line is measured on a pass
+ * where it is in the clear.
+ *
+ * `clipExempt` names the sticky chrome itself: its own labels sit inside that
+ * band by definition and are perfectly readable there, so clipping them would
+ * drop the nav and the sub-bar from every scrolled measurement.
+ *
+ * Both default to off, so M1's and M2's calls are unchanged. */
+async function probes(page, { clipTop = 0, clipExempt = '' } = {}) {
+	return page.evaluate(({ ignoreSelector, disabledSelector, clip, exempt })=>{
 		const describe = (el)=>{
 			const parts = [];
 			let node = el;
@@ -74,6 +87,7 @@ async function probes(page) {
 			if(parseFloat(cs.opacity) === 0) continue;
 			if(el.closest(disabledSelector)) continue;
 
+			const exemptFromClip = clip > 0 && exempt && el.closest(exempt);
 			const rects = [];
 			for (const node of Array.from(el.childNodes)) {
 				if(node.nodeType !== 3) continue;
@@ -83,6 +97,7 @@ async function probes(page) {
 				for (const r of Array.from(range.getClientRects())) {
 					if(r.width < 2 || r.height < 2) continue;
 					if(r.bottom <= 0 || r.right <= 0) continue;
+					if(!exemptFromClip && r.top < clip) continue;   // behind the sticky chrome
 					if(r.top >= window.innerHeight || r.left >= window.innerWidth) continue;
 					const x = Math.max(0, Math.floor(r.left));
 					const y = Math.max(0, Math.floor(r.top));
@@ -107,7 +122,8 @@ async function probes(page) {
 			});
 		}
 		return out;
-	}, { ignoreSelector: IGNORE_SELECTOR, disabledSelector: DISABLED_SELECTOR });
+	}, { ignoreSelector: IGNORE_SELECTOR, disabledSelector: DISABLED_SELECTOR,
+		clip: clipTop, exempt: clipExempt });
 }
 
 /* sRGB relative luminance, WCAG 2.x definition. */
@@ -130,8 +146,8 @@ function parseColor(css) {
 	return [Number(m[0]), Number(m[1]), Number(m[2])];
 }
 
-async function measure(page) {
-	const found = await probes(page);
+async function measure(page, options = {}) {
+	const found = await probes(page, options);
 	if(found.length === 0) return [];
 
 	const styleId = 'tidewatch-contrast-probe';

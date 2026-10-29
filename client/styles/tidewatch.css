@@ -627,11 +627,319 @@ body .homebrew nav .navDropdown .navItem {
 .tide-modal .tide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
 @media (max-width: 620px) { .tide-modal .tide-grid { grid-template-columns: minmax(0, 1fr); } }
 
+/* ════════════════════════════════════════════════════════════════════════
+ * THE STEP BAR, AND THE FORM CONTROLS UNDER IT.
+ *
+ * BUILD-BRIEF section 9, 12-mythforge-generator.html: "Same pattern as the
+ * character wizard: a glass 5-step bar (Basics, World, Adventure, References,
+ * Generate) over a solid panel".
+ *
+ * Glass on the bar, solid on the panel, and nothing in between: the bar is
+ * chrome you glance at, the panel is a form you read and type into. The
+ * before had it the other way round - a purple gradient banner over a white
+ * card - which is also the palette break the brief calls out.
+ *
+ * Written as design-system classes rather than as a .campaignWizard page
+ * sheet because the fields, the choice cards and the footer are the controls
+ * any later Mythforge form needs.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-steps {
+	display: flex;
+	gap: 4px;
+	padding: 6px;
+	margin: 20px 0 0;
+	list-style: none;
+	background: var(--tide-glass);
+	-webkit-backdrop-filter: var(--tide-glass-blur);
+	backdrop-filter: var(--tide-glass-blur);
+	border: 1px solid var(--tide-glass-edge);
+	border-radius: var(--tide-radius-lg);
+	box-shadow: var(--tide-glass-hi), var(--tide-s3);
+}
+.tide-step-li { display: flex; flex: 1 1 0; min-width: 0; }
+.tide-step {
+	display: flex;
+	flex: 1 1 auto;
+	gap: 8px;
+	align-items: center;
+	min-width: 0;
+	padding: 10px 12px;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	font: 600 14px/1.2 var(--tide-ff-sans);
+	color: var(--tide-muted);
+	text-align: left;
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease;
+}
+/* A step you have not reached yet is a label, not an offer. Rendering it as a
+ * disabled button rather than as a styled div keeps that fact in the
+ * accessibility tree and not only in the colour. */
+.tide-step:disabled { cursor: default; }
+.tide-step:not(:disabled):hover { background: rgba(79, 179, 176, 0.12); color: var(--tide-ink50); }
+.tide-step:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: -2px; }
+.tide-step.on {
+	background: rgba(31, 78, 95, 0.80);
+	color: var(--tide-ink);
+}
+.tide-step-num {
+	display: grid;
+	flex: 0 0 auto;
+	place-items: center;
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	font: 700 12px/1 var(--tide-ff-sans);
+	box-shadow: inset 0 0 0 1px var(--tide-card3);
+}
+.tide-step.on .tide-step-num {
+	background: var(--tide-teal);
+	color: var(--tide-onTeal);
+	box-shadow: none;
+}
+.tide-step.done { color: var(--tide-ink50); }
+.tide-step.done .tide-step-num { color: var(--tide-tealB); box-shadow: inset 0 0 0 1px var(--tide-teal); }
+.tide-step-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ── The solid panel the step bar sits over ─────────────────────────────── */
+.tide-panel {
+	position: relative;
+	z-index: 1;
+	margin-top: 18px;
+	padding: 24px;
+	background: var(--tide-solid);
+	border-radius: var(--tide-radius-md);
+	box-shadow: var(--tide-lift);
+}
+
+/* ── Fields ─────────────────────────────────────────────────────────────── */
+.tide-field { display: block; margin-top: 16px; }
+.tide-label {
+	display: block;
+	margin-bottom: 6px;
+	font: 600 13px/1.3 var(--tide-ff-sans);
+	color: var(--tide-ink50);
+}
+.tide-input,
+.tide-textarea {
+	width: 100%;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 10px;
+	background: rgba(13, 18, 21, 0.90);
+	color: var(--tide-ink);
+	font: 15px/1.5 var(--tide-ff-sans);
+	transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.tide-input { height: 42px; padding: 0 12px; }
+.tide-textarea { padding: 10px 12px; resize: vertical; }
+.tide-input::placeholder,
+.tide-textarea::placeholder { color: var(--tide-muted); }
+.tide-input:focus,
+.tide-textarea:focus {
+	outline: none;
+	border-color: var(--tide-teal);
+	box-shadow: 0 0 0 2px rgba(79, 179, 176, 0.28);
+}
+.tide-hint { margin: 4px 0 0; font-size: 13px; color: var(--tide-muted); }
+
+/* ── Choice cards ───────────────────────────────────────────────────────
+ * One control, two densities: a 3-up grid for short options with a caption,
+ * and a single column for the long ones (level bands, complexity) whose
+ * caption is a whole sentence and would wrap to a wall three abreast. */
+.tide-choices {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	gap: 8px;
+	margin-top: 8px;
+}
+.tide-choices-rows { grid-template-columns: minmax(0, 1fr); }
+.tide-choice {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 12px 14px;
+	border: 1px solid transparent;
+	border-radius: var(--tide-radius-md);
+	background: rgba(35, 43, 47, 0.90);
+	font-family: var(--tide-ff-sans);
+	text-align: left;
+	cursor: pointer;
+	transition: background-color 140ms ease, box-shadow 140ms ease;
+}
+.tide-choice strong { font: 600 14px/1.35 var(--tide-ff-sans); color: var(--tide-ink); }
+.tide-choice span { font-size: 12px; line-height: 1.4; color: var(--tide-muted); }
+.tide-choice:hover { background: rgba(45, 55, 60, 0.92); }
+.tide-choice:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-choice[aria-pressed="true"] {
+	background: rgba(31, 78, 95, 0.55);
+	box-shadow: var(--tide-glow-teal);
+}
+.tide-choice-icon {
+	margin-bottom: 4px;
+	font-size: 22px;
+	line-height: 1;
+	color: var(--tide-tealB);
+}
+
+/* ── Segmented row ──────────────────────────────────────────────────────── */
+.tide-seg { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tide-seg-btn {
+	min-height: 40px;
+	padding: 10px 16px;
+	border: 0;
+	border-radius: var(--tide-radius-md);
+	background: rgba(55, 64, 69, 0.85);
+	color: var(--tide-ink70);
+	font: 600 14px/1 var(--tide-ff-sans);
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease;
+}
+.tide-seg-btn:hover { background: rgba(70, 81, 87, 0.92); color: var(--tide-ink); }
+.tide-seg-btn:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-seg-btn[aria-pressed="true"] {
+	background: var(--tide-teal);
+	color: var(--tide-onTeal);
+	box-shadow: var(--tide-glow-teal);
+}
+
+/* ── Stepper ────────────────────────────────────────────────────────────── */
+.tide-stepper {
+	display: inline-flex;
+	align-items: stretch;
+	margin-top: 8px;
+	overflow: hidden;
+	border: 1px solid rgba(255, 255, 255, 0.14);
+	border-radius: 10px;
+}
+.tide-stepper button {
+	width: 44px;
+	height: 42px;
+	border: 0;
+	background: rgba(13, 18, 21, 0.90);
+	color: var(--tide-ink70);
+	font: 600 18px/1 var(--tide-ff-sans);
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease;
+}
+.tide-stepper button:hover:not(:disabled) { background: rgba(79, 179, 176, 0.18); color: var(--tide-ink); }
+.tide-stepper button:disabled { color: var(--tide-muted); cursor: default; }
+.tide-stepper button:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: -2px; }
+.tide-stepper output {
+	display: grid;
+	place-items: center;
+	width: 60px;
+	background: rgba(13, 18, 21, 0.90);
+	font: 700 18px/1 var(--tide-ff-sans);
+	color: var(--tide-ink);
+}
+
+/* ── Upload zone and its list ───────────────────────────────────────────── */
+.tide-upload {
+	margin-top: 8px;
+	border: 1px dashed var(--tide-card3);
+	border-radius: var(--tide-radius-md);
+	transition: border-color 140ms ease, background-color 140ms ease;
+}
+.tide-upload:hover { border-color: var(--tide-teal); background: rgba(79, 179, 176, 0.06); }
+.tide-upload:focus-within { border-color: var(--tide-teal); }
+.tide-upload label {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 6px;
+	padding: 28px 20px;
+	color: var(--tide-ink50);
+	font-size: 14px;
+	cursor: pointer;
+}
+.tide-upload label i { font-size: 26px; color: var(--tide-tealB); }
+
+.tide-reflist { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.tide-ref {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	padding: 10px 12px;
+	border-radius: var(--tide-radius-sm);
+	background: var(--tide-card0);
+	font-size: 13px;
+	color: var(--tide-ink70);
+}
+.tide-ref i { color: var(--tide-tealB); }
+.tide-ref-name { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tide-ref-size { flex: 0 0 auto; color: var(--tide-muted); }
+.tide-ref-remove {
+	flex: 0 0 auto;
+	width: 28px;
+	height: 28px;
+	border: 0;
+	border-radius: var(--tide-radius-sm);
+	background: transparent;
+	color: var(--tide-ink50);
+	cursor: pointer;
+}
+.tide-ref-remove:hover { background: rgba(240, 114, 111, 0.16); color: var(--tide-danger); }
+.tide-ref-remove:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+
+/* ── Summary list ───────────────────────────────────────────────────────── */
+.tide-summary {
+	margin-top: 8px;
+	padding: 4px 16px;
+	border-radius: var(--tide-radius-md);
+	background: var(--tide-card0);
+}
+.tide-summary > div {
+	display: flex;
+	justify-content: space-between;
+	gap: 16px;
+	padding: 10px 0;
+	border-bottom: 1px solid var(--tide-hair);
+	font-size: 14px;
+}
+.tide-summary > div:last-child { border-bottom: 0; }
+.tide-summary dt { color: var(--tide-ink50); }
+.tide-summary dd { margin: 0; color: var(--tide-ink); font-weight: 600; text-align: right; }
+
+/* ── The wizard footer row ──────────────────────────────────────────────── */
+.tide-wizard-foot {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 22px;
+	padding-top: 16px;
+	border-top: 1px solid var(--tide-hair);
+}
+.tide-wizard-foot .tide-actions { margin-top: 0; }
+
+/* ── Progress ───────────────────────────────────────────────────────────── */
+.tide-progress {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	margin-top: 16px;
+	color: var(--tide-ink70);
+	font-size: 14px;
+}
+.tide-spinner {
+	flex: 0 0 auto;
+	width: 18px;
+	height: 18px;
+	border: 2px solid rgba(127, 209, 206, 0.28);
+	border-top-color: var(--tide-teal);
+	border-radius: 50%;
+	animation: tideSpin 0.8s linear infinite;
+}
+@keyframes tideSpin { to { transform: rotate(360deg); } }
+
 /* ── Fallbacks, per BUILD-BRIEF section 5 ───────────────────────────────── */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
 	.tide-glass,
 	.tide-status-card,
 	.tide-modal,
+	.tide-steps,
 	body .homebrew nav,
 	.tide-mbar { background: var(--tide-glass-solid); }
 }
@@ -639,6 +947,7 @@ body .homebrew nav .navDropdown .navItem {
 	.tide-glass,
 	.tide-status-card,
 	.tide-modal,
+	.tide-steps,
 	body .homebrew nav,
 	.tide-mbar {
 		background: var(--tide-glass-solid);
@@ -652,7 +961,11 @@ body .homebrew nav .navDropdown .navItem {
 	.tide-btn-primary,
 	.tide-btn-quiet,
 	.tide-btn-ghost,
+	.tide-choice,
+	.tide-seg-btn,
+	.tide-step,
 	.tide-card { transition: none; }
+	.tide-spinner { animation-duration: 2.4s; }
 }
 
 /* ── Narrow ─────────────────────────────────────────────────────────────── */
@@ -663,4 +976,13 @@ body .homebrew nav .navDropdown .navItem {
 	.tide-foot { padding: 16px 20px 24px; }
 	body .homebrew nav { flex-wrap: wrap; }
 	.tide-mbar { padding: 8px 14px; }
+
+	/* Five steps across 390px leaves ~70px a step: the labels would be three
+	 * ellipsed characters each, which is a progress bar that cannot tell you
+	 * where you are. Wrapped to a grid they keep their words. */
+	.tide-steps { flex-wrap: wrap; }
+	.tide-step-li { flex: 1 1 44%; }
+	.tide-choices { grid-template-columns: minmax(0, 1fr); }
+	.tide-panel { padding: 18px 16px; }
+	.tide-wizard-foot { justify-content: flex-start; }
 }

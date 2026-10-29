@@ -588,11 +588,12 @@ app.get('/new', asyncHandler(async(req, res, next)=>{
 	return next();
 }));
 
-//Campaign Wizard Page
+//Campaign generator. Same rule as defaultMetaTags above: "D&D 5e" is
+//Wizards of the Coast's, and the title is what a shared link shows.
 app.get('/new-campaign', asyncHandler(async(req, res, next)=>{
 	req.ogMeta = { ...defaultMetaTags,
-		title       : 'Campaign Generator',
-		description : 'Create an AI-generated D&D 5e campaign sourcebook'
+		title       : 'Campaign generator',
+		description : 'Draft a 5E-compatible campaign sourcebook you can edit as a brew.'
 	};
 
 	return next();

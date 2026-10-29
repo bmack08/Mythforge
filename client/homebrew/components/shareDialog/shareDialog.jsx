@@ -43,7 +43,7 @@ const CopyField = ({ id, label, url, hint, danger })=>{
 		<div className='tide-field-row'>
 			<input
 				id={id}
-				className='tide-input'
+				className='tide-linkfield'
 				type='text'
 				value={url}
 				readOnly

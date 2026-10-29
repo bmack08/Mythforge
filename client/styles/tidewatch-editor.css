@@ -644,7 +644,10 @@
 }
 .tide-field-row { display: flex; gap: 8px; align-items: center; }
 .tide-field-row .tide-btn-quiet { flex: 0 0 auto; height: 40px; }
-.tide-input {
+/* The read-only share-LINK box, not a general text field: the generic
+ * `.tide-input` in tidewatch.css is the app's text input and this would have
+ * silently overridden it (this sheet loads later). */
+.tide-linkfield {
 	flex:          1 1 auto;
 	min-width:     0;
 	height:        40px;
@@ -655,7 +658,7 @@
 	color:         var(--tide-ink);
 	font:          500 13px/1.4 var(--tide-ff-mono);
 }
-.tide-input:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 1px; }
+.tide-linkfield:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 1px; }
 .tide-field-hint { margin: 6px 0 0; color: var(--tide-ink50); font-size: 13px; }
 .tide-field-hint-warn { color: var(--tide-gold); }
 .tide-field-status { min-height: 18px; margin: 4px 0 0; color: var(--tide-tealB); font-size: 13px; }
