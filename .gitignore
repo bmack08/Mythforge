@@ -88,3 +88,8 @@ startMViewer.bat
 /docs/reference/
 /docs/sourcebooks/
 /docs/Dialogs-*
+
+# Playwright run artefacts (traces, failure screenshots, error contexts).
+# __visual__ and tests/redesign both write here; none of it is source.
+test-results/
+test-results-*/

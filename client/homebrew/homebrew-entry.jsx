@@ -11,6 +11,11 @@ import '@fortawesome/fontawesome-free/css/regular.css';
 // Import non-FA icon fonts (Elderberry Inn, Game Icons, Dice) with corrected paths
 import '../styles/iconFonts.less';
 
+// Tidewatch app chrome. LAST on purpose: it overrides the inherited Homebrewery
+// nav styling (navbar.less, mythwright-navbar.less) without those files having
+// to be rewritten, and CSS order is the whole mechanism.
+import '../styles/tidewatch.css';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';
@@ -37,8 +42,10 @@ import NewPage     from './pages/newPage/newPage.jsx';
 import ErrorPage   from './pages/errorPage/errorPage.jsx';
 import VaultPage   from './pages/vaultPage/vaultPage.jsx';
 import AccountPage from './pages/accountPage/accountPage.jsx';
-import ProjectsPage from './pages/projectsPage/projectsPage.jsx';
+import PreviewPage from './pages/previewPage/previewPage.jsx';
 import CampaignWizard from './pages/campaignWizard/campaignWizard.jsx';
+import BrewLibraryPage from './pages/brewLibraryPage/brewLibraryPage.jsx';
+import NotFoundPage from './pages/notFoundPage/notFoundPage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -85,22 +92,43 @@ const Homebrew = (props)=>{
 		<Router location={url} basename={basename}>
 			<div className='homebrew'>
 				<Routes>
+					{/* ── Writing ─────────────────────────────────────────── */}
 					<Route path='/edit/:id' element={<WithRoute el={EditPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/share/:id' element={<WithRoute el={SharePage} brew={brew} />} />
 					<Route path='/new/:id' element={<WithRoute el={NewPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/new' element={<WithRoute el={NewPage} userThemes={userThemes}/> } />
 					<Route path='/new-campaign' element={<WithRoute el={CampaignWizard}/>} />
-					<Route path='/projects' element={<WithRoute el={ProjectsPage}/>} />
+
+					{/* ── The brew library ────────────────────────────────────
+					  * BUILD-BRIEF section 9: home and projects are the SAME
+					  * screen (the 12-home library), and create-project is that
+					  * screen with the template picker already open. All three
+					  * used to fall through to the editor or to an unstyled
+					  * list. */}
+					<Route path='/' element={<WithRoute el={BrewLibraryPage} active='brews' />} />
+					<Route path='/projects' element={<WithRoute el={BrewLibraryPage} active='brews' />} />
+					<Route path='/create-project' element={<WithRoute el={BrewLibraryPage} active='new' openPicker={true} />} />
+
+					{/* ── Reading ─────────────────────────────────────────── */}
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>
+					<Route path='/preview' element={<WithRoute el={PreviewPage}/>} />
 					<Route path='/changelog' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
 					<Route path='/faq' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
 					<Route path='/migrate' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
 					<Route path='/account' element={<WithRoute el={AccountPage} brew={brew} accountDetails={brew.accountDetails} />} />
-					<Route path='/legacy' element={<WithRoute el={HomePage} brew={brew} />} />
 					<Route path='/error' element={<WithRoute el={ErrorPage} brew={brew} />} />
-					<Route path='/' element={<WithRoute el={HomePage} brew={brew} />} />
-					<Route path='/*' element={<WithRoute el={HomePage} brew={brew} />} />
+
+					{/* The legacy paste-and-edit surface, kept as an unlinked
+					  * import path only - section 9: "legacy should be a hidden
+					  * import path". It is reachable from the library's
+					  * "Import from Markdown" action and from nowhere else. */}
+					<Route path='/legacy' element={<WithRoute el={HomePage} brew={brew} />} />
+
+					{/* A real 404 instead of silently rendering the home page,
+					  * which told a reader with a broken link that their link
+					  * was fine. */}
+					<Route path='/*' element={<WithRoute el={NotFoundPage} />} />
 				</Routes>
 			</div>
 		</Router>

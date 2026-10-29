@@ -12,8 +12,9 @@ import NewPage     from './pages/newPage/newPage.jsx';
 import ErrorPage   from './pages/errorPage/errorPage.jsx';
 import VaultPage   from './pages/vaultPage/vaultPage.jsx';
 import AccountPage from './pages/accountPage/accountPage.jsx';
-import ProjectsPage from './pages/projectsPage/projectsPage.jsx';
 import PreviewPage from './pages/previewPage/previewPage.jsx';
+import BrewLibraryPage from './pages/brewLibraryPage/brewLibraryPage.jsx';
+import NotFoundPage from './pages/notFoundPage/notFoundPage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -58,7 +59,9 @@ const Homebrew = (props)=>{
 					<Route path='/share/:id' element={<WithRoute el={SharePage} brew={brew} />} />
 					<Route path='/new/:id' element={<WithRoute el={NewPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/new' element={<WithRoute el={NewPage} userThemes={userThemes}/> } />
-					<Route path='/projects' element={<WithRoute el={ProjectsPage}/>} />
+					<Route path='/' element={<WithRoute el={BrewLibraryPage} active='brews' />} />
+					<Route path='/projects' element={<WithRoute el={BrewLibraryPage} active='brews' />} />
+					<Route path='/create-project' element={<WithRoute el={BrewLibraryPage} active='new' openPicker={true} />} />
 					<Route path='/preview' element={<WithRoute el={PreviewPage}/>} />
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>
@@ -68,8 +71,7 @@ const Homebrew = (props)=>{
 					<Route path='/account' element={<WithRoute el={AccountPage} brew={brew} accountDetails={brew.accountDetails} />} />
 					<Route path='/legacy' element={<WithRoute el={HomePage} brew={brew} />} />
 					<Route path='/error' element={<WithRoute el={ErrorPage} brew={brew} />} />
-					<Route path='/' element={<WithRoute el={HomePage} brew={brew} />} />
-					<Route path='/*' element={<WithRoute el={HomePage} brew={brew} />} />
+					<Route path='/*' element={<WithRoute el={NotFoundPage} />} />
 				</Routes>
 			</div>
 		</Router>

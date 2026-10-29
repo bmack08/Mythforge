@@ -264,10 +264,14 @@ const faqText           = fs.readFileSync('faq.md', 'utf8');
 
 String.prototype.replaceAll = function(s, r){return this.split(s).join(r);};
 
+// BUILD-BRIEF section 9: the product is Mythforge, and "D&D 5e" is Wizards of
+// the Coast's mark - the brief asks for "5E-compatible" wherever a system has
+// to be named. These strings are the page <title> and the Open Graph card, so
+// they are as user-visible as anything in the app.
 const defaultMetaTags = {
-	site_name   : 'Mythwright - AI-Powered D&D Sourcebook Generator',
-	title       : 'Mythwright',
-	description : 'Generate complete D&D sourcebooks with AI-powered content creation, built on Homebrewery technology.',
+	site_name   : 'Mythforge - AI-powered 5E-compatible sourcebook generator',
+	title       : 'Mythforge',
+	description : 'Write and generate 5E-compatible adventures, creatures and handouts, then export a print-ready PDF.',
 	image       : `${config.get('publicUrl')}/thumbnail.png`,
 	type        : 'website'
 };

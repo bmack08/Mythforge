@@ -4,53 +4,44 @@ import React from 'react';
 import createClass from 'create-react-class';
 
 import Nav from 'naturalcrit/nav/nav.jsx';
-import PatreonNavItem from './patreon.navitem.jsx';
-import ProjectCreationNavItem from './project-creation.navitem.jsx';
-import ProjectDashboardNavItem from './project-dashboard.navitem.jsx';
-import CollaborationNavItem from './collaboration.navitem.jsx';
-import MythwrightSettingsNavItem from './mythwright-settings.navitem.jsx';
+
+/*
+ * The global top bar.
+ *
+ * Three BUILD-BRIEF section 9 fixes land here:
+ *
+ *  1. The brand read "MYTHWRIGHT" with a "V3.19.3" chip beside it. The product
+ *     is Mythforge, and a build number is not brand - both are gone.
+ *
+ *  2. "New Project", "Projects", "Collaborate" and "Settings" were top-bar
+ *     items pointing at routes that fell through to the editor or the home
+ *     page. Mythforge's own navigation now lives in ONE place, the sticky
+ *     Mythforge sub-bar (components/mythforgeBar), which is where the mocks
+ *     put it; Collaborate becomes a share dialog on the editor (unit M2) and
+ *     Settings a Mythforge settings page (unit M4), so neither belongs in the
+ *     global bar at all.
+ *
+ *  3. The Patreon "help out" item linked to patreon.com/NaturalCrit. That is
+ *     upstream Homebrewery trade dress, not Mythforge's, and section 9 retires
+ *     the inherited chrome.
+ *
+ * What is left is what the mock's top bar has: the TaleForge mark, the product
+ * name, and whatever right-hand section the hosting page passes as children.
+ */
 
 const Navbar = createClass({
-	displayName     : 'Navbar',
-	getInitialState : function() {
-		return {
-			ver : global.version
-		};
-	},
+	displayName : 'Navbar',
 
-	/*
-	renderChromeWarning : function(){
-		if(!this.state.showNonChromeWarning) return;
-		return <Nav.item className='warning' icon='fa-exclamation-triangle'>
-			Optimized for Chrome
-			<div className='dropdown'>
-				If you are experiencing rendering issues, use Chrome instead
-			</div>
-		</Nav.item>
-	},
-*/
 	render : function(){
 		return <Nav.base>
 			<Nav.section>
 				<Nav.logo />
 				<Nav.item href='/' className='homebrewLogo'>
-					<div>Mythwright</div>
+					<div>Mythforge</div>
 				</Nav.item>
-				<Nav.item newTab={true} href='/changelog' color='purple' icon='far fa-file-alt'>
-					{`v${this.state.ver}`}
-				</Nav.item>
-				<Nav.item href='/new-campaign' color='purple' icon='fas fa-hat-wizard'>
-					Campaign Generator
-				</Nav.item>
-				<ProjectCreationNavItem />
-				<ProjectDashboardNavItem />
-				<CollaborationNavItem />
-				<MythwrightSettingsNavItem />
-				<PatreonNavItem />
-				{/*this.renderChromeWarning()*/}
 			</Nav.section>
-		{this.props.children}
-	</Nav.base>;
+			{this.props.children}
+		</Nav.base>;
 	}
 });
 

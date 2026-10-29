@@ -1,0 +1,666 @@
+/* client/styles/tidewatch.css
+ *
+ * TIDEWATCH for Mythforge - the app chrome, its tokens, and the two materials
+ * that sit over the art layer. Loaded LAST from homebrew-entry.jsx so it wins
+ * over the inherited Homebrewery LESS (navbar.less, mythwright-navbar.less)
+ * without those files having to be rewritten.
+ *
+ * Sources, all read in this lane:
+ *   visual-lift/BUILD-BRIEF.md        section 9 (Mythforge, batch 4)
+ *   visual-lift/ART-DIRECTION.md      "the art is the stage, the UI is the lantern"
+ *   visual-lift/mocks/tf.css          the mock token sheet
+ *   visual-lift/mocks/lift.css        the mock art/scrim/glass sheet
+ *   visual-lift/mocks/12-mythforge-home.html
+ *   TaleForge-tidewatch frontend/src/styles/tidewatch.css  (the shipped values)
+ *
+ * The prefix is `--tide-`. TaleForge's sheet builds on its own `--v5-*` token
+ * file, which does not exist here, so the v5 values this sheet needs are
+ * restated as `--tide-*` rather than imported - same numbers, one file.
+ *
+ * TRADE DRESS (BUILD-BRIEF section 9). App chrome is never parchment, maroon,
+ * gold rules, Solbera fonts, the orange sash or orange buttons. Paper styling
+ * belongs INSIDE the brew preview and nowhere else.
+ */
+
+/* ── Palette, type, elevation ───────────────────────────────────────────── */
+:root {
+	/* Surfaces, dark to light */
+	--tide-well:  #0D1215;
+	--tide-bgd:   #0F1418;
+	--tide-bg:    #12181C;
+	--tide-card0: #171E22;
+	--tide-card:  #232B2F;
+	--tide-card2: #374045;
+	--tide-card3: #525C63;
+
+	/* Ink. --tide-muted is the dimmest value allowed on --tide-bg and still
+	 * clears AA for normal text (#A2ACB2 on #12181C is 7.4:1). */
+	--tide-ink:   #F9FAFA;
+	--tide-ink70: #ECEDEE;
+	--tide-ink50: #C4CBCE;
+	--tide-muted: #A2ACB2;
+
+	/* Teal is "you can act on this". Gold is "you earned this" and is used by
+	 * nothing in unit M1. Never white on teal (~2.5:1): the text on a teal
+	 * fill is --tide-onTeal (6.8:1). */
+	--tide-teal:   #4FB3B0;
+	--tide-tealB:  #7FD1CE;
+	--tide-tealH:  #6CC4C1;
+	--tide-onTeal: #0B1F1F;
+	--tide-tealSel:#1F4E5F;
+	--tide-gold:   #E0B95B;
+	--tide-danger: #F0726F;
+
+	/* Hairlines. Both are deliberately dimmer than any text colour - a
+	 * divider that reads as brightly as a label is the commonest way a dark
+	 * UI starts to look noisy. */
+	--tide-edge: rgba(255, 255, 255, 0.10);
+	--tide-hair: rgba(255, 255, 255, 0.08);
+
+	--tide-s1: 0 2px 6px rgba(0, 0, 0, 0.20);
+	--tide-s2: 0 8px 24px rgba(0, 0, 0, 0.32);
+	--tide-s3: 0 16px 48px rgba(0, 0, 0, 0.45);
+	--tide-lift: 0 18px 40px -12px rgba(0, 0, 0, 0.70);
+
+	--tide-radius-sm: 8px;
+	--tide-radius-md: 12px;
+	--tide-radius-lg: 16px;
+
+	/* Same three stacks as the TaleForge app, so the two read as one product.
+	 * Only Inter is fetched (see index.html); Cormorant falls back to Georgia
+	 * and JetBrains Mono to ui-monospace, exactly as it does there. */
+	--tide-ff-display: "Cormorant Garamond", Georgia, serif;
+	--tide-ff-sans:    Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+	--tide-ff-mono:    "JetBrains Mono", ui-monospace, "Cascadia Mono", monospace;
+
+	/* ── Materials ──────────────────────────────────────────────────────
+	 * Glass is for chrome that wants the painting to read through it. Solid
+	 * is the default for content you actually read. A half-transparent grey
+	 * over a painting is where contrast goes to die, so there is no third
+	 * material between them. */
+	--tide-glass:       rgba(12, 17, 20, 0.80);
+	--tide-glass-blur:  blur(20px) saturate(130%);
+	--tide-glass-edge:  rgba(127, 209, 206, 0.16);
+	--tide-glass-hi:    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+	--tide-glass-solid: #182024;
+	--tide-solid:       rgba(23, 30, 34, 0.94);
+	--tide-solid-opaque:#171E22;
+
+	--tide-glow-teal:
+		0 0 0 1px rgba(127, 209, 206, 0.28),
+		0 0 28px -4px rgba(79, 179, 176, 0.45);
+
+	/* ── Scrims ─────────────────────────────────────────────────────────
+	 * A scrim is not decoration - it is what buys the contrast ratio for text
+	 * sitting over a painting.
+	 *
+	 * --tide-scrim-band is the mock's own stop list from
+	 * 12-mythforge-home.html: 0.45 at the top, 0.80 by 200px, flat --tide-bg
+	 * by 360px. Everything below 360px therefore sits on a known colour and
+	 * its contrast can be reasoned about without looking at the painting. */
+	--tide-scrim-band:
+		linear-gradient(180deg,
+			rgba(9, 13, 16, 0.45) 0,
+			rgba(9, 13, 16, 0.80) 200px,
+			var(--tide-bg) 360px);
+	--tide-scrim-vignette:
+		radial-gradient(120% 90% at 50% 45%,
+			rgba(9, 13, 16, 0.45) 45%,
+			rgba(9, 13, 16, 0.88) 100%);
+
+	/* Dominant colour of every Tidewatch image: shows while bytes are in
+	 * flight, so a loading image is never a pale flash. */
+	--tide-art-placeholder: #12181C;
+}
+
+/* ── The art layer ──────────────────────────────────────────────────────
+ * Fixed behind everything, with the scrim as its own ::after so the art can
+ * be a real background-image and the scrim can change per screen.
+ * BUILD-BRIEF section 5: the layout must not depend on art, so a screen with
+ * no --tide-art-src still gets the atmospheric gradient and identical boxes. */
+.tide-art {
+	position: absolute;
+	inset: 0 0 auto 0;
+	height: var(--tide-art-height, 360px);
+	z-index: 0;
+	overflow: hidden;
+	pointer-events: none;
+	background:
+		var(--tide-art-src, none) center / cover no-repeat,
+		var(--tide-art-placeholder);
+}
+.tide-art::after {
+	content: '';
+	position: absolute;
+	inset: 0;
+	background: var(--tide-scrim, var(--tide-scrim-band));
+}
+
+/* ── Materials ──────────────────────────────────────────────────────────── */
+.tide-glass {
+	background: var(--tide-glass);
+	-webkit-backdrop-filter: var(--tide-glass-blur);
+	backdrop-filter: var(--tide-glass-blur);
+	border: 1px solid var(--tide-glass-edge);
+	border-radius: var(--tide-radius-lg);
+	box-shadow: var(--tide-glass-hi), var(--tide-s3);
+}
+.tide-solid {
+	background: var(--tide-solid);
+	border-radius: var(--tide-radius-md);
+	box-shadow: var(--tide-lift);
+}
+
+/* ── Buttons: one primary per region, one quiet, one link ───────────────── */
+.tide-btn,
+.tide-btn-primary,
+.tide-btn-quiet,
+.tide-btn-ghost {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8px;
+	min-height: 40px;
+	padding: 10px 18px;
+	border: 1px solid transparent;
+	border-radius: var(--tide-radius-md);
+	font: 600 14px/1 var(--tide-ff-sans);
+	text-decoration: none;
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
+}
+.tide-btn-primary {
+	background: var(--tide-teal);
+	color: var(--tide-onTeal);
+	box-shadow: var(--tide-glow-teal);
+}
+.tide-btn-primary:hover { background: var(--tide-tealH); color: var(--tide-onTeal); }
+.tide-btn-quiet {
+	background: rgba(55, 64, 69, 0.85);
+	color: var(--tide-ink70);
+}
+.tide-btn-quiet:hover { background: rgba(70, 81, 87, 0.92); color: var(--tide-ink); }
+.tide-btn-ghost {
+	background: transparent;
+	color: var(--tide-tealB);
+}
+.tide-btn-ghost:hover { background: rgba(79, 179, 176, 0.12); color: var(--tide-tealB); }
+.tide-btn-primary:focus-visible,
+.tide-btn-quiet:focus-visible,
+.tide-btn-ghost:focus-visible {
+	outline: 2px solid var(--tide-teal);
+	outline-offset: 2px;
+}
+
+/* ── Chips ──────────────────────────────────────────────────────────────── */
+.tide-chip {
+	display: inline-block;
+	padding: 3px 9px;
+	border-radius: 999px;
+	font: 600 11px/1.4 var(--tide-ff-sans);
+	background: var(--tide-card2);
+	color: var(--tide-ink50);
+}
+.tide-chip-teal { background: var(--tide-tealSel); color: var(--tide-ink); }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * GLOBAL NAV - the Tidewatch top bar.
+ *
+ * The inherited chrome is Homebrewery's: a #333 bar of 10px uppercase items
+ * with per-item hover colours (orange, purple, green...) from
+ * naturalcrit/styles/colors.less. BUILD-BRIEF section 9 retires all of it.
+ * Overriding here rather than editing navbar.less keeps the legacy renderer
+ * pages, which still import that file, from losing their layout.
+ *
+ * SPECIFICITY, deliberately. Every selector in this block is prefixed `body`
+ * so it outranks navbar.less's own `.homebrew nav ...` rules (0,0,1,1 -> an
+ * extra type selector) no matter which stylesheet the bundler emits first.
+ * Relying on source order alone broke the moment a page imported navbar.less
+ * deeper in the module graph than this file, which is exactly what happened.
+ * ════════════════════════════════════════════════════════════════════════ */
+body .homebrew nav {
+	position: relative;
+	z-index: 6;
+	display: flex;
+	align-items: stretch;
+	justify-content: space-between;
+	min-height: 48px;
+	font-family: var(--tide-ff-sans);
+	background: linear-gradient(180deg, rgba(9, 13, 16, 0.92), rgba(9, 13, 16, 0.78));
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+	box-shadow: inset 0 -1px 0 var(--tide-hair);
+}
+body .homebrew nav .navSection {
+	display: flex;
+	align-items: stretch;
+	gap: 2px;
+	padding: 6px 8px;
+}
+/* The legacy sheet drew a 1px #666 rule between every right-hand item. At 48px
+ * that reads as a row of cages; the items are spaced instead. */
+body .homebrew nav .navSection:last-child .navItem { border-left: 0; }
+
+body .homebrew nav .navLogo {
+	display: flex;
+	align-items: center;
+	padding: 0 14px 0 10px;
+	color: var(--tide-ink);
+	text-decoration: none;
+}
+body .homebrew nav .navLogo:hover .name,
+body .homebrew nav .navLogo:hover .name .crit { color: var(--tide-tealB); }
+body .homebrew nav .navLogo:hover svg { fill: var(--tide-tealB); }
+body .homebrew nav .navLogo svg { height: 15px; margin-right: 6px; fill: var(--tide-ink); }
+body .homebrew nav .navLogo span.name {
+	font: 600 17px/1 var(--tide-ff-display);
+	letter-spacing: 0.01em;
+	color: var(--tide-ink);
+}
+body .homebrew nav .navLogo span.name span.crit { font-family: var(--tide-ff-display); font-weight: 600; }
+
+body .homebrew nav .navItem {
+	display: flex;
+	gap: 7px;
+	align-items: center;
+	justify-content: center;
+	height: auto;
+	padding: 8px 12px;
+	border-radius: var(--tide-radius-sm);
+	font: 500 13px/1.2 var(--tide-ff-sans);
+	letter-spacing: 0;
+	text-transform: none;
+	text-decoration: none;
+	color: var(--tide-ink50);
+	background: transparent;
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease;
+}
+/* The per-colour hover classes (.orange, .purple, .green, .blue, .gray/.grey,
+ * .red) come from the legacy palette. Tidewatch has one interactive colour, so
+ * they all resolve to the same quiet teal wash. */
+body .homebrew nav .navItem:hover,
+body .homebrew nav .navItem.orange:hover,
+body .homebrew nav .navItem.purple:hover,
+body .homebrew nav .navItem.green:hover,
+body .homebrew nav .navItem.blue:hover,
+body .homebrew nav .navItem.red:hover,
+body .homebrew nav .navItem.gray:hover,
+body .homebrew nav .navItem.grey:hover {
+	background: rgba(79, 179, 176, 0.14);
+	color: var(--tide-ink);
+}
+body .homebrew nav .navItem:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: -2px; }
+body .homebrew nav .navItem i { font-size: 13px; color: inherit; }
+
+/* The brand slot. 'Mythforge' in the display face, no version chip -
+ * BUILD-BRIEF section 9: the nav read "MYTHWRIGHT" and "V3.19.3". */
+body .homebrew nav .navItem.homebrewLogo,
+body .homebrew nav .navItem.homebrewLogo:hover {
+	padding-left: 4px;
+	font: 600 19px/1 var(--tide-ff-display);
+	color: var(--tide-ink);
+	background: transparent;
+	text-transform: none;
+}
+
+body .homebrew nav .navDropdown {
+	position: absolute;
+	z-index: 7;
+	min-width: 190px;
+	padding: 6px;
+	border: 1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	background: #161D21;
+	box-shadow: var(--tide-s3);
+	animation: none;
+}
+body .homebrew nav .navDropdown .navItem {
+	justify-content: flex-start;
+	width: 100%;
+	background: transparent;
+	border-left: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * MYTHFORGE SUB-BAR - sticky under the global nav.
+ * BUILD-BRIEF section 9: "the .mbar row (Brews, New brew, Generator, Vault,
+ * Help) is sticky under the global nav".
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-mbar {
+	position: sticky;
+	top: 0;
+	z-index: 5;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	padding: 8px 20px;
+	background: rgba(13, 18, 21, 0.94);
+	-webkit-backdrop-filter: blur(10px);
+	backdrop-filter: blur(10px);
+	border-bottom: 1px solid var(--tide-hair);
+}
+.tide-mbar-brand {
+	margin-right: 10px;
+	font: 700 15px/1 var(--tide-ff-display);
+	color: var(--tide-ink);
+}
+.tide-mbar a,
+.tide-mbar button {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	padding: 7px 12px;
+	border: 0;
+	border-radius: var(--tide-radius-sm);
+	font: 600 14px/1 var(--tide-ff-sans);
+	color: var(--tide-ink50);
+	background: transparent;
+	text-decoration: none;
+	cursor: pointer;
+	transition: background-color 140ms ease, color 140ms ease;
+}
+.tide-mbar a:hover,
+.tide-mbar button:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+.tide-mbar a.on,
+.tide-mbar button.on { background: var(--tide-tealSel); color: var(--tide-ink); }
+.tide-mbar a:focus-visible,
+.tide-mbar button:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-mbar-spacer { flex: 1 1 auto; }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * PAGE SHELL - every Tidewatch Mythforge page that is not the editor.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-page {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	min-height: 100%;
+	height: 100%;
+	overflow-y: auto;
+	background: var(--tide-bg);
+	color: var(--tide-ink70);
+	font-family: var(--tide-ff-sans);
+	font-size: 14px;
+	line-height: 1.5;
+}
+/* Everything on a Tidewatch page except an open dialog. A wrapper rather than
+ * props on each child so `inert` can be set in one place when a modal opens. */
+.tide-page-stack {
+	display: flex;
+	flex-direction: column;
+	flex: 1 0 auto;
+	min-height: 0;
+}
+
+.tide-page-body {
+	position: relative;
+	z-index: 1;
+	flex: 1 0 auto;
+	width: 100%;
+	max-width: 1240px;
+	margin: 0 auto;
+	padding: 48px 40px 64px;
+}
+.tide-page h1 {
+	margin: 0;
+	font: 600 48px/1.08 var(--tide-ff-display);
+	color: var(--tide-ink);
+	text-shadow: 0 2px 20px rgba(0, 0, 0, 0.70);
+}
+.tide-page h2 {
+	margin: 0;
+	font: 600 28px/1.2 var(--tide-ff-display);
+	color: var(--tide-ink);
+}
+.tide-page h3 {
+	margin: 0;
+	font: 600 16px/1.3 var(--tide-ff-sans);
+	color: var(--tide-ink);
+}
+.tide-eyebrow {
+	font: 600 12px/1.4 var(--tide-ff-sans);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--tide-tealB);
+}
+.tide-lede { margin-top: 6px; color: var(--tide-ink50); font-size: 15px; }
+.tide-cap { font-size: 12px; color: var(--tide-muted); }
+.tide-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
+
+.tide-foot {
+	position: relative;
+	z-index: 1;
+	flex: 0 0 auto;
+	padding: 18px 40px 26px;
+	font-size: 12px;
+	color: var(--tide-muted);
+	border-top: 1px solid var(--tide-hair);
+}
+
+/* ── Card grid ──────────────────────────────────────────────────────────
+ * Fixed column counts, not auto-fill: a cover has a SHAPE, and
+ * `auto-fill minmax(...)` turns a 150px-tall cover into a letterbox the
+ * moment the viewport lands between two of its steps. */
+.tide-grid {
+	display: grid;
+	grid-template-columns: repeat(4, minmax(0, 1fr));
+	gap: 16px;
+	margin-top: 12px;
+}
+@media (max-width: 1100px) { .tide-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (max-width: 860px)  { .tide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 560px)  { .tide-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.tide-card {
+	display: flex;
+	flex-direction: column;
+	overflow: hidden;
+	padding: 0;
+	border: 0;
+	text-align: left;
+	text-decoration: none;
+	background: var(--tide-solid);
+	border-radius: var(--tide-radius-md);
+	box-shadow: var(--tide-lift);
+	color: inherit;
+	font-family: inherit;
+	cursor: pointer;
+	transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.tide-card:hover { transform: translateY(-2px); box-shadow: var(--tide-lift), var(--tide-glow-teal); }
+.tide-card:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-card-cover {
+	height: 150px;
+	background: var(--tide-art-placeholder) center / cover no-repeat;
+}
+.tide-card-body { padding: 12px 14px 14px; }
+.tide-card-body h3 { margin-bottom: 4px; }
+.tide-card-row { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+
+/* A template tile: same card, no cover, a little taller so a 4-up row of
+ * them does not read as a row of buttons. */
+.tide-tile { min-height: 92px; justify-content: center; padding: 16px; }
+
+/* ── Section heads ──────────────────────────────────────────────────────── */
+.tide-section { margin-top: 32px; }
+.tide-section-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 16px;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────── */
+.tide-empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 10px;
+	max-width: 520px;
+	margin: 28px auto;
+	padding: 36px 28px;
+	text-align: center;
+	background: var(--tide-solid);
+	border-radius: var(--tide-radius-lg);
+	box-shadow: var(--tide-lift);
+}
+.tide-empty h3 { font-size: 20px; }
+.tide-empty p { margin: 0; color: var(--tide-ink50); }
+
+/* ── Inline status: loading / failed ────────────────────────────────────── */
+.tide-note {
+	margin-top: 16px;
+	padding: 14px 16px;
+	border-radius: var(--tide-radius-md);
+	background: var(--tide-card0);
+	color: var(--tide-ink50);
+}
+.tide-note-error {
+	border: 1px solid rgba(240, 114, 111, 0.55);
+	color: var(--tide-ink70);
+}
+.tide-note-error strong { color: var(--tide-danger); }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * STATUS PAGE - the real 404.
+ * BUILD-BRIEF section 9: "unknown routes should get a real 404". They used to
+ * fall through to the home page, which told the reader their URL was fine.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-status {
+	position: relative;
+	display: flex;
+	flex: 1 0 auto;
+	align-items: center;
+	justify-content: center;
+	padding: 72px 24px;
+}
+.tide-status-card {
+	position: relative;
+	z-index: 1;
+	width: min(560px, 100%);
+	padding: 36px 32px;
+	text-align: center;
+	background: var(--tide-glass);
+	-webkit-backdrop-filter: var(--tide-glass-blur);
+	backdrop-filter: var(--tide-glass-blur);
+	border: 1px solid var(--tide-glass-edge);
+	border-radius: var(--tide-radius-lg);
+	box-shadow: var(--tide-glass-hi), var(--tide-s3);
+}
+.tide-status-code {
+	font: 600 13px/1 var(--tide-ff-mono);
+	letter-spacing: 0.18em;
+	color: var(--tide-tealB);
+}
+.tide-status-title {
+	margin: 10px 0 0;
+	font: 600 36px/1.15 var(--tide-ff-display);
+	color: var(--tide-ink);
+}
+.tide-status-body { margin: 10px 0 0; color: var(--tide-ink50); }
+.tide-status-path {
+	display: inline-block;
+	max-width: 100%;
+	margin-top: 14px;
+	padding: 6px 10px;
+	border-radius: var(--tide-radius-sm);
+	background: rgba(9, 13, 16, 0.65);
+	font: 500 13px/1.4 var(--tide-ff-mono);
+	color: var(--tide-ink50);
+	overflow-wrap: anywhere;
+}
+.tide-status-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	justify-content: center;
+	margin-top: 22px;
+}
+
+/* ── Template picker dialog ─────────────────────────────────────────────── */
+.tide-modal-scrim {
+	position: fixed;
+	inset: 0;
+	z-index: 20;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 24px;
+	background: rgba(9, 13, 16, 0.72);
+}
+.tide-modal {
+	width: min(720px, 100%);
+	max-height: 86vh;
+	overflow-y: auto;
+	padding: 24px;
+	background: var(--tide-glass);
+	-webkit-backdrop-filter: var(--tide-glass-blur);
+	backdrop-filter: var(--tide-glass-blur);
+	border: 1px solid var(--tide-glass-edge);
+	border-radius: var(--tide-radius-lg);
+	box-shadow: var(--tide-glass-hi), var(--tide-s3);
+}
+.tide-modal-head {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 16px;
+}
+.tide-modal-head h2 { font: 600 26px/1.2 var(--tide-ff-display); color: var(--tide-ink); margin: 0; }
+.tide-modal-close {
+	flex: 0 0 auto;
+	width: 34px;
+	height: 34px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: var(--tide-radius-sm);
+	background: rgba(55, 64, 69, 0.85);
+	color: var(--tide-ink70);
+	cursor: pointer;
+}
+.tide-modal-close:hover { background: rgba(70, 81, 87, 0.92); color: var(--tide-ink); }
+.tide-modal-close:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-modal .tide-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 18px; }
+@media (max-width: 620px) { .tide-modal .tide-grid { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── Fallbacks, per BUILD-BRIEF section 5 ───────────────────────────────── */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+	.tide-glass,
+	.tide-status-card,
+	.tide-modal,
+	body .homebrew nav,
+	.tide-mbar { background: var(--tide-glass-solid); }
+}
+@media (prefers-reduced-transparency: reduce) {
+	.tide-glass,
+	.tide-status-card,
+	.tide-modal,
+	body .homebrew nav,
+	.tide-mbar {
+		background: var(--tide-glass-solid);
+		-webkit-backdrop-filter: none;
+		backdrop-filter: none;
+	}
+	.tide-art { opacity: 0.45; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.tide-card:hover { transform: none; }
+	.tide-btn-primary,
+	.tide-btn-quiet,
+	.tide-btn-ghost,
+	.tide-card { transition: none; }
+}
+
+/* ── Narrow ─────────────────────────────────────────────────────────────── */
+@media (max-width: 720px) {
+	.tide-page-body { padding: 32px 20px 48px; }
+	.tide-page h1 { font-size: 34px; }
+	.tide-page h2 { font-size: 23px; }
+	.tide-foot { padding: 16px 20px 24px; }
+	body .homebrew nav { flex-wrap: wrap; }
+	.tide-mbar { padding: 8px 14px; }
+}

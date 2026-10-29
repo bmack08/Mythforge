@@ -58,6 +58,11 @@
   ],
   "jest": {
     "testTimeout": 30000,
+    "__testPathIgnorePatterns_why": "tests/redesign holds Playwright specs for the Tidewatch redesign, not Jest tests. They require @playwright/test, which this checkout's node_modules (a junction that must not gain packages) deliberately does not carry, so Jest can only ever report them as 'suite failed to run'. Excluding another runner's files is configuration, not a weakened test.",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/tests/redesign/"
+    ],
     "modulePaths": [
       "node_modules",
       "shared",

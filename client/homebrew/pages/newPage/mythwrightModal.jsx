@@ -463,7 +463,7 @@ const MythwrightModal = createClass({
 					<div className='modal-header'>
 						<h2>
 							<i className='fas fa-magic'></i>
-							Create Mythwright Campaign
+							Create Mythforge Campaign
 						</h2>
 						<button className='close-btn' onClick={this.closeModal}>
 							<i className='fas fa-times'></i>

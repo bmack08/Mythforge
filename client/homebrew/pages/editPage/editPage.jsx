@@ -653,7 +653,7 @@ const EditPage = createClass({
 				<NewBrew />
 				<Nav.dropdown className='mythwright-tools'>
 					<Nav.item color='purple' icon='fas fa-magic'>
-						✨ Mythwright AI
+						✨ Mythforge AI
 					</Nav.item>
 					<Nav.item color='purple' icon='fas fa-dragon' onClick={() => this.mythwrightWizard.current?.openModal()}>
 						New AI Campaign

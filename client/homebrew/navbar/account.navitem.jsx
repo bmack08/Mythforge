@@ -91,7 +91,7 @@ const Account = createClass({
 					icon='fas fa-power-off'
 					onClick={this.handleLogout}
 				>
-					logout
+					Log out
 				</Nav.item>
 			</Nav.dropdown>;
 		}
@@ -100,14 +100,14 @@ const Account = createClass({
 		//  LOCAL ONLY
 		if(global.config.local) {
 			return <Nav.item color='teal' icon='fas fa-sign-in-alt' onClick={this.localLogin}>
-				login
+				Log in
 			</Nav.item>;
 		};
 
 		// Logged out
 		// Production site
 		return <Nav.item href={`https://www.naturalcrit.com/login?redirect=${this.state.url}`} color='teal' icon='fas fa-sign-in-alt'>
-			login
+			Log in
 		</Nav.item>;
 	}
 });

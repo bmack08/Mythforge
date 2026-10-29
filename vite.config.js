@@ -1,14 +1,34 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Vite's dev file server refuses to read anything outside the workspace root.
+// In a worktree checkout node_modules is a junction into another tree, so the
+// real path of every dependency asset - Font Awesome's woff2 among them - is
+// outside the root and comes back 403, which is what turned every icon into an
+// empty box. Allow-list the project root plus wherever node_modules actually
+// lives. realpathSync is wrapped because a plain (non-junction) install needs
+// no second entry and must not break the config if the folder is missing.
+const nodeModulesReal = (()=>{
+	try { return fs.realpathSync(path.resolve(__dirname, 'node_modules')); }
+	catch { return null; }
+})();
+const fsAllow = [__dirname, ...(nodeModulesReal ? [nodeModulesReal] : [])];
+
 // Base path for sub-path deployment (e.g. /mythforge/ under TaleForge)
 // Set MYTHFORGE_BASE_PATH=/ for standalone development
 const basePath = process.env.MYTHFORGE_BASE_PATH || '/mythforge/';
+
+// Dev-server port and the Express origin it proxies to. Both are env-driven so a
+// second checkout can run beside the default one without fighting over a port;
+// the defaults are the historical hardcoded values, so `npm run dev` is unchanged.
+const devPort   = Number(process.env.MYTHFORGE_VITE_PORT || 8081);
+const apiTarget = process.env.MYTHFORGE_API_TARGET || 'http://localhost:3000';
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -94,20 +114,21 @@ export default defineConfig({
 	},
 	
 	server: {
-		port: 8081,
+		port: devPort,
+		fs   : { allow: fsAllow },
 		proxy: {
 			// Proxy API calls to your Express server
-			'/themes': 'http://localhost:3000',      // ← ADDED
-      		'/assets': 'http://localhost:3000',      // ← ADDED  
-      		'/fonts': 'http://localhost:3000',       // ← ADDED
-      		'/staticFonts': 'http://localhost:3000', // ← ADDED for font serving
-      		'/staticImages': 'http://localhost:3000', // ← ADDED for image serving
-      		'/homebrew/bundle': 'http://localhost:3000',  // ← ADDED (was initially '/homebrew' but made more specific)
-			'/fa-solid-900.woff2': 'http://localhost:3000',   // FA font files
-			'/fa-brands-400.woff2': 'http://localhost:3000',
-			'/fa-regular-400.woff2': 'http://localhost:3000',
+			'/themes': apiTarget,      // ← ADDED
+      		'/assets': apiTarget,      // ← ADDED  
+      		'/fonts': apiTarget,       // ← ADDED
+      		'/staticFonts': apiTarget, // ← ADDED for font serving
+      		'/staticImages': apiTarget, // ← ADDED for image serving
+      		'/homebrew/bundle': apiTarget,  // ← ADDED (was initially '/homebrew' but made more specific)
+			'/fa-solid-900.woff2': apiTarget,   // FA font files
+			'/fa-brands-400.woff2': apiTarget,
+			'/fa-regular-400.woff2': apiTarget,
 			'/api': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				changeOrigin: true
 			},
 
@@ -115,41 +136,50 @@ export default defineConfig({
 			// basePath.js prefixes runtime requests with BASE_PATH ('/mythforge'),
 			// so the unprefixed rules above never see them and they fall through
 			// to index.html. Strip the prefix and forward to the Express server.
-			// Deliberately NOT a catch-all '/mythforge' — that would swallow the
+			// Deliberately NOT a catch-all '/mythforge' - that would swallow the
 			// SPA's own routes (/mythforge/edit/:id) and Vite's dev module paths
 			// (/mythforge/@vite/client, /mythforge/@fs/..., /mythforge/src/...).
 			'/mythforge/themes': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/assets': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/fonts': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/staticFonts': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/staticImages': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/homebrew/bundle': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			// FA font files, at the prefix root or nested under it
 			// (e.g. /mythforge/fa-solid-900.woff2, /mythforge/themes/fonts/fa-brands-400.woff2)
-			'^/mythforge/(?:.*/)?fa-(?:solid-900|brands-400|regular-400)\\.woff2$': {
-				target: 'http://localhost:3000',
+			//
+			// The `(?!@)` is load-bearing. In dev, Vite rewrites the Font Awesome
+			// stylesheet's url() to its own /mythforge/@fs/<abs path>/fa-solid-900.woff2,
+			// which the old `(?:.*/)?` happily matched - so every icon-font request was
+			// forwarded to Express, which has no such file and 302s to '/'. The browser
+			// got a redirect where a woff2 should be, dropped the face, and every icon in
+			// the top bar and the toolbar rendered as an empty box. Vite-internal paths
+			// (@fs, @id, @vite, @react-refresh) must stay with Vite; only the flat and
+			// theme-nested production paths belong to Express.
+			'^/mythforge/(?!@)(?:.*/)?fa-(?:solid-900|brands-400|regular-400)\\.woff2$': {
+				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/api': {
-				target: 'http://localhost:3000',
+				target: apiTarget,
 				changeOrigin: true,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			}
