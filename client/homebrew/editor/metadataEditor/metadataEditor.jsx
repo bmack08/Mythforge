@@ -34,7 +34,7 @@ const MetadataEditor = createClass({
 				authors     : [],
 				systems     : [],
 				renderer    : 'legacy',
-				theme       : '5ePHB',
+				theme       : 'Tome',
 				lang        : 'en'
 			},
 
@@ -133,8 +133,11 @@ const MetadataEditor = createClass({
 		// Compliance mode is derived from the chosen theme, so switching it just
 		// swaps the theme through the existing handleTheme path:
 		//   'commercial' => CommercialSafe (neutral, print-ready, disclaimer footer)
-		//   'personal'   => 5ePHB (D&D-styled, personal use only)
-		const path = mode === 'commercial' ? 'CommercialSafe' : '5ePHB';
+		//   'standard'   => Tome (the Mythforge default)
+		// This used to switch back to 5ePHB. BUILD-BRIEF section 9 hides the
+		// legacy PHB/DMG themes, so a button that selected one would have set a
+		// theme the picker beside it no longer offers.
+		const path = mode === 'commercial' ? 'CommercialSafe' : 'Tome';
 		this.handleTheme({ renderer : 'V3', path });
 	},
 
@@ -216,31 +219,30 @@ const MetadataEditor = createClass({
 	renderComplianceMode : function(){
 		if(!global.enable_themes) return;
 		const isCommercial = this.props.metadata.theme === 'CommercialSafe';
-		const btnStyle = (active)=>({
-			flex         : 1,
-			padding      : '7px 10px',
-			cursor       : 'pointer',
-			fontSize     : '0.85em',
-			border       : '1px solid #c0b283',
-			borderRadius : 4,
-			background   : active ? '#8a6d3b' : '#fff',
-			color        : active ? '#fff' : '#5a4a2f',
-			fontWeight   : active ? 700 : 400
-		});
+		// Tidewatch: the buttons were a maroon-and-parchment pair (#8a6d3b on
+		// #c0b283), which is exactly the trade dress BUILD-BRIEF section 9
+		// removes. They are now the app's own two buttons; the classes carry
+		// every colour so there is nothing left to restyle inline.
 		return <div className='field compliance'>
 			<label>licensing</label>
 			<div className='value'>
-				<div style={{ display : 'flex', gap : 8 }}>
-					<button type='button' style={btnStyle(!isCommercial)} onClick={()=>this.handleComplianceMode('personal')}>
-						<i className='fas fa-dragon' style={{ marginRight : 6 }}></i>Personal — D&amp;D style
+				<div className='tide-seg'>
+					<button type='button'
+						className={isCommercial ? 'tide-btn-quiet' : 'tide-btn-primary'}
+						aria-pressed={!isCommercial}
+						onClick={()=>this.handleComplianceMode('standard')}>
+						<i className='fas fa-feather-pointed' aria-hidden='true'></i>Standard
 					</button>
-					<button type='button' style={btnStyle(isCommercial)} onClick={()=>this.handleComplianceMode('commercial')}>
-						<i className='fas fa-store' style={{ marginRight : 6 }}></i>Commercial-safe
+					<button type='button'
+						className={isCommercial ? 'tide-btn-primary' : 'tide-btn-quiet'}
+						aria-pressed={isCommercial}
+						onClick={()=>this.handleComplianceMode('commercial')}>
+						<i className='fas fa-store' aria-hidden='true'></i>Commercial-safe
 					</button>
 				</div>
 				<small>{isCommercial
 					? 'Commercial-safe: a neutral, print-ready layout with an SRD attribution + disclaimer footer. Safe to sell.'
-					: 'D&D-styled themes reproduce the Player’s Handbook look — personal use only. Don’t sell output that uses a D&D-styled theme.'}</small>
+					: 'Standard: the Tome layout, built on SRD 5.2.1 content. Check the licence of anything you add yourself before selling it.'}</small>
 			</div>
 		</div>;
 	},
@@ -253,6 +255,12 @@ const MetadataEditor = createClass({
 		const listThemes = (renderer)=>{
 			return _.map(_.values(mergedThemes[renderer]), (theme)=>{
 				if(theme.path == this.props.metadata.shareId) return;
+				// BUILD-BRIEF section 9: "Keep the legacy PHB/DMG themes hidden,
+				// as an owner decision." They are flagged in themes.json rather
+				// than named here, so the list is data-driven and a user theme
+				// can never be hidden by accident. A brew already saved with one
+				// keeps rendering it - this only removes it as a new choice.
+				if(theme.hidden && theme.path !== this.props.metadata.theme) return;
 				const preview = theme.thumbnail || prefixPath(`/themes/${theme.renderer}/${theme.path}/dropdownPreview.png`);
 				const texture = theme.thumbnail || prefixPath(`/themes/${theme.renderer}/${theme.path}/dropdownTexture.png`);
 				return <div className='item' key={`${renderer}_${theme.name}`} value={`${theme.author ?? renderer} : ${theme.name}`} data={theme} title={''}>

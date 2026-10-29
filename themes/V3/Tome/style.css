@@ -1,0 +1,316 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * TOME - the Mythforge default brew theme.
+ *
+ * BUILD-BRIEF section 9, "Default brew theme": "bone paper #FAF7F0 with no
+ * texture, ink #1F2430, teal #1F4E5F headings with a left accent bar, cool-grey
+ * callouts (#E8EEF2), and a clean stat block (white, 1px border, 6px teal top
+ * band, 6-cell ability grid, Inter labels)."
+ *
+ * Written as plain CSS, NOT LESS, on purpose. The other themes are .less and
+ * only exist as CSS after scripts/buildHomebrew.js writes build/themes/..., a
+ * step this checkout has never run - so every one of them 302s inside the
+ * preview iframe and the paper renders completely unstyled. Express already
+ * falls back to serving the source themes/ directory, so a .css file here is
+ * reachable at /themes/V3/Tome/style.css in dev and in production with no
+ * build step, no LESS compile and no new dependency.
+ *
+ * This file styles only what is INSIDE the paper. The frame around it (the
+ * #1A2126 preview pane) is app chrome and lives in tidewatch-editor.css.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+	--tome-paper:    #FAF7F0;
+	--tome-ink:      #1F2430;
+	--tome-ink-soft: #4A5160;
+	--tome-accent:   #1F4E5F;
+	--tome-call:     #E8EEF2;
+	--tome-rule:     #C9D5DC;
+	--tome-serif:    "Source Serif 4", "Iowan Old Style", Georgia, serif;
+	--tome-sans:     Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+
+	/* The renderer's own background token, so a page that opts out of .phb
+	 * still lands on bone rather than white. */
+	--HB_Color_Background: #FAF7F0;
+}
+
+@page { margin: 0; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* ── The sheet ─────────────────────────────────────────────────────────────
+ * US Letter, matching the dimensions the paginator measures against. */
+.page {
+	position:         relative;
+	z-index:          15;
+	box-sizing:       border-box;
+	width:            215.9mm;
+	height:           279.4mm;
+	padding:          1.4cm 1.9cm 1.7cm;
+	overflow:         clip;
+	column-count:     2;
+	column-gap:       0.9cm;
+	column-fill:      auto;
+	background:       var(--tome-paper);
+	color:            var(--tome-ink);
+	font:             16px/1.55 var(--tome-serif);
+	text-rendering:   optimizeLegibility;
+}
+.columnWrapper {
+	max-height:   100%;
+	column-span:  all;
+	columns:      inherit;
+	column-gap:   inherit;
+	column-fill:  inherit;
+}
+
+/* Single-column pages, and any block asking to span the spread. */
+.page.wide,
+.page .wide,
+.page .monster.wide,
+.page .classTable.wide { column-span: all; }
+
+/* ── Type ──────────────────────────────────────────────────────────────────
+ * Headings are teal with a left accent bar. h1 carries a rule instead of a
+ * bar so a chapter opener does not read as a subsection. */
+.page h1,
+.page h2,
+.page h3,
+.page h4,
+.page h5,
+.page h6 {
+	margin:      0;
+	color:       var(--tome-accent);
+	font-family: var(--tome-serif);
+	font-weight: 600;
+	line-height: 1.15;
+	break-after: avoid;
+}
+.page h1 {
+	margin-bottom:  2px;
+	padding-bottom: 6px;
+	border-bottom:  2px solid var(--tome-accent);
+	font-size:      34px;
+}
+.page h2 {
+	margin-top:    14px;
+	padding-left:  10px;
+	border-left:   4px solid var(--tome-accent);
+	font-size:     24px;
+}
+.page h3 {
+	margin-top:   12px;
+	padding-left: 10px;
+	border-left:  3px solid var(--tome-rule);
+	font-size:    19px;
+}
+.page h4 { margin-top: 10px; font-size: 16px; }
+.page h5,
+.page h6 {
+	margin-top:     10px;
+	font-family:    var(--tome-sans);
+	font-size:      13px;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+
+.page p { margin: 6px 0 0; overflow-wrap: break-word; }
+.page p + p { margin-top: 8px; }
+.page strong { font-weight: 700; }
+.page em { font-style: italic; }
+.page sup { font-size: smaller; line-height: 0; vertical-align: super; }
+.page sub { font-size: smaller; line-height: 0; vertical-align: sub; }
+.page a { color: var(--tome-accent); text-decoration: underline; }
+.page hr {
+	height:     0;
+	margin:     12px 0;
+	border:     0;
+	border-top: 1px solid var(--tome-rule);
+}
+.page blockquote,
+.page .quote {
+	margin:       10px 0 0;
+	padding-left: 12px;
+	border-left:  3px solid var(--tome-rule);
+	color:        var(--tome-ink-soft);
+	font-style:   italic;
+}
+
+.page ul,
+.page ol {
+	margin:              6px 0 0;
+	padding-left:        1.4em;
+	list-style-position: outside;
+}
+.page ul { list-style-type: disc; }
+.page ol { list-style-type: decimal; }
+.page li { margin-top: 2px; }
+
+.page img { max-width: 100%; }
+
+.page code,
+.page pre {
+	font-family: ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace;
+	font-size:   0.9em;
+}
+.page code {
+	padding:       1px 4px;
+	background:    var(--tome-call);
+	border-radius: 3px;
+}
+
+/* The subtitle line under a title: the mock's italic grey lede. */
+.page h1 + p,
+.page h1 + p em { color: var(--tome-ink-soft); font-style: italic; }
+
+/* ── Callouts ──────────────────────────────────────────────────────────────
+ * Cool grey, hairline border, no parchment and no gold rule. `.note` is the
+ * renderer's own class for {{note}}; the rest are its siblings, given the
+ * same treatment so one block type never looks like a stray. */
+.page .note,
+.page .descriptive,
+.page .sidebar,
+.page .footnote {
+	margin:        10px 0 0;
+	padding:       10px 12px;
+	background:    var(--tome-call);
+	border:        1px solid var(--tome-rule);
+	border-radius: 6px;
+	font-size:     15px;
+	break-inside:  avoid;
+}
+.page .note > :first-child,
+.page .descriptive > :first-child,
+.page .sidebar > :first-child { margin-top: 0; }
+.page .note h1,
+.page .note h2,
+.page .note h3,
+.page .note h4,
+.page .note h5,
+.page .descriptive h3,
+.page .sidebar h3 {
+	margin:      0 0 4px;
+	padding:     0;
+	border:      0;
+	color:       var(--tome-accent);
+	font-family: var(--tome-sans);
+	font-size:   15px;
+	font-weight: 700;
+}
+
+/* ── Stat block ────────────────────────────────────────────────────────────
+ * White card, 1px border, 6px teal top band, Inter labels. The renderer emits
+ * .monster (optionally .frame / .wide); {{statblock}} and {{monster}} both
+ * land here. No red-brown PHB panel, no texture. */
+.page .monster,
+.page .statblock,
+.page .spell {
+	margin:       12px 0 0;
+	padding:      10px 12px;
+	background:   #FFFFFF;
+	border:       1px solid var(--tome-rule);
+	border-top:   6px solid var(--tome-accent);
+	font:         14px/1.45 var(--tome-sans);
+	break-inside: avoid;
+}
+.page .monster > :first-child,
+.page .statblock > :first-child { margin-top: 0; }
+.page .monster h1,
+.page .monster h2,
+.page .monster h3,
+.page .monster .monster-name,
+.page .statblock h1,
+.page .statblock h2,
+.page .statblock h3,
+.page .spell h3 {
+	margin:      0;
+	padding:     0;
+	border:      0;
+	color:       var(--tome-accent);
+	font-family: var(--tome-serif);
+	font-size:   17px;
+	font-weight: 700;
+}
+.page .monster .monster-meta,
+.page .monster em:first-of-type,
+.page .statblock em:first-of-type {
+	color:      var(--tome-ink-soft);
+	font-style: italic;
+}
+.page .monster hr,
+.page .statblock hr { margin: 6px 0; border-top: 1px solid var(--tome-rule); }
+
+/* The 6-cell ability grid. The renderer writes it as a table; `.ab` is the
+ * hand-authored form the mock uses. Both get the same six columns. */
+.page .monster table,
+.page .statblock table,
+.page .monster .ab,
+.page .statblock .ab {
+	display:               grid;
+	grid-template-columns: repeat(6, 1fr);
+	gap:                   4px;
+	width:                 100%;
+	margin:                8px 0;
+	text-align:            center;
+	border-collapse:       collapse;
+}
+.page .monster table thead,
+.page .monster table tbody,
+.page .monster table tr,
+.page .statblock table thead,
+.page .statblock table tbody,
+.page .statblock table tr { display: contents; }
+.page .monster table th,
+.page .statblock table th {
+	color:          var(--tome-accent);
+	font-family:    var(--tome-sans);
+	font-size:      12px;
+	font-weight:    700;
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.page .monster table td,
+.page .statblock table td { font-size: 13px; }
+.page .monster .ab b,
+.page .statblock .ab b {
+	display:     block;
+	color:       var(--tome-accent);
+	font-family: var(--tome-sans);
+	font-size:   12px;
+}
+
+/* ── Tables in the body copy ───────────────────────────────────────────── */
+.page > .columnWrapper table,
+.page .classTable table {
+	width:           100%;
+	margin:          10px 0 0;
+	border-collapse: collapse;
+	font-size:       14px;
+	break-inside:    avoid;
+}
+.page > .columnWrapper table th,
+.page .classTable table th {
+	padding:        4px 6px;
+	border-bottom:  2px solid var(--tome-accent);
+	color:          var(--tome-accent);
+	font-family:    var(--tome-sans);
+	font-size:      12px;
+	letter-spacing: 0.04em;
+	text-align:     left;
+	text-transform: uppercase;
+}
+.page > .columnWrapper table td {
+	padding:       4px 6px;
+	border-bottom: 1px solid var(--tome-rule);
+}
+
+/* ── Page furniture ────────────────────────────────────────────────────── */
+.page .pageNumber,
+.page .phb-footer {
+	position:    absolute;
+	bottom:      0.8cm;
+	color:       var(--tome-ink-soft);
+	font-family: var(--tome-sans);
+	font-size:   12px;
+}
+.page .pageNumber { right: 1.9cm; }
+.page .phb-footer { left: 1.9cm; }
+.page .footnote { font-size: 13px; }

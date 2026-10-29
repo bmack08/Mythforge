@@ -11,7 +11,10 @@ const DEFAULT_BREW = {
 	createdAt   : undefined,
 	updatedAt   : undefined,
 	renderer    : 'V3',
-	theme       : '5ePHB',
+	// BUILD-BRIEF section 9: "the preview uses the proposed Tome default".
+	// Existing brews keep whatever theme they were saved with; this is only
+	// the starting point for a brew that has never chosen one.
+	theme       : 'Tome',
 	authors     : [],
 	tags        : [],
 	systems     : [],

@@ -1,0 +1,715 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * TIDEWATCH - THE EDITOR (unit M2)
+ *
+ * BUILD-BRIEF section 9, 12-mythforge-editor: "Writing area is solid and calm.
+ * Left pane is the #12181C Markdown editor in mono, with 2 toolbars (modes,
+ * then insert actions) and a status line. Right pane is the preview on #1A2126
+ * with the paper. Art appears only as a ~110px chrome band behind the top bar
+ * and the Mythforge bar. No glass. Share / Export PDF sit in the Mythforge bar."
+ *
+ * WHAT THIS SHEET IS FIGHTING. The inherited editor is Homebrewery's: a
+ * parchment writing surface (#FFF over a cream page), maroon #58180D headings,
+ * gold #C0AD6A rules, orange buttons, and the Solbera font remakes
+ * (BookInsanityRemake, MrEavesRemake, ScalySans) on every heading. Section 9
+ * retires all of it for app chrome. Those styles live in tiptap.less,
+ * snippetbar.less, TipTapToolbar.less and toolBar.less, which are imported by
+ * the components themselves - deeper in the module graph than this file - so
+ * the overrides here carry an extra ancestor class (.tide-editor, .editPage)
+ * to win on specificity rather than on emit order. Same lesson as M1's nav.
+ *
+ * ONE DELIBERATE DEPARTURE FROM THE MOCK. The mock's left pane is a monospace
+ * markdown source view. The live editor is TipTap - a WYSIWYG surface where a
+ * heading renders as a heading - so body copy stays proportional and the mono
+ * family is used where there is genuinely code: the Style (CSS) and Snippets
+ * views, the status line, and inline code. Setting prose in mono here would
+ * have matched a picture at the cost of the thing the picture is of.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+:root {
+	/* The two surfaces the mock names, as tokens so nothing re-types them. */
+	--tide-write:   #12181C;   /* left pane, the writing surface   */
+	--tide-preview: #1A2126;   /* right pane, behind the paper     */
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * PAGE SHELL
+ * ════════════════════════════════════════════════════════════════════════ */
+.editPage.tide-editor {
+	position:         relative;
+	background-color: var(--tide-bg);
+	color:            var(--tide-ink70);
+	font-family:      var(--tide-ff-sans);
+}
+/* Everything on the editor except an open dialog, so `inert` can be set in
+ * one place. It takes over the page's flex column. */
+.editPage.tide-editor > .tide-editor-stack {
+	position:       relative;
+	display:        flex;
+	flex:           1 1 auto;
+	flex-direction: column;
+	min-height:     0;
+}
+
+/* The chrome band: art behind the nav and the Mythforge bar only, faded out
+ * by 112px so the writing surface below it is a flat, known colour. */
+.tide-art-band {
+	position: absolute;
+	top:      0;
+	height:   112px;
+	z-index:  0;
+}
+.editPage.tide-editor nav,
+.editPage.tide-editor .tide-mbar { position: relative; z-index: 6; }
+
+/* The inherited rule was `height: calc(100% - 29px)` - the navbar's height,
+ * written as a number. Adding the Mythforge bar made it wrong by exactly the
+ * height of that bar, which pushed the status line off the bottom of the
+ * window. Measured once by flexbox instead, so a third bar or a taller one can
+ * never silently break it again. */
+.editPage.tide-editor .content {
+	position:   relative;
+	z-index:    1;
+	flex:       1 1 auto;
+	min-height: 0;
+	height:     auto;
+	overflow:   hidden;
+	background: var(--tide-bg);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE MYTHFORGE BAR, EDITOR FLAVOUR
+ * Share / Export PDF and the AI menu ride on its right-hand end.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-mbar .tide-mbar-action {
+	height:       34px;
+	padding:      0 14px;
+	margin-left:  8px;
+	flex:         0 0 auto;
+	white-space:  nowrap;
+}
+.tide-mbar .tide-btn-primary.tide-mbar-action:hover { background: var(--tide-tealH); }
+
+/* The AI menu. Nav.dropdown is a naturalcrit component whose styling all
+ * hangs off `nav`; inside the Mythforge bar there is no nav above it, so the
+ * container and the panel are restated here rather than the component being
+ * rewritten to suit one host. */
+.tide-mbar .navDropdownContainer { position: relative; flex: 0 0 auto; }
+.tide-mbar .tide-mbar-tool {
+	display:       inline-flex;
+	gap:           7px;
+	align-items:   center;
+	height:        34px;
+	padding:       0 12px;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-sm);
+	background:    rgba(35, 43, 47, 0.9);
+	color:         var(--tide-ink70);
+	font:          600 14px/1 var(--tide-ff-sans);
+	cursor:        pointer;
+}
+.tide-mbar .tide-mbar-tool:hover { background: rgba(70, 81, 87, 0.95); color: var(--tide-ink); }
+.tide-mbar .tide-mbar-tool:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-mbar .navDropdown {
+	position:      absolute;
+	right:         0;
+	z-index:       12;
+	min-width:     210px;
+	padding:       6px;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	background:    #161D21;
+	box-shadow:    var(--tide-s3);
+}
+.tide-mbar .navDropdown .navItem {
+	display:       flex;
+	gap:           8px;
+	align-items:   center;
+	padding:       8px 10px;
+	border:        0;
+	border-radius: var(--tide-radius-sm);
+	background:    transparent;
+	color:         var(--tide-ink70);
+	font:          500 13px/1.2 var(--tide-ff-sans);
+	text-transform: none;
+	cursor:        pointer;
+}
+.tide-mbar .navDropdown .navItem:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * SPLIT PANE
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-editor .splitPane { background: var(--tide-bg); }
+.tide-editor .splitPane > .pane:first-of-type { background: var(--tide-write); }
+.tide-editor .splitPane > .pane:last-of-type  { background: var(--tide-preview); }
+.tide-editor .splitPane .divider {
+	background: var(--tide-card2);
+	border:     0;
+}
+.tide-editor .splitPane .divider .dots i { color: var(--tide-muted); }
+.tide-editor .splitPane .arrow {
+	background: var(--tide-card);
+	color:      var(--tide-ink70);
+	border:     1px solid var(--tide-edge);
+}
+.tide-editor .splitPane .arrow:hover { background: var(--tide-card2); color: var(--tide-ink); }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE WRITING PANE
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-editor .editor {
+	display:        flex;
+	flex-direction: column;
+	background:     var(--tide-write);
+	color:          var(--tide-ink70);
+}
+/* The view wrapper carries an inline `height: calc(100% - Npx)` computed from
+ * the toolbar height alone, which now leaves the status line hanging off the
+ * bottom. An inline style can only be beaten by !important; the alternative was
+ * to thread a second measurement through three components for a value flexbox
+ * already knows. */
+.tide-editor .editor > div:not(.snippetBar):not(.tide-editor-status) {
+	flex:       1 1 auto;
+	min-height: 0;
+	height:     auto !important;
+}
+
+/* ── Toolbar 1: modes ──────────────────────────────────────────────────── */
+.tide-editor .snippetBar {
+	display:       flex;
+	flex:          0 0 auto;
+	gap:           4px;
+	align-items:   center;
+	height:        auto;
+	min-height:    42px;
+	padding:       6px 10px;
+	background:    var(--tide-write);
+	border-bottom: 1px solid var(--tide-hair);
+	box-shadow:    none;
+	font-family:   var(--tide-ff-sans);
+}
+.tide-editor .snippetBar .snippetBarButton,
+.tide-editor .snippetBar .snippetGroup,
+.tide-editor .snippetBar .editorTool,
+.tide-editor .snippetBar .tabs > div {
+	display:        inline-flex;
+	gap:            6px;
+	align-items:    center;
+	height:         32px;
+	padding:        0 10px;
+	border:         0;
+	border-radius:  var(--tide-radius-sm);
+	background:     transparent;
+	color:          var(--tide-ink50);
+	font:           600 13px/1 var(--tide-ff-sans);
+	text-transform: none;
+	letter-spacing: 0;
+	cursor:         pointer;
+}
+.tide-editor .snippetBar .snippetGroup .text { display: inline-flex; gap: 6px; align-items: center; }
+.tide-editor .snippetBar .groupName { text-transform: none; font-size: 13px; }
+.tide-editor .snippetBar .snippetBarButton:hover,
+.tide-editor .snippetBar .editorTool:hover,
+.tide-editor .snippetBar .tabs > div:hover {
+	background: rgba(79, 179, 176, 0.14);
+	color:      var(--tide-ink);
+}
+.tide-editor .snippetBar .tabs { display: flex; gap: 2px; margin-left: auto; }
+.tide-editor .snippetBar .tabs > div.selected {
+	background: var(--tide-tealSel);
+	color:      var(--tide-ink);
+}
+.tide-editor .snippetBar .editors { display: flex; gap: 4px; align-items: center; margin-left: auto; }
+.tide-editor .snippetBar .historyTools,
+.tide-editor .snippetBar .codeTools { display: flex; gap: 2px; align-items: center; }
+.tide-editor .snippetBar .disabledSnippets { opacity: 0.45; }
+
+/* Snippet drop-downs. Inherited as cream panels with gold edges. */
+.tide-editor .snippetBar .dropdown {
+	z-index:       14;
+	min-width:     210px;
+	padding:       6px;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	background:    #161D21;
+	box-shadow:    var(--tide-s3);
+	color:         var(--tide-ink70);
+}
+.tide-editor .snippetBar .dropdown .snippet {
+	display:       flex;
+	gap:           8px;
+	align-items:   center;
+	padding:       7px 9px;
+	border:        0;
+	border-radius: var(--tide-radius-sm);
+	background:    transparent;
+	color:         var(--tide-ink70);
+	font:          500 13px/1.2 var(--tide-ff-sans);
+}
+.tide-editor .snippetBar .dropdown .snippet:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+.tide-editor .snippetBar .dropdown .snippet .name { color: inherit; }
+.tide-editor .snippetBar .dropdown .beta {
+	padding:       1px 6px;
+	border-radius: 999px;
+	background:    var(--tide-card2);
+	color:         var(--tide-ink50);
+	font:          600 10px/1.4 var(--tide-ff-sans);
+}
+
+/* ── Toolbar 2: insert actions ─────────────────────────────────────────── */
+.tide-editor .tiptap-toolbar {
+	display:        flex;
+	flex:           0 0 auto;
+	flex-wrap:      wrap;
+	gap:            2px;
+	align-items:    center;
+	padding:        6px 10px;
+	background:     var(--tide-write);
+	border-bottom:  1px solid var(--tide-hair);
+	border-top:     0;
+	box-shadow:     none;
+}
+.tide-editor .tiptap-toolbar__group { display: flex; gap: 2px; align-items: center; }
+.tide-editor .tiptap-toolbar__divider {
+	width:      1px;
+	height:     20px;
+	margin:     0 6px;
+	background: var(--tide-edge);
+}
+.tide-editor .tiptap-toolbar__btn {
+	display:        inline-flex;
+	gap:            6px;
+	align-items:    center;
+	height:         32px;
+	min-width:      32px;
+	padding:        0 10px;
+	justify-content: center;
+	border:         0;
+	border-radius:  var(--tide-radius-sm);
+	background:     transparent;
+	color:          var(--tide-ink50);
+	font:           600 13px/1 var(--tide-ff-sans);
+	cursor:         pointer;
+}
+.tide-editor .tiptap-toolbar__btn:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+.tide-editor .tiptap-toolbar__btn.is-active {
+	background: var(--tide-tealSel);
+	color:      var(--tide-ink);
+}
+.tide-editor .tiptap-toolbar__btn:focus-visible,
+.tide-editor .snippetBar .tabs > div:focus-visible {
+	outline:        2px solid var(--tide-teal);
+	outline-offset: 2px;
+}
+.tide-editor .tiptap-toolbar__caret { font-size: 10px; opacity: 0.8; }
+.tide-editor .tiptap-toolbar__dropdown-menu {
+	z-index:       14;
+	min-width:     220px;
+	padding:       6px;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	background:    #161D21;
+	box-shadow:    var(--tide-s3);
+}
+.tide-editor .tiptap-toolbar__dropdown-item {
+	display:       flex;
+	gap:           8px;
+	align-items:   center;
+	width:         100%;
+	padding:       8px 10px;
+	border:        0;
+	border-radius: var(--tide-radius-sm);
+	background:    transparent;
+	color:         var(--tide-ink70);
+	font:          500 13px/1.2 var(--tide-ff-sans);
+	text-align:    left;
+	cursor:        pointer;
+}
+.tide-editor .tiptap-toolbar__dropdown-item:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+
+/* ── The writing surface ───────────────────────────────────────────────── */
+.tide-editor .tiptap-editor,
+.tide-editor .tiptap-editor__body,
+.tide-editor .tiptap-editor__content,
+.tide-editor .ProseMirror {
+	background: var(--tide-write);
+	color:      var(--tide-ink70);
+}
+.tide-editor .ProseMirror {
+	padding:     20px 24px 24px 38px;
+	font-family: "Source Serif 4", Georgia, serif;
+	font-size:   16px;
+	line-height: 1.6;
+	caret-color: var(--tide-tealB);
+}
+.tide-editor .ProseMirror ::selection,
+.tide-editor .ProseMirror::selection { background: rgba(79, 179, 176, 0.30); }
+
+/* Headings. Inherited as maroon #58180D in the Solbera remakes, with a gold
+ * level badge on a parchment chip. Teal on dark, Tidewatch families, and the
+ * badge keeps its job (telling you the level) in the app's own colours. */
+.tide-editor .ProseMirror h1,
+.tide-editor .ProseMirror h2,
+.tide-editor .ProseMirror h3,
+.tide-editor .ProseMirror h4,
+.tide-editor .ProseMirror h5,
+.tide-editor .ProseMirror h6 {
+	font-family: var(--tide-ff-display);
+	font-weight: 600;
+	color:       var(--tide-tealB);
+	border:      0;
+}
+.tide-editor .ProseMirror h1 { font-size: 30px; }
+.tide-editor .ProseMirror h2 { font-size: 24px; }
+.tide-editor .ProseMirror h3 { font-size: 20px; }
+.tide-editor .ProseMirror h4 { font-size: 17px; }
+.tide-editor .ProseMirror h5,
+.tide-editor .ProseMirror h6 { font-family: var(--tide-ff-sans); font-size: 14px; }
+.tide-editor .ProseMirror h1::before,
+.tide-editor .ProseMirror h2::before,
+.tide-editor .ProseMirror h3::before,
+.tide-editor .ProseMirror h4::before,
+.tide-editor .ProseMirror h5::before {
+	border:      1px solid var(--tide-edge);
+	background:  var(--tide-card);
+	color:       var(--tide-ink50);
+	font-family: var(--tide-ff-mono);
+}
+
+.tide-editor .ProseMirror a { color: var(--tide-tealB); }
+.tide-editor .ProseMirror blockquote {
+	border-left: 3px solid var(--tide-card2);
+	color:       var(--tide-ink50);
+}
+.tide-editor .ProseMirror hr { border-top: 1px solid var(--tide-edge); }
+.tide-editor .ProseMirror code,
+.tide-editor .ProseMirror pre {
+	background:  var(--tide-card0);
+	color:       var(--tide-tealB);
+	font-family: var(--tide-ff-mono);
+}
+.tide-editor .ProseMirror table th,
+.tide-editor .ProseMirror table td { border-color: var(--tide-edge); }
+.tide-editor .ProseMirror table th { background: var(--tide-card0); color: var(--tide-ink); }
+
+/* The authored blocks, shown in the editor as labelled regions rather than as
+ * a preview of the paper - the paper is two inches to the right.
+ *
+ * Inherited as a colour-coded set of pastel cards: olive #edf5e8 for a note,
+ * maroon-on-salmon #fdf0ea for a stat block, gold #faf7ea for read-aloud, each
+ * with a white badge pinned to its top edge. The badge earns its place - it
+ * tells you which block the cursor is in - so it stays, in the app's own
+ * colours, and the card behind it becomes one dark surface for every type. */
+.tide-editor .ProseMirror div.note,
+.tide-editor .ProseMirror div.descriptive,
+.tide-editor .ProseMirror div.monster,
+.tide-editor .ProseMirror div.monster.wide,
+.tide-editor .ProseMirror div.quote,
+.tide-editor .ProseMirror div.sidebar,
+.tide-editor .ProseMirror div.statblock,
+.tide-editor .ProseMirror div.spell,
+.tide-editor .ProseMirror div[data-type='classFeature'] {
+	background:    var(--tide-card0);
+	border:        1px solid var(--tide-edge);
+	border-left:   3px solid var(--tide-teal);
+	border-radius: var(--tide-radius-sm);
+	color:         var(--tide-ink70);
+	box-shadow:    none;
+}
+.tide-editor .ProseMirror div.note::before,
+.tide-editor .ProseMirror div.descriptive::before,
+.tide-editor .ProseMirror div.monster::before,
+.tide-editor .ProseMirror div.monster.wide::before,
+.tide-editor .ProseMirror div.quote::before,
+.tide-editor .ProseMirror div.sidebar::before,
+.tide-editor .ProseMirror div.statblock::before,
+.tide-editor .ProseMirror div.spell::before,
+.tide-editor .ProseMirror div[data-type='classFeature']::before {
+	border:      1px solid var(--tide-edge);
+	background:  var(--tide-card);
+	color:       var(--tide-ink50);
+	font-family: var(--tide-ff-mono);
+}
+.tide-editor .ProseMirror div.note h5,
+.tide-editor .ProseMirror div.descriptive h5,
+.tide-editor .ProseMirror div.monster h5,
+.tide-editor .ProseMirror div.quote h5,
+.tide-editor .ProseMirror div.sidebar h5 { color: var(--tide-tealB); }
+
+/* The line-number gutter. Inherited as #999 on #f7f7f7 - which on the dark
+ * surface measured 2.66:1, below AA, for every number in the document. The
+ * numbers are small and decorative-looking but they are text a reader uses to
+ * find their place, so they get a passing colour rather than an exemption. */
+.tide-editor .CodeMirror-gutters {
+	background-color: var(--tide-write);
+	border-right:     1px solid var(--tide-hair);
+}
+.tide-editor .CodeMirror-linenumber {
+	color:       var(--tide-muted);
+	font-family: var(--tide-ff-mono);
+}
+
+/* The fold/entity decorations. */
+.tide-editor .ProseMirror .mf-entity { background: rgba(79, 179, 176, 0.16); color: var(--tide-ink); }
+
+/* ── The outline rail ──────────────────────────────────────────────────── */
+/* OutlinePanel.less nests everything one level deep, so these carry the panel
+ * class too - equal specificity would be settled by emit order, which is the
+ * thing that already went wrong once in this redesign. */
+.tide-editor .tiptap-editor__outline {
+	background:   var(--tide-bgd);
+	border-left:  1px solid var(--tide-hair);
+	color:        var(--tide-ink50);
+	font-family:  var(--tide-ff-sans);
+}
+.tide-editor .tiptap-editor__outline .mf-outline__header {
+	background:     var(--tide-card0);
+	border-bottom:  1px solid var(--tide-hair);
+	color:          var(--tide-ink50);
+	font:           700 11px/1.4 var(--tide-ff-sans);
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+.tide-editor .tiptap-editor__outline .mf-outline__header i { color: var(--tide-teal); }
+.tide-editor .tiptap-editor__outline .mf-outline__empty { color: var(--tide-muted); }
+.tide-editor .tiptap-editor__outline .mf-outline__item {
+	border-left: 2px solid transparent;
+	background:  transparent;
+	color:       var(--tide-ink50);
+}
+.tide-editor .tiptap-editor__outline .mf-outline__item:hover {
+	background: rgba(79, 179, 176, 0.14);
+	color:      var(--tide-ink);
+}
+.tide-editor .tiptap-editor__outline .mf-outline__item.is-active {
+	background:        var(--tide-tealSel);
+	border-left-color: var(--tide-teal);
+	color:             var(--tide-ink);
+}
+.tide-editor .tiptap-editor__outline .mf-outline__item--h6 .mf-outline__label { color: var(--tide-muted); }
+.tide-editor .tiptap-editor__outline button {
+	background: transparent;
+	border:     0;
+	color:      var(--tide-muted);
+}
+.tide-editor .tiptap-editor__outline button:hover {
+	background: rgba(79, 179, 176, 0.14);
+	color:      var(--tide-ink);
+}
+
+/* ── The status line ───────────────────────────────────────────────────── */
+.tide-editor .tide-editor-status {
+	flex:        0 0 auto;
+	padding:     8px 20px;
+	border-top:  1px solid var(--tide-hair);
+	background:  var(--tide-write);
+	color:       var(--tide-muted);
+	font:        500 12px/1.4 var(--tide-ff-mono);
+}
+
+/* ── The metadata (Properties) view ────────────────────────────────────── */
+.tide-editor .metadataEditor {
+	padding:    20px 24px;
+	background: var(--tide-write);
+	color:      var(--tide-ink70);
+	overflow-y: auto;
+}
+.tide-editor .metadataEditor .field > label {
+	color:          var(--tide-ink50);
+	font:           600 12px/1.4 var(--tide-ff-sans);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.tide-editor .metadataEditor .field small { color: var(--tide-muted); }
+.tide-editor .metadataEditor input[type='text'],
+.tide-editor .metadataEditor input[type='url'],
+.tide-editor .metadataEditor textarea,
+.tide-editor .metadataEditor select,
+.tide-editor .metadataEditor .combobox input {
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-sm);
+	background:    var(--tide-card0);
+	color:         var(--tide-ink);
+	font-family:   var(--tide-ff-sans);
+}
+.tide-editor .metadataEditor .themes-dropdown .item { background: #161D21; color: var(--tide-ink70); }
+.tide-editor .tide-seg { display: flex; gap: 8px; }
+.tide-editor .tide-seg > button { flex: 1; height: 38px; justify-content: center; }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE PREVIEW PANE
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-editor .splitPane > .pane:last-of-type iframe { background: var(--tide-preview); }
+
+/* The preview toolbar: zoom, spread and page navigation. Inherited as a flat
+ * #555 strip in Open Sans. It stays a strip - it is a bar across the top of
+ * the pane, and making it a floating card gave it a drop shadow and 80px of
+ * empty middle that read as a broken panel. */
+.tide-editor #preview-toolbar.toolBar,
+#preview-toolbar.toolBar {
+	gap:           6px 16px;
+	padding:       5px 10px 5px 90px;
+	background:    rgba(13, 18, 21, 0.94);
+	border:        0;
+	border-bottom: 1px solid var(--tide-hair);
+	border-radius: 0;
+	box-shadow:    none;
+	color:         var(--tide-ink50);
+	font-family:   var(--tide-ff-sans);
+	font-size:     12px;
+}
+#preview-toolbar.toolBar .active,
+#preview-toolbar.toolBar [aria-checked='true'] {
+	background-color: var(--tide-tealSel);
+	color:            var(--tide-ink);
+}
+#preview-toolbar.toolBar .anchored-box {
+	--box-color: #161D21;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	color:         var(--tide-ink70);
+	box-shadow:    var(--tide-s3);
+}
+#preview-toolbar.toolBar .tool,
+#preview-toolbar.toolBar button,
+#preview-toolbar.toolBar .toggleButton button {
+	border:        0;
+	border-radius: var(--tide-radius-sm);
+	background:    transparent;
+	color:         var(--tide-ink50);
+	font-family:   var(--tide-ff-sans);
+}
+#preview-toolbar.toolBar .tool:hover,
+#preview-toolbar.toolBar button:hover { background: rgba(79, 179, 176, 0.14); color: var(--tide-ink); }
+#preview-toolbar.toolBar input[type='text'],
+#preview-toolbar.toolBar input[type='number'] {
+	border:     1px solid var(--tide-edge);
+	background: var(--tide-card0);
+	color:      var(--tide-ink);
+}
+
+/* Inside the preview iframe. The frame loads /homebrew/bundle.css, which is
+ * this sheet, so these rules land in the frame's own document; the paper
+ * itself is the brew theme's business (themes/V3/Tome/style.css). */
+.brewRenderer {
+	background: var(--tide-preview, #1A2126);
+	padding:    24px 0;
+}
+.brewRenderer .pages { padding-bottom: 24px; }
+.brewRenderer .page {
+	margin:        0 auto 24px;
+	border-radius: 4px;
+	box-shadow:    0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE STORY ASSISTANT RAIL
+ * Inherited in purple, which is not in the palette. Collapsed it is a tab on
+ * the right edge; expanded it is a panel.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-editor .ai-sidebar {
+	background:  var(--tide-card0);
+	border-left: 1px solid var(--tide-hair);
+	box-shadow:  none;
+	color:       var(--tide-ink70);
+	font-family: var(--tide-ff-sans);
+}
+/* The rail and its header were #8b5cf6 → #7c3aed, a violet that appears
+ * nowhere else in Tidewatch. Teal is the app's one accent. */
+.tide-editor .ai-sidebar .ai-toggle {
+	border-bottom: 1px solid var(--tide-hair);
+	color:         var(--tide-tealB);
+}
+.tide-editor .ai-sidebar .ai-toggle:hover {
+	background: rgba(79, 179, 176, 0.14);
+	color:      var(--tide-ink);
+}
+.tide-editor .ai-sidebar .ai-header {
+	background: var(--tide-tealSel);
+	color:      var(--tide-ink);
+}
+.tide-editor .ai-sidebar button { font-family: var(--tide-ff-sans); }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE SHARE DIALOG
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-modal-narrow { width: min(560px, 100%); }
+.tide-field { margin-top: 18px; }
+.tide-field > label {
+	display:        block;
+	margin-bottom:  6px;
+	color:          var(--tide-ink50);
+	font:           600 12px/1.4 var(--tide-ff-sans);
+	letter-spacing: 0.04em;
+	text-transform: uppercase;
+}
+.tide-field-row { display: flex; gap: 8px; align-items: center; }
+.tide-field-row .tide-btn-quiet { flex: 0 0 auto; height: 40px; }
+.tide-input {
+	flex:          1 1 auto;
+	min-width:     0;
+	height:        40px;
+	padding:       0 12px;
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-sm);
+	background:    rgba(9, 13, 16, 0.70);
+	color:         var(--tide-ink);
+	font:          500 13px/1.4 var(--tide-ff-mono);
+}
+.tide-input:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 1px; }
+.tide-field-hint { margin: 6px 0 0; color: var(--tide-ink50); font-size: 13px; }
+.tide-field-hint-warn { color: var(--tide-gold); }
+.tide-field-status { min-height: 18px; margin: 4px 0 0; color: var(--tide-tealB); font-size: 13px; }
+.tide-modal-foot {
+	display:     flex;
+	flex-wrap:   wrap;
+	gap:         10px;
+	margin-top:  22px;
+	padding-top: 18px;
+	border-top:  1px solid var(--tide-hair);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * NARROW
+ * Two panes side by side stop working long before 390px; the editor stacks,
+ * writing surface first, so a phone opens on the thing you came to do.
+ * ════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 860px) {
+	/* The page scrolls rather than the two panes fighting over one screen
+	 * height. Sharing 844px between two toolbars, an outline rail, a writing
+	 * surface, a status line and a sheet of paper left the writing surface
+	 * about one line tall. */
+	.editPage.tide-editor .content { height: auto; overflow-y: auto; }
+	.tide-editor .splitPane { flex-direction: column; height: auto; min-height: 100%; }
+	.tide-editor .splitPane > .pane {
+		flex:       0 0 auto !important;   /* beats the inline px width */
+		width:      100% !important;
+		min-height: 70vh;
+		overflow:   visible;
+	}
+	.tide-editor .splitPane .divider,
+	.tide-editor .splitPane .arrow { display: none; }
+
+	/* The outline is a second way to navigate a document you can already
+	 * scroll. At this width it costs more than half the writing surface. */
+	.tide-editor .tiptap-editor__outline { display: none; }
+
+	/* One scrolling row each, rather than four stacked rows of buttons. */
+	.tide-editor .snippetBar,
+	.tide-editor .tiptap-toolbar {
+		flex-wrap:           nowrap;
+		overflow-x:          auto;
+		overflow-y:          hidden;
+		scrollbar-width:     thin;
+		-webkit-overflow-scrolling: touch;
+	}
+	.tide-editor .snippetBar > *,
+	.tide-editor .tiptap-toolbar > * { flex: 0 0 auto; }
+	.tide-editor .snippetBar .editors,
+	.tide-editor .snippetBar .tabs { margin-left: 0; }
+
+	.tide-mbar .tide-mbar-action { margin-left: 6px; }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+	.tide-art-band { opacity: 0.45; }
+}

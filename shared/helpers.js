@@ -119,7 +119,7 @@ const printCurrentBrew = ()=>{
 const fetchThemeBundle = async (obj, renderer, theme)=>{
 	// Provide default fallbacks for renderer and theme
 	const finalRenderer = renderer || 'V3';
-	const finalTheme = theme || '5ePHB';
+	const finalTheme = theme || 'Tome';
 	
 	if(!finalRenderer || !finalTheme) {
 		console.log('❌ fetchThemeBundle: Missing renderer or theme', { renderer: finalRenderer, theme: finalTheme });

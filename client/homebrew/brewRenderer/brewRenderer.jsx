@@ -73,7 +73,7 @@ const toReactStyle = (styles = {})=>{
 };
 
 // Dynamic initial content will be set in the component
-const getInitialContent = (renderer = 'V3', theme = '5ePHB') => dedent`
+const getInitialContent = (renderer = 'V3', theme = 'Tome') => dedent`
 	<!DOCTYPE html><html><head>
 	<link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,600,700" rel="stylesheet" type="text/css" />
 	<link href='${prefixPath('/homebrew/bundle.css')}' type="text/css" rel='stylesheet' />
@@ -143,7 +143,7 @@ const BrewRenderer = (props)=>{
 		text                       : '',
 		style                      : '',
 		renderer                   : 'legacy',
-		theme                      : '5ePHB',
+		theme                      : 'Tome',
 		lang                       : '',
 		errors                     : [],
 		currentEditorCursorPageNum : 1,

@@ -64,6 +64,11 @@ const Editor = createClass({
 			currentEditorCursorPageNum : 1,
 			currentEditorViewPageNum   : 1,
 			currentBrewRendererPageNum : 1,
+
+			// { words, pages }, measured by the page that owns the document.
+			// null means "not measured", and the status line then omits those
+			// fields rather than printing a made-up zero.
+			brewStats : null,
 		};
 	},
 	getInitialState : function() {
@@ -554,6 +559,34 @@ const Editor = createClass({
 		}
 	},
 
+	/* The writing pane's status line.
+	 *
+	 * BUILD-BRIEF section 9 gives the editor "2 toolbars (modes, then insert
+	 * actions) and a status line"; the mock's reads "Markdown · 1,284 words ·
+	 * Page 1 of 14". The word and page counts are measured by the page that
+	 * owns the document and handed down - if they ever cannot be measured they
+	 * are simply absent, never a placeholder number.
+	 *
+	 * The first field names the view, because the same pane is also where CSS
+	 * and snippets are edited and "Markdown" would be a lie in those. */
+	renderStatusLine : function(){
+		const VIEW_LABELS = {
+			text    : 'Markdown',
+			style   : 'Style (CSS)',
+			snippet : 'Snippets',
+			meta    : 'Properties'
+		};
+		const stats = this.props.brewStats;
+		const parts = [VIEW_LABELS[this.state.view] || 'Markdown'];
+
+		if(stats && Number.isFinite(stats.words))
+			parts.push(`${stats.words.toLocaleString()} ${stats.words === 1 ? 'word' : 'words'}`);
+		if(stats && Number.isFinite(stats.pages))
+			parts.push(`Page ${this.props.currentEditorCursorPageNum || 1} of ${stats.pages}`);
+
+		return <div className='tide-editor-status'>{parts.join(' · ')}</div>;
+	},
+
 	render : function(){
 		return (
 			<div className='editor'>
@@ -591,6 +624,7 @@ const Editor = createClass({
 				*/}
 
 				{this.renderEditor()}
+			{this.renderStatusLine()}
 		</div>
 	);
 	}

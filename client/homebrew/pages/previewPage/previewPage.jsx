@@ -14,6 +14,50 @@ import extensions from '../../../extensions/index.js';
 import { markdownToTiptap } from '../../../../shared/helpers/markdownToTiptap.js';
 import './previewPage.less';
 
+import Nav from 'naturalcrit/nav/nav.jsx';
+import Navbar from '../../navbar/navbar.jsx';
+import AccountNavItem from '../../navbar/account.navitem.jsx';
+import MythforgeBar from '../../components/mythforgeBar/mythforgeBar.jsx';
+import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
+import { prefixPath } from '../../utils/basePath.js';
+
+/*
+ * The empty and error states for /preview.
+ *
+ * BUILD-BRIEF section 9: "preview with no brew loaded: 'Nothing to preview
+ * yet', with Open a brew / New brew buttons. Never show a bare blank page."
+ * Before this, /preview with no ?fixture= printed the sentence "No fixture
+ * specified. Use ?fixture=path/to/fixture" on a bare grey page - an internal
+ * instruction to a test harness, shown to whoever followed the link.
+ *
+ * The ?fixture= path itself is untouched: __visual__/tests/*.visual.spec.js
+ * drive this route and expect exactly the markup they get today.
+ */
+const PreviewShell = ({ code, title, body, detail })=>
+	<div className='homebrew tide-page previewPage-empty'>
+		<Navbar>
+			<Nav.section>
+				<AccountNavItem />
+			</Nav.section>
+		</Navbar>
+		<MythforgeBar active='brews' />
+
+		<div className='tide-status'>
+			<div className='tide-status-card'>
+				<div className='tide-status-code'>{code}</div>
+				<h1 className='tide-status-title'>{title}</h1>
+				<p className='tide-status-body'>{body}</p>
+				{detail ? <code className='tide-status-path'>{detail}</code> : null}
+				<div className='tide-status-actions'>
+					<a className='tide-btn-primary' href={prefixPath('/')}>Open a brew</a>
+					<a className='tide-btn-quiet' href={prefixPath('/create-project')}>New brew</a>
+				</div>
+			</div>
+		</div>
+
+		<SrdFooter />
+	</div>;
+
 const PreviewPage = ({ query }) => {
 	const [html, setHtml] = useState('');
 	const [error, setError] = useState(null);
@@ -22,7 +66,8 @@ const PreviewPage = ({ query }) => {
 
 	useEffect(() => {
 		if (!fixture) {
-			setError('No fixture specified. Use ?fixture=path/to/fixture');
+			// Not an error: arriving at /preview with nothing to preview is an
+			// ordinary thing to do. It gets the empty state, not a red box.
 			setLoading(false);
 			return;
 		}
@@ -61,6 +106,14 @@ const PreviewPage = ({ query }) => {
 		}
 	};
 
+	if (!fixture && !loading) {
+		return <PreviewShell
+			code='PREVIEW'
+			title='Nothing to preview yet'
+			body='Open one of your brews to see it laid out on the page, or start a new one.'
+		/>;
+	}
+
 	if (loading) {
 		return (
 			<div className="previewPage">
@@ -70,15 +123,12 @@ const PreviewPage = ({ query }) => {
 	}
 
 	if (error) {
-		return (
-			<div className="previewPage">
-				<div className="error">
-					<h2>Error Loading Fixture</h2>
-					<p>{error}</p>
-					<p>Fixture path: <code>{fixture}</code></p>
-				</div>
-			</div>
-		);
+		return <PreviewShell
+			code='PREVIEW'
+			title='That preview could not be loaded'
+			body='The brew or fixture behind this link is missing. Open a brew from your library instead.'
+			detail={fixture ? `fixture: ${fixture}` : null}
+		/>;
 	}
 
 	return (

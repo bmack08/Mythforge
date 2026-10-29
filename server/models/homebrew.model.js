@@ -136,7 +136,7 @@ const initHomebrewModel = (sequelize) => {
 		},
 		theme: {
 			type: DataTypes.STRING(50), // Theme name
-			defaultValue: '5ePHB',
+			defaultValue: 'Tome',
 			allowNull: true
 		},
 		textBin: {

@@ -13,14 +13,17 @@ import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import Nav from 'naturalcrit/nav/nav.jsx';
 import Navbar from '../../navbar/navbar.jsx';
 
-import NewBrew from '../../navbar/newbrew.navitem.jsx';
-import HelpNavItem from '../../navbar/help.navitem.jsx';
-import PrintNavItem from '../../navbar/print.navitem.jsx';
 import ErrorNavItem from '../../navbar/error-navitem.jsx';
 import Account from '../../navbar/account.navitem.jsx';
-import { both as RecentNavItem } from '../../navbar/recent.navitem.jsx';
-import VaultNavItem from '../../navbar/vault.navitem.jsx';
 import MythwrightProjectWizard from '../../components/project-creation/mythwright-project-wizard.jsx';
+
+// Tidewatch editor chrome. New Brew / Help / Get PDF / Vault / Recent brews all
+// used to be items in the global top bar; BUILD-BRIEF section 9 puts Mythforge's
+// navigation in the sticky sub-bar and Share / Export PDF on its right-hand end,
+// so they are imported from there now instead of crowding the global nav.
+import MythforgeBar from '../../components/mythforgeBar/mythforgeBar.jsx';
+import ShareDialog from '../../components/shareDialog/shareDialog.jsx';
+import { ART, cssUrl } from '../../../art/tidewatch/art.js';
 
 import SplitPane from 'client/components/splitPane/splitPane.jsx';
 import ToastHost from 'client/components/toast.jsx';
@@ -71,7 +74,11 @@ const EditPage = createClass({
 			currentBrewRendererPageNum : 1,
 			displayLockMessage         : this.props.brew.lock || false,
 			themeBundle                : {},
-			_loadingBrew               : false
+			_loadingBrew               : false,
+			// The share dialog - what "Collaborate" became. Opens from the
+			// Mythforge bar's Share button, or straight away when the page was
+			// reached through /collaborate/:id.
+			showShare                  : this.props.openShare || false
 		};
 	},
 
@@ -175,7 +182,10 @@ const EditPage = createClass({
 		this.savedBrew = JSON.parse(JSON.stringify(this.props.brew)); //Deep copy
 
 		// In dev mode (Vite), /edit/:id loads client-only. Ensure we fetch the brew before autosave triggers.
-		const pathMatch = stripPrefix(window.location.pathname).match(/^\/edit\/([^/]+)$/);
+		// /collaborate/:id is the same page with the share dialog open, so it
+		// needs the same brew - without it the dialog offered to share an
+		// empty untitled document.
+		const pathMatch = stripPrefix(window.location.pathname).match(/^\/(?:edit|collaborate)\/([^/]+)$/);
 		if (pathMatch && (!this.props.brew || !this.props.brew.editId)) {
 			const editId = pathMatch[1];
 			this.setState({ _loadingBrew: true });
@@ -419,7 +429,7 @@ const EditPage = createClass({
 				title: brewState.title || 'Untitled Brew',
 				text: brewState.text,
 				renderer: brewState.renderer || 'V3',
-				theme: brewState.theme || '5ePHB',
+				theme: brewState.theme || 'Tome',
 				style: brewState.style || '',
 				description: brewState.description || ''
 			};
@@ -626,19 +636,64 @@ const EditPage = createClass({
 		const shareLink = this.processShareId();
 		const systems = this.props.brew.systems && this.props.brew.systems.length > 0 ? ` [${this.props.brew.systems.join(' - ')}]` : '';
 		const title = `${this.props.brew.title} ${systems}`;
+		// global.config.baseUrl is only filled in by a server render. In dev it
+		// is undefined, which used to put the literal string "undefined" in
+		// front of every shared link; the share dialog puts these URLs on
+		// screen, so a wrong one is now visible rather than merely posted.
+		const origin = global.config?.baseUrl
+			|| (typeof window !== 'undefined' ? window.location.origin : '');
 		const text = `Hey guys! I've been working on this homebrew. I'd love your feedback. Check it out.
 
-**[Homebrewery Link](${global.config.baseUrl}/share/${shareLink})**`;
+**[Mythforge link](${origin}${prefixPath(`/share/${shareLink}`)})**`;
 
 		return `https://www.reddit.com/r/UnearthedArcana/submit?title=${encodeURIComponent(title.toWellFormed())}&text=${encodeURIComponent(text)}`;
 	},
 
-	renderNavbar : function(){
-		const shareLink = this.processShareId();
+	/* The status line under the writing pane, as the mock has it:
+	 * "Markdown · 1,284 words · Page 1 of 14". Every number is measured from
+	 * the document that is open - none of them is decorative. */
+	getBrewStats : function(){
+		const text = this.state.brew?.text;
+		let words = 0;
+		let pages = 1;
 
+		try {
+			if(text && typeof text === 'object' && text.type === 'doc'){
+				pages = 1 + (text.content || []).filter((n)=>n.type === 'pageBreak').length;
+				words = toPlainText(text).split(/\s+/).filter(Boolean).length;
+			} else if(typeof text === 'string'){
+				// A V3 page break is a `\page` on its own line; the legacy
+				// renderer accepts it anywhere.
+				pages = text.split(this.state.brew?.renderer === 'V3' ? /^\\page\b/m : /\\page/).length;
+				words = text.split(/\s+/).filter(Boolean).length;
+			}
+		} catch (err) {
+			// A malformed document must not take the status line - and with it
+			// the whole editor - down with it.
+			console.error('Could not measure the brew:', err);
+		}
+
+		return { words, pages };
+	},
+
+	toggleShare : function(open){
+		this.setState((prev)=>({ showShare: open ?? !prev.showShare }));
+	},
+
+	/* The global top bar.
+	 *
+	 * BUILD-BRIEF section 9 splits the chrome in two: the global bar carries
+	 * TaleForge's own identity and the account, and everything Mythforge owns
+	 * moves to the sticky sub-bar below it. New Brew, Help, Get PDF, Vault and
+	 * Recent brews all used to sit up here - at 1440 the row wrapped onto a
+	 * second line and the items collided. They are in the sub-bar now.
+	 *
+	 * What stays: save state and the error item, because both report on the
+	 * document you are editing right now and must never be a scroll away. */
+	renderNavbar : function(){
 		return <Navbar>
 			<Nav.section>
-				<Nav.item className='brewTitle'>{this.state.brew.title}</Nav.item>
+				<Nav.item className='brewTitle'>{this.state.brew.title || 'Untitled brew'}</Nav.item>
 			</Nav.section>
 
 			<Nav.section>
@@ -650,61 +705,91 @@ const EditPage = createClass({
 						{this.renderAutoSaveButton()}
 					</Nav.dropdown>
 				}
-				<NewBrew />
-				<Nav.dropdown className='mythwright-tools'>
-					<Nav.item color='purple' icon='fas fa-magic'>
-						✨ Mythforge AI
-					</Nav.item>
-					<Nav.item color='purple' icon='fas fa-dragon' onClick={() => this.mythwrightWizard.current?.openModal()}>
-						New AI Campaign
-					</Nav.item>
-					<Nav.item color='blue' icon='fas fa-wand-magic-sparkles' onClick={this.orchestrateAiEdit}>
-						AI Orchestrate (beta)
-					</Nav.item>
-					<Nav.item color='blue' icon='fas fa-brain'>
-						AI Content Generator
-					</Nav.item>
-					<Nav.item color='green' icon='fas fa-coins'>
-						Budget Engine
-					</Nav.item>
-					<Nav.item color='orange' icon='fas fa-users'>
-						Collaboration Tools
-					</Nav.item>
-				</Nav.dropdown>
-				<HelpNavItem/>
-				<Nav.dropdown>
-					<Nav.item color='teal' icon='fas fa-share-alt'>
-						share
-					</Nav.item>
-					<Nav.item color='blue' href={`/share/${shareLink}`}>
-						view
-					</Nav.item>
-					<Nav.item color='blue' onClick={()=>{navigator.clipboard.writeText(`${global.config.baseUrl}/share/${shareLink}`);}}>
-						copy url
-					</Nav.item>
-					<Nav.item color='blue' href={this.getRedditLink()} newTab={true} rel='noopener noreferrer'>
-						post to reddit
-					</Nav.item>
-				</Nav.dropdown>
-				<PrintNavItem />
-				<VaultNavItem />
-				<RecentNavItem brew={this.state.brew} storageKey='edit' />
 				<Account />
 			</Nav.section>
 
 		</Navbar>;
 	},
 
-	render : function(){
-		return <div className='editPage sitePage'>
-			<Meta name='robots' content='noindex, nofollow' />
-			{this.renderNavbar()}
+	/* The Mythforge sub-bar, with the editor's own actions on its right-hand
+	 * end - "Share / Export PDF sit in the Mythforge bar" (section 9).
+	 *
+	 * The AI menu lost three items here: "AI Content Generator", "Budget
+	 * Engine" and "Collaboration Tools" were all labels with no handler and no
+	 * href behind them, so every one of them was a dead control. The first two
+	 * have no implemented screen to point at; the third is this unit's share
+	 * dialog, which now has its own button two places to the right. */
+	renderMythforgeBar : function(){
+		return <MythforgeBar active={this.props.mbarActive || 'brews'}>
+			<Nav.dropdown className='mythwright-tools'>
+				<button type='button' className='tide-mbar-tool'>
+					<i className='fas fa-wand-magic-sparkles' aria-hidden='true' />
+					Mythforge AI
+				</button>
+				<Nav.item color='purple' icon='fas fa-dragon' onClick={()=>this.mythwrightWizard.current?.openModal()}>
+					New AI campaign
+				</Nav.item>
+				<Nav.item color='blue' icon='fas fa-wand-magic-sparkles' onClick={this.orchestrateAiEdit}>
+					AI orchestrate (beta)
+				</Nav.item>
+			</Nav.dropdown>
 
-			{this.props.brew.lock && <LockNotification shareId={this.props.brew.shareId} message={this.props.brew.lock.editMessage} reviewRequested={this.props.brew.lock.reviewRequested} />}
+			<button
+				type='button'
+				className='tide-btn-quiet tide-mbar-action'
+				onClick={()=>this.toggleShare(true)}
+			>
+				<i className='fas fa-share-nodes' aria-hidden='true' />
+				Share
+			</button>
+			<button
+				type='button'
+				className='tide-btn-primary tide-mbar-action'
+				onClick={printCurrentBrew}
+			>
+				<i className='far fa-file-pdf' aria-hidden='true' />
+				Export PDF
+			</button>
+		</MythforgeBar>;
+	},
+
+	render : function(){
+		// With the share dialog open the editor behind it is decoration: a
+		// reader should not be able to tab into it, and a screen reader should
+		// not walk it. Same treatment the template picker gets in M1, and it
+		// is also what makes the contrast pass meaningful - text under a 72%
+		// scrim is not text anybody is being asked to read.
+		const behind = this.state.showShare
+			? { 'aria-hidden': 'true', inert: '' }
+			: {};
+
+		return <div className='editPage sitePage tide-editor'>
+			<Meta name='robots' content='noindex, nofollow' />
+
+			<div className='tide-editor-stack' {...behind}>
+				{/* The art band. Section 9: "Art appears only as a ~110px chrome
+				  * band behind the top bar and the Mythforge bar." It stops at
+				  * the writing surface - a texture behind body copy is exactly
+				  * the parchment habit this redesign removes. */}
+				<div
+					className='tide-art tide-art-band'
+					style={{
+						'--tide-art-src'    : cssUrl(ART.workshop),
+						'--tide-art-height' : '112px',
+						'--tide-scrim'      : 'linear-gradient(180deg, rgba(9,13,16,.50), rgba(9,13,16,.72) 110px, var(--tide-bg) 112px)'
+					}}
+					role='presentation'
+				/>
+
+				{this.renderNavbar()}
+				{this.renderMythforgeBar()}
+
+				{this.props.brew.lock && <LockNotification shareId={this.props.brew.shareId} message={this.props.brew.lock.editMessage} reviewRequested={this.props.brew.lock.reviewRequested} />}
 			<div className='content'>
 				<SplitPane onDragFinish={this.handleSplitMove}>
 					<Editor
 						ref={this.editor}
+						brewStats={this.getBrewStats()}
 						brew={this.state.brew}
 						onTextChange={this.handleTextChange}
 						onStyleChange={this.handleStyleChange}
@@ -767,8 +852,16 @@ const EditPage = createClass({
 				/>
 			</div>
 			
-			<MythwrightProjectWizard ref={this.mythwrightWizard} />
-			<ToastHost />
+				<MythwrightProjectWizard ref={this.mythwrightWizard} />
+				<ToastHost />
+			</div>
+
+			{this.state.showShare && <ShareDialog
+				brew={this.state.brew}
+				shareLink={this.processShareId()}
+				redditLink={this.getRedditLink()}
+				onClose={()=>this.toggleShare(false)}
+			/>}
 		</div>;
 	}
 });

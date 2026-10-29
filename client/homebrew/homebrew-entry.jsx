@@ -16,6 +16,12 @@ import '../styles/iconFonts.less';
 // to be rewritten, and CSS order is the whole mechanism.
 import '../styles/tidewatch.css';
 
+// The editor's own chrome: it overrides tiptap.less, snippetbar.less,
+// TipTapToolbar.less and toolBar.less, all of which are imported by the
+// components themselves and so land earlier in the graph. Must follow
+// tidewatch.css, which defines the tokens it reads.
+import '../styles/tidewatch-editor.css';
+
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';
@@ -46,6 +52,7 @@ import PreviewPage from './pages/previewPage/previewPage.jsx';
 import CampaignWizard from './pages/campaignWizard/campaignWizard.jsx';
 import BrewLibraryPage from './pages/brewLibraryPage/brewLibraryPage.jsx';
 import NotFoundPage from './pages/notFoundPage/notFoundPage.jsx';
+import CollaboratePage from './pages/collaboratePage/collaboratePage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -72,7 +79,7 @@ const Homebrew = (props)=>{
 			updatedAt : null,
 			lang      : '',
 			renderer  : 'V3',
-			theme     : '5ePHB'
+			theme     : 'Tome'
 		},
 		userThemes = [],
 		brews = []
@@ -93,11 +100,26 @@ const Homebrew = (props)=>{
 			<div className='homebrew'>
 				<Routes>
 					{/* ── Writing ─────────────────────────────────────────── */}
-					<Route path='/edit/:id' element={<WithRoute el={EditPage} brew={brew} userThemes={userThemes}/>} />
+					<Route path='/edit/:id' element={<WithRoute el={EditPage} brew={brew} userThemes={userThemes} mbarActive='brews' />} />
 					<Route path='/share/:id' element={<WithRoute el={SharePage} brew={brew} />} />
 					<Route path='/new/:id' element={<WithRoute el={NewPage} brew={brew} userThemes={userThemes}/>} />
 					<Route path='/new' element={<WithRoute el={NewPage} userThemes={userThemes}/> } />
 					<Route path='/new-campaign' element={<WithRoute el={CampaignWizard}/>} />
+
+					{/* ── Collaborate ─────────────────────────────────────────
+					  * Section 9: "collaborate should become a share dialog on
+					  * the editor". /collaborate was a top-bar item that fell
+					  * through to the editor, so the one thing it never did was
+					  * let you share anything.
+					  *
+					  * With a brew id it IS the editor, with that dialog already
+					  * open - which also makes the dialog linkable. Without one
+					  * there is nothing to share, so it lands on a page that
+					  * says so and points at the library, rather than opening an
+					  * empty editor (the old bug) or a 404 (which would be a lie
+					  * - the route is real). */}
+					<Route path='/collaborate/:id' element={<WithRoute el={EditPage} brew={brew} userThemes={userThemes} mbarActive='brews' openShare={true} />} />
+					<Route path='/collaborate' element={<WithRoute el={CollaboratePage} />} />
 
 					{/* ── The brew library ────────────────────────────────────
 					  * BUILD-BRIEF section 9: home and projects are the SAME

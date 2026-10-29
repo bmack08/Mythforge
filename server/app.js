@@ -101,7 +101,7 @@ app.put('/api/update/:id', async (req, res) => {
 				brew.title    = String(newTitle || '').trim() || 'Untitled Brew';
 				brew.text     = typeof newText === 'string' ? newText : brew.text;
 				brew.renderer = newRenderer || brew.renderer || 'V3';
-				brew.theme    = newTheme || brew.theme || '5ePHB';
+				brew.theme    = newTheme || brew.theme || 'Tome';
 				brew.updatedAt = new Date();
 				brew.version = (Number(brew.version) || 1) + 1;
 
@@ -524,8 +524,14 @@ app.put('/api/user/rename', async (req, res)=>{
 	}
 });
 
-//Edit Page
-app.get('/edit/:id', asyncHandler(getBrew('edit')), asyncHandler(async(req, res, next)=>{
+//Edit Page.
+//
+// /collaborate/:id is the same page with the share dialog already open -
+// BUILD-BRIEF section 9: "collaborate should become a share dialog on the
+// editor". It has to resolve the brew here too; without this the client
+// rendered the editor against the default empty brew, which is the
+// fall-through bug the route was meant to fix, in a new costume.
+app.get(['/edit/:id', '/collaborate/:id'], asyncHandler(getBrew('edit')), asyncHandler(async(req, res, next)=>{
 	req.brew = req.brew.toObject ? req.brew.toObject() : req.brew;
 
 	req.userThemes = await(getUsersBrewThemes(req.account?.username));
@@ -805,7 +811,7 @@ app.post('/api/mythwright/generate', asyncHandler(async (req, res) => {
 			title       : req.body.title || 'AI Generated Campaign',
 			text        : tiptapDoc,
 			renderer    : 'V3',
-			theme       : '5ePHB',
+			theme       : 'Tome',
 			description : `AI-generated ${req.body.adventureType || ''} campaign for ${req.body.partySize || 4} players, levels ${req.body.level || 'low'}`
 		});
 
