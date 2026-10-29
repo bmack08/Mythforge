@@ -160,18 +160,17 @@ const TemplatePicker = ({ onClose })=>{
 			</div>
 
 			<div className='tide-grid'>
-				{TEMPLATES.map((t)=>
-					<button
-						key={t.id}
-						type='button'
-						className='tide-card tide-tile'
-						onClick={()=>startFromTemplate(t)}
-					>
-						<div className='tide-card-body'>
-							<h3>{t.name}</h3>
-							<div className='tide-cap'>{t.blurb}</div>
-						</div>
-					</button>
+				{TEMPLATES.map((t)=><button
+					key={t.id}
+					type='button'
+					className='tide-card tide-tile'
+					onClick={()=>startFromTemplate(t)}
+				>
+					<div className='tide-card-body'>
+						<h3>{t.name}</h3>
+						<div className='tide-cap'>{t.blurb}</div>
+					</div>
+				</button>
 				)}
 			</div>
 		</div>

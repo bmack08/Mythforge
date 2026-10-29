@@ -35,9 +35,9 @@ const NotFoundPage = ({ path })=>{
 		<div
 			className='tide-art'
 			style={{
-				'--tide-art-src'   : cssUrl(ART.harbour),
-				'--tide-art-height': '100%',
-				'--tide-scrim'     : 'var(--tide-scrim-vignette)'
+				'--tide-art-src'    : cssUrl(ART.harbour),
+				'--tide-art-height' : '100%',
+				'--tide-scrim'      : 'var(--tide-scrim-vignette)'
 			}}
 			role='presentation'
 		/>

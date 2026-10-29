@@ -63,10 +63,10 @@ const BrewLibraryPage = createClass({
 
 	getInitialState : function(){
 		return {
-			brews        : [],
-			loading      : true,
-			error        : null,
-			pickerOpen   : this.props.openPicker
+			brews      : [],
+			loading    : true,
+			error      : null,
+			pickerOpen : this.props.openPicker
 		};
 	},
 
@@ -162,49 +162,48 @@ const BrewLibraryPage = createClass({
 
 		return <div className='homebrew tide-page brewLibraryPage'>
 			<div className='tide-page-stack' {...behind}>
-			{this.renderNavbar()}
-			<MythforgeBar active={this.props.active} onNewBrew={this.openPicker} />
+				{this.renderNavbar()}
+				<MythforgeBar active={this.props.active} onNewBrew={this.openPicker} />
 
-			<div
-				className='tide-art'
-				style={{ '--tide-art-src': cssUrl(ART.workshop) }}
-				role='presentation'
-			/>
+				<div
+					className='tide-art'
+					style={{ '--tide-art-src': cssUrl(ART.workshop) }}
+					role='presentation'
+				/>
 
-			<main className='tide-page-body'>
-				<div className='tide-eyebrow'>Mythforge</div>
-				<h1>Your brews</h1>
-				<p className='tide-lede'>
+				<main className='tide-page-body'>
+					<div className='tide-eyebrow'>Mythforge</div>
+					<h1>Your brews</h1>
+					<p className='tide-lede'>
 					Write adventures, creatures and handouts, then export a print-ready PDF.
-				</p>
+					</p>
 
-				<div className='tide-actions'>
-					<button type='button' className='tide-btn-primary' onClick={this.openPicker}>
-						<i className='fas fa-plus' aria-hidden='true' /> New brew
-					</button>
-					<a className='tide-btn-quiet' href={prefixPath('/new-campaign')}>
-						<i className='fas fa-hat-wizard' aria-hidden='true' /> Generate a campaign
-					</a>
-					<a className='tide-btn-ghost' href={prefixPath('/legacy')}>
-						<i className='fas fa-file-import' aria-hidden='true' /> Import from Markdown
-					</a>
-				</div>
-
-				<section className='tide-section'>
-					<div className='tide-section-head'>
-						<h2>Recent</h2>
-						{this.state.brews.length > 12
-							? <span className='tide-cap'>{`Showing 12 of ${this.state.brews.length}`}</span>
-							: null}
+					<div className='tide-actions'>
+						<button type='button' className='tide-btn-primary' onClick={this.openPicker}>
+							<i className='fas fa-plus' aria-hidden='true' /> New brew
+						</button>
+						<a className='tide-btn-quiet' href={prefixPath('/new-campaign')}>
+							<i className='fas fa-hat-wizard' aria-hidden='true' /> Generate a campaign
+						</a>
+						<a className='tide-btn-ghost' href={prefixPath('/legacy')}>
+							<i className='fas fa-file-import' aria-hidden='true' /> Import from Markdown
+						</a>
 					</div>
-					{this.renderRecent()}
-				</section>
 
-				<section className='tide-section'>
-					<h2>Start from a template</h2>
-					<div className='tide-grid'>
-						{TEMPLATES.map((t)=>
-							<button
+					<section className='tide-section'>
+						<div className='tide-section-head'>
+							<h2>Recent</h2>
+							{this.state.brews.length > 12
+								? <span className='tide-cap'>{`Showing 12 of ${this.state.brews.length}`}</span>
+								: null}
+						</div>
+						{this.renderRecent()}
+					</section>
+
+					<section className='tide-section'>
+						<h2>Start from a template</h2>
+						<div className='tide-grid'>
+							{TEMPLATES.map((t)=><button
 								key={t.id}
 								type='button'
 								className='tide-card tide-tile'
@@ -215,12 +214,12 @@ const BrewLibraryPage = createClass({
 									<div className='tide-cap'>{t.blurb}</div>
 								</div>
 							</button>
-						)}
-					</div>
-				</section>
-			</main>
+							)}
+						</div>
+					</section>
+				</main>
 
-			<SrdFooter />
+				<SrdFooter />
 			</div>
 
 			{this.state.pickerOpen ? <TemplatePicker onClose={this.closePicker} /> : null}
