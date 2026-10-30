@@ -41,7 +41,7 @@ const fs   = require('fs');
 const path = require('path');
 const { test, expect } = require('@playwright/test');
 const { measureIcons, table } = require('./contrast.cjs');
-const { measureInk, inkTable } = require('./icon-ink.cjs');
+const { measureInk, measureInkAll, inkTable } = require('./icon-ink.cjs');
 
 const BASE_PATH = process.env.LANEM_BASE_PATH !== undefined ? process.env.LANEM_BASE_PATH : '/mythforge';
 const at = (p)=>`${BASE_PATH}${p}`;
@@ -291,8 +291,18 @@ for (const vp of VIEWPORTS) {
 				 * drawn icon covers 6% to 62% of its box, and the one icon
 				 * that was genuinely blank covered 0.5%. 3% with a floor of
 				 * four pixels sits well clear of both ends. */
-				const ink = await measureInk(page);
+				const { rows: ink, unreached } = await measureInkAll(page);
 				expect(ink.length, `${route.name} had icons to measure for ink`).toBeGreaterThan(0);
+
+				/* measureInkAll WALKS the page rather than measuring the first
+				 * screen. /changelog is about 40,000px long and its inline
+				 * `{{fas,…}}` icons are all in the first fifth, so even a
+				 * top-and-bottom pair of screenshots misses every one of them -
+				 * 53 icons on that route, 35 of them still font glyphs, and a
+				 * single-screen pass found 6. If the walk cannot reach
+				 * something that is visible, that is reported rather than
+				 * folded into a clean sweep of whatever it did reach. */
+				expect(unreached, 'visible icons the walk never brought on screen').toBe(0);
 
 				const blank = ink.filter((r)=>r.kind !== 'text' && (r.share < 0.03 || r.ink < 4));
 				expect(blank, `icons with no ink (tofu):\n${inkTable(blank)}`).toEqual([]);

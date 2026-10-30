@@ -88,6 +88,10 @@ async function measureInk(page) {
 			el.setAttribute('data-tide-ink', String(index));
 			out.push({
 				idx   : index,
+				/* Set by measureInkAll() so a walk down a long page can tell
+				 * "this icon again" from "a new icon". Absent for a plain
+				 * single-screen measureInk(). */
+				id    : el.getAttribute('data-tide-icon-id'),
 				kind,
 				cls,
 				where : describe(el),
@@ -175,4 +179,166 @@ function inkTable(rows, limit = 12) {
 	return lines.join('\n');
 }
 
-module.exports = { measureInk, inkTable, ICON_SELECTOR };
+/* Scroll everything that scrolls to its end.
+ *
+ * `window.scrollTo(0, document.body.scrollHeight)` is the obvious move and it
+ * is a no-op on half of Mythforge: the docs pages, the vault and the editor
+ * all scroll inside a CONTAINER, and on /changelog `document.body.scrollHeight`
+ * is exactly the viewport height while the first inline `{{fas,…}}` icon sits
+ * 6,019px down inside `.tide-doc-article`'s scroller. A bottom pass that only
+ * moves the window measures the same first screen twice and reports it as
+ * coverage.
+ *
+ * Returns how many elements actually moved, so a caller can tell a page with
+ * nothing below the fold from a scroll that silently did nothing. */
+async function scrollToBottom(page) {
+	const moved = await page.evaluate(()=>{
+		let n = 0;
+		const targets = [document.scrollingElement, ...document.querySelectorAll('*')];
+		for (const el of targets) {
+			if(!el) continue;
+			if(el.scrollHeight - el.clientHeight < 40) continue;
+			const before = el.scrollTop;
+			el.scrollTop = el.scrollHeight;
+			if(el.scrollTop !== before) n += 1;
+		}
+		return n;
+	});
+	await page.waitForTimeout(500);
+	return moved;
+}
+
+/* Every icon on the page, not just the ones on the first screen.
+ *
+ * measureInk() is a screenshot, so it can only report what the camera can see,
+ * and "top of page plus bottom of page" is not coverage: /changelog is about
+ * 40,000px long and its thirteen inline `{{fas,…}}` icons are all in the first
+ * fifth, so both of those passes miss every one of them.
+ *
+ * This walks instead. Each icon gets a stable id, then: scroll the first
+ * un-measured one into view, measure that screen, mark everything it saw,
+ * repeat. Bounded by maxPasses so a page that somehow never settles stops
+ * rather than spins, and the caller is told how many it could not reach.
+ *
+ * Returns { rows, unreached, passes }. */
+async function measureInkAll(page, { maxPasses = 40 } = {}) {
+	const total = await page.evaluate((sel)=>{
+		let n = 0;
+		for (const el of document.querySelectorAll(sel)) {
+			if(el.tagName === 'svg' || el.closest('svg')) continue;
+			el.setAttribute('data-tide-icon-id', String(n++));
+		}
+		return n;
+	}, ICON_SELECTOR);
+
+	const rows = [];
+	const seen = new Set();
+	let passes = 0;
+
+	for (; passes < maxPasses; passes += 1) {
+		const batch = await measureInk(page);
+		for (const r of batch) {
+			if(r.id === null || r.id === undefined || seen.has(r.id)) continue;
+			seen.add(r.id);
+			rows.push(r);
+		}
+
+		const scrolled = await page.evaluate((measured)=>{
+			const done = new Set(measured);
+			for (const el of document.querySelectorAll('[data-tide-icon-id]:not([data-tide-tried])')) {
+				if(done.has(el.getAttribute('data-tide-icon-id'))) continue;
+				const cs = getComputedStyle(el);
+				if(cs.display === 'none' || cs.visibility === 'hidden') continue;
+				const r = el.getBoundingClientRect();
+				if(r.width < 1 || r.height < 1) continue;
+				/* Mark it tried BEFORE scrolling. Without this the loop can
+				 * pick the same element every pass - one that scrolls into
+				 * view but is then covered, so measureInk skips it and it is
+				 * still "not done" next time round - and burn every pass on
+				 * it while the rest of the page goes unmeasured. */
+				el.setAttribute('data-tide-tried', '1');
+				/* `inline` as well as `block`: at 390 the editor's snippet bar
+				 * scrolls SIDEWAYS, and a walk that only scrolls vertically
+				 * leaves a dozen tools at x = -140 or x = 516 and calls them
+				 * unreachable. */
+				el.scrollIntoView({ block: 'center', inline: 'center' });
+				return true;
+			}
+			return false;
+		}, [...seen]);
+
+		if(!scrolled) break;
+		await page.waitForTimeout(350);
+	}
+
+	/* CONFIRM EVERY SUSPECT BEFORE REPORTING IT.
+	 *
+	 * A walk down a dense, scrolling page produces false blanks: an icon in a
+	 * horizontally scrolling toolbar can be on camera for the frame that
+	 * measured it and covered by the time the second frame is taken, which
+	 * reads as zero ink. So anything the walk thinks is blank is scrolled into
+	 * view ON ITS OWN and measured again, and only the second reading counts.
+	 * An icon that cannot be measured even then is not a blank icon - it is an
+	 * unmeasurable one, and it is counted as unreached instead, which is the
+	 * honest distinction. */
+	const suspects = rows.filter((r)=>r.kind !== 'text' && (r.share < 0.03 || r.ink < 4));
+	let unmeasurable = 0;
+	for (const suspect of suspects) {
+		await page.evaluate((id)=>{
+			document.querySelector(`[data-tide-icon-id="${id}"]`)?.scrollIntoView({ block: 'center', inline: 'center' });
+		}, suspect.id);
+		await page.waitForTimeout(250);
+		const again = (await measureInk(page)).find((r)=>r.id === suspect.id);
+		const i = rows.indexOf(suspect);
+		if(again) {
+			rows[i] = { ...again, recheck: true };
+		} else {
+			// Could not be brought on camera clear of everything else.
+			rows.splice(i, 1);
+			unmeasurable += 1;
+		}
+	}
+
+	/* `unreached` is for icons the walk NEVER EVEN TRIED - the case that would
+	 * mean a page went unmeasured and nobody noticed. An icon that was scrolled
+	 * to and still could not be measured was covered by something at that
+	 * moment; that is occlusion, it is asserted on its own in
+	 * mythforge-m5.spec.cjs, and it is counted separately here. */
+	const neverSeen = await page.evaluate((measured)=>{
+		const done = new Set(measured);
+		let n = 0;
+		for (const el of document.querySelectorAll('[data-tide-icon-id]:not([data-tide-tried])')) {
+			if(done.has(el.getAttribute('data-tide-icon-id'))) continue;
+			const cs = getComputedStyle(el);
+			const r = el.getBoundingClientRect();
+			// Hidden and unreachable is fine. Visible and unreachable is not,
+			// and that is what this counts.
+			if(cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+			if(r.width < 1 || r.height < 1) continue;
+			// Behind an open dialog, or painted over by something: neither is
+			// an icon that failed to draw, and both are asserted elsewhere.
+			if(el.closest('[aria-hidden="true"]:not(i):not(svg), [inert]')) continue;
+			const cx = r.x + r.width / 2;
+			const cy = r.y + r.height / 2;
+			if(cx >= 0 && cy >= 0 && cx <= window.innerWidth && cy <= window.innerHeight) {
+				const top = document.elementFromPoint(cx, cy);
+				if(top && !(top === el || el.contains(top) || top.contains(el))) continue;
+			}
+			n += 1;
+		}
+		return n;
+	}, [...seen]);
+
+	const tried = await page.evaluate(()=>{
+		const n = document.querySelectorAll('[data-tide-tried]').length;
+		for (const el of document.querySelectorAll('[data-tide-icon-id]')) {
+			el.removeAttribute('data-tide-icon-id');
+			el.removeAttribute('data-tide-tried');
+		}
+		return n;
+	});
+
+	return { rows, unreached: neverSeen, unmeasurable, tried, passes: passes + 1, total };
+}
+
+module.exports = { measureInk, measureInkAll, inkTable, scrollToBottom, ICON_SELECTOR };
