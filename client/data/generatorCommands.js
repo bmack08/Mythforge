@@ -9,12 +9,12 @@
 // (POST /api/generate/:genType). They differ only for "location" → "map".
 
 export const GENERATOR_COMMANDS = [
-  { key: 'shop',      genType: 'shop',      label: 'Shop',           icon: 'fas fa-store',       desc: 'A shop with inventory, owners & services' },
-  { key: 'npc',       genType: 'npc',       label: 'NPC / Character', icon: 'fas fa-user',        desc: 'A full NPC stat block + personality' },
-  { key: 'item',      genType: 'item',      label: 'Magic Item',     icon: 'fas fa-ring',         desc: 'A magic item by rarity & school' },
-  { key: 'encounter', genType: 'encounter', label: 'Encounter',      icon: 'fas fa-dragon',       desc: 'A combat encounter for the party' },
-  { key: 'quest',     genType: 'quest',     label: 'Quest',          icon: 'fas fa-scroll',       desc: 'A quest with objective & antagonist' },
-  { key: 'location',  genType: 'map',       label: 'Location',       icon: 'fas fa-map-location-dot', desc: 'A region / location with points of interest' },
+  { key: 'shop',      genType: 'shop',      label: 'Shop',           icon: 'store',       desc: 'A shop with inventory, owners & services' },
+  { key: 'npc',       genType: 'npc',       label: 'NPC / Character', icon: 'user',        desc: 'A full NPC stat block + personality' },
+  { key: 'item',      genType: 'item',      label: 'Magic Item',     icon: 'gem',         desc: 'A magic item by rarity & school' },
+  { key: 'encounter', genType: 'encounter', label: 'Encounter',      icon: 'swords',       desc: 'A combat encounter for the party' },
+  { key: 'quest',     genType: 'quest',     label: 'Quest',          icon: 'scroll-text',       desc: 'A quest with objective & antagonist' },
+  { key: 'location',  genType: 'map',       label: 'Location',       icon: 'map-pin', desc: 'A region / location with points of interest' },
 ];
 
 // Field types: 'text', 'textarea', 'number', 'select' (with options).

@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import IconPicker from './IconPicker';
 import './TipTapToolbar.less';
+import Icon from './Icon.jsx';
 
 /**
  * TipTapToolbar - Comprehensive grouped formatting toolbar for the TipTap editor.
@@ -70,9 +71,9 @@ function ToolbarDropdown({ label, icon, children }) {
         title={label}
         type="button"
       >
-        {icon && <i className={icon} />}
+        {icon && <Icon icon={icon} />}
         <span className="tiptap-toolbar__dropdown-label">{label}</span>
-        <i className="fas fa-caret-down tiptap-toolbar__caret" />
+        <Icon icon="fas fa-caret-down tiptap-toolbar__caret" />
       </button>
       {open && (
         <div className="tiptap-toolbar__dropdown-menu">
@@ -179,7 +180,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={() => chain().toggleBold().run()}
           title="Bold (Ctrl+B)"
         >
-          <i className="fas fa-bold" />
+          <Icon icon="fas fa-bold" />
         </TBtn>
         <TBtn
           editor={editor}
@@ -187,7 +188,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={() => chain().toggleItalic().run()}
           title="Italic (Ctrl+I)"
         >
-          <i className="fas fa-italic" />
+          <Icon icon="fas fa-italic" />
         </TBtn>
         <TBtn
           editor={editor}
@@ -195,7 +196,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={() => chain().toggleStrike().run()}
           title="Strikethrough"
         >
-          <i className="fas fa-strikethrough" />
+          <Icon icon="fas fa-strikethrough" />
         </TBtn>
 
         <Divider />
@@ -206,7 +207,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={() => chain().toggleBulletList().run()}
           title="Bullet List"
         >
-          <i className="fas fa-list-ul" />
+          <Icon icon="fas fa-list-ul" />
         </TBtn>
         <TBtn
           editor={editor}
@@ -214,7 +215,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={() => chain().toggleOrderedList().run()}
           title="Ordered List"
         >
-          <i className="fas fa-list-ol" />
+          <Icon icon="fas fa-list-ol" />
         </TBtn>
       </div>
 
@@ -224,25 +225,25 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
       <div className="tiptap-toolbar__group" data-group="structure">
         <ToolbarDropdown label="Structure" icon="fas fa-stream">
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setPageBreak().run()} title="Page Break (\page)">
-            <i className="fas fa-file" /><span>Page Break</span>
+            <Icon icon="fas fa-file" /><span>Page Break</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setColumnBreak().run()} title="Column Break (\column)">
-            <i className="fas fa-columns" /><span>Column Break</span>
+            <Icon icon="fas fa-columns" /><span>Column Break</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertWide().run()} title="Wide Block (spans both columns)">
-            <i className="fas fa-arrows-alt-h" /><span>Wide Block</span>
+            <Icon icon="fas fa-arrows-alt-h" /><span>Wide Block</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setHorizontalRule().run()} title="Horizontal Rule">
-            <i className="fas fa-minus" /><span>Horizontal Rule</span>
+            <Icon icon="fas fa-minus" /><span>Horizontal Rule</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setPageNumber().run()} title="Page Number (auto)">
-            <i className="fas fa-hashtag" /><span>Page Number</span>
+            <Icon icon="fas fa-hashtag" /><span>Page Number</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertVerticalSpacing().run()} title="Vertical Spacing (1cm)">
-            <i className="fas fa-arrows-alt-v" /><span>Vertical Spacing</span>
+            <Icon icon="fas fa-arrows-alt-v" /><span>Vertical Spacing</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().setFooter().run()} title="Footer">
-            <i className="fas fa-window-minimize" /><span>Footer</span>
+            <Icon icon="fas fa-window-minimize" /><span>Footer</span>
           </button>
         </ToolbarDropdown>
       </div>
@@ -257,7 +258,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().setImage({ src: 'https://i.imgur.com/hMna6G0.png' }).run()}
             title="Insert an image (edit src in widget)"
           >
-            <i className="fas fa-image" />
+            <Icon icon="fas fa-image" />
             <span>Image</span>
           </button>
           <button
@@ -265,7 +266,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertImageWrapLeft('https://i.imgur.com/hMna6G0.png').run()}
             title="Insert image with text wrapping on left"
           >
-            <i className="fas fa-align-left" />
+            <Icon icon="fas fa-align-left" />
             <span>Image Wrap Left</span>
           </button>
           <button
@@ -273,7 +274,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertImageWrapRight('https://i.imgur.com/hMna6G0.png').run()}
             title="Insert image with text wrapping on right"
           >
-            <i className="fas fa-align-right" />
+            <Icon icon="fas fa-align-right" />
             <span>Image Wrap Right</span>
           </button>
           <button
@@ -281,7 +282,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertHbBackgroundImage({ src: 'https://i.imgur.com/hMna6G0.png', alt: 'background image', style: { position: 'absolute', bottom: '0', left: '0', height: '100%' } }).run()}
             title="Full-page background image (position: absolute)"
           >
-            <i className="fas fa-expand" />
+            <Icon icon="fas fa-expand" />
             <span>Background Image</span>
           </button>
           <button
@@ -289,7 +290,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertWatercolor({ variant: Math.ceil(Math.random() * 12), top: '0px', left: '0px', width: '400px', opacity: '80%', backgroundColor: '#BBAD82' }).run()}
             title="Watercolor stain decoration (center, random variant)"
           >
-            <i className="fas fa-paint-brush" />
+            <Icon icon="fas fa-paint-brush" />
             <span>Watercolor Center</span>
           </button>
           <button
@@ -297,7 +298,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertImageMask({ maskType: 'edge', maskNumber: Math.ceil(Math.random() * 8), rotation: '0' }).run()}
             title="Image mask — edge mask for page borders"
           >
-            <i className="fas fa-border-style" />
+            <Icon icon="fas fa-border-style" />
             <span>Watercolor Edge</span>
           </button>
           <button
@@ -305,7 +306,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertImageMask({ maskType: 'corner', maskNumber: Math.ceil(Math.random() * 37), offsetX: '-50%', offsetY: '50%' }).run()}
             title="Image mask — corner mask for decorative corners"
           >
-            <i className="fas fa-vector-square" />
+            <Icon icon="fas fa-vector-square" />
             <span>Watercolor Corner</span>
           </button>
           <button
@@ -313,7 +314,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertWatermark('DRAFT').run()}
             title="Add watermark text overlay"
           >
-            <i className="fas fa-font" />
+            <Icon icon="fas fa-font" />
             <span>Watermark</span>
           </button>
         </ToolbarDropdown>
@@ -323,13 +324,16 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
 
       {/* ── Group 3: D&D Blocks (dropdown) ─────────────────────── */}
       <div className="tiptap-toolbar__group" data-group="dnd">
-        <ToolbarDropdown label="D&D Blocks" icon="fas fa-dragon">
+        {/* `swords`, not the AI `sparkles` the fa-dragon mapping gives: this
+            group inserts content blocks, and every other dragon in the app
+            marks an AI entry point. UNIT M5. */}
+        <ToolbarDropdown label="D&D Blocks" icon="swords">
           <button
             className="tiptap-toolbar__dropdown-item"
             onClick={() => chain().insertQuote().run()}
             title="Quote / Callout block"
           >
-            <i className="fas fa-quote-left" />
+            <Icon icon="fas fa-quote-left" />
             <span>Quote Block</span>
           </button>
           <button
@@ -337,7 +341,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertNote().run()}
             title="Note / Annotation block"
           >
-            <i className="fas fa-sticky-note" />
+            <Icon icon="fas fa-sticky-note" />
             <span>Note Block</span>
           </button>
           <button
@@ -345,7 +349,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertSidebar().run()}
             title="Sidebar info box"
           >
-            <i className="fas fa-window-maximize" />
+            <Icon icon="fas fa-window-maximize" />
             <span>Sidebar Block</span>
           </button>
           <button
@@ -353,7 +357,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertFramedMonster().run()}
             title="Monster stat block (framed — bordered with background)"
           >
-            <i className="fas fa-skull-crossbones" />
+            <Icon icon="fas fa-skull-crossbones" />
             <span>Monster Block (Framed)</span>
           </button>
           <button
@@ -361,7 +365,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertUnframedMonster().run()}
             title="Monster stat block (unframed — stats only, no border)"
           >
-            <i className="fas fa-skull-crossbones" style={{ opacity: 0.6 }} />
+            <Icon icon="fas fa-skull-crossbones" style={{ opacity: 0.6 }} />
             <span>Monster Block (Unframed)</span>
           </button>
           <button
@@ -369,7 +373,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertWideMonster().run()}
             title="Monster stat block (wide — framed, spans both columns)"
           >
-            <i className="fas fa-skull-crossbones" />
+            <Icon icon="fas fa-skull-crossbones" />
             <span>Monster Block (Wide)</span>
           </button>
           <button
@@ -377,7 +381,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertSpell().run()}
             title="Spell description block"
           >
-            <i className="fas fa-magic" />
+            <Icon icon="fas fa-magic" />
             <span>Spell Block</span>
           </button>
           <button
@@ -385,7 +389,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertSpellList().run()}
             title="Spell list organized by level"
           >
-            <i className="fas fa-list" />
+            <Icon icon="fas fa-list" />
             <span>Spell List</span>
           </button>
           <button
@@ -393,7 +397,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertFeature().run()}
             title="Class/Race feature block"
           >
-            <i className="fas fa-shield-alt" />
+            <Icon icon="fas fa-shield-alt" />
             <span>Feature</span>
           </button>
           <button
@@ -401,7 +405,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertDescriptive().run()}
             title="Descriptive text block (PHB style read-aloud box)"
           >
-            <i className="fas fa-scroll" />
+            <Icon icon="fas fa-scroll" />
             <span>Descriptive Block</span>
           </button>
           <button
@@ -409,7 +413,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertClassTable().run()}
             title="Class progression table (framed)"
           >
-            <i className="fas fa-th-list" />
+            <Icon icon="fas fa-th-list" />
             <span>Class Table</span>
           </button>
           <button
@@ -417,7 +421,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertClassTable('frame', true).run()}
             title="Class progression table (framed, wide — spans both columns)"
           >
-            <i className="fas fa-th-list" style={{ opacity: 0.6 }} />
+            <Icon icon="fas fa-th-list" style={{ opacity: 0.6 }} />
             <span>Class Table (Wide)</span>
           </button>
           <button
@@ -425,7 +429,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertRuneTable('dwarvish').run()}
             title="Rune table — Dwarvish script (Davek font)"
           >
-            <i className="fas fa-language" />
+            <Icon icon="fas fa-language" />
             <span>Rune Table (Dwarvish)</span>
           </button>
           <button
@@ -433,7 +437,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertRuneTable('elvish').run()}
             title="Rune table — Elvish script (Rellanic font)"
           >
-            <i className="fas fa-language" style={{ opacity: 0.8 }} />
+            <Icon icon="fas fa-language" style={{ opacity: 0.8 }} />
             <span>Rune Table (Elvish)</span>
           </button>
           <button
@@ -441,7 +445,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertRuneTable('draconic').run()}
             title="Rune table — Draconic script (Iokharic font)"
           >
-            <i className="fas fa-language" style={{ opacity: 0.6 }} />
+            <Icon icon="fas fa-language" style={{ opacity: 0.6 }} />
             <span>Rune Table (Draconic)</span>
           </button>
           <button
@@ -449,7 +453,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertToc().run()}
             title="Table of Contents page"
           >
-            <i className="fas fa-book" />
+            <Icon icon="fas fa-book" />
             <span>Table of Contents</span>
           </button>
           <button
@@ -457,7 +461,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertToc(true).run()}
             title="Table of Contents (wide — spans both columns)"
           >
-            <i className="fas fa-book" style={{ opacity: 0.6 }} />
+            <Icon icon="fas fa-book" style={{ opacity: 0.6 }} />
             <span>Table of Contents (Wide)</span>
           </button>
           <button
@@ -465,7 +469,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertFrontCover().run()}
             title="Front cover — full-bleed cover with logo, title, banner"
           >
-            <i className="fas fa-book-open" />
+            <Icon icon="fas fa-book-open" />
             <span>Front Cover</span>
           </button>
           <button
@@ -473,7 +477,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertInsideCover().run()}
             title="Inside cover — title page with image mask and logo"
           >
-            <i className="fas fa-book" />
+            <Icon icon="fas fa-book" />
             <span>Inside Cover</span>
           </button>
           <button
@@ -481,7 +485,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertPartCover().run()}
             title="Part/chapter cover — divider page with header background"
           >
-            <i className="fas fa-bookmark" />
+            <Icon icon="fas fa-bookmark" />
             <span>Part Cover</span>
           </button>
           <button
@@ -489,7 +493,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertBackCover().run()}
             title="Back cover — dark background with description and logo"
           >
-            <i className="fas fa-book-reader" />
+            <Icon icon="fas fa-book-reader" />
             <span>Back Cover</span>
           </button>
           <button
@@ -497,7 +501,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => chain().insertImageMask().run()}
             title="Image mask — clip images with watercolor mask shapes"
           >
-            <i className="fas fa-mask" />
+            <Icon icon="fas fa-mask" />
             <span>Image Mask</span>
           </button>
         </ToolbarDropdown>
@@ -516,7 +520,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           }
           title="Insert Table (3x3)"
         >
-          <i className="fas fa-table" />
+          <Icon icon="fas fa-table" />
         </TBtn>
         {active('table') && (
           <>
@@ -525,7 +529,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => chain().addRowAfter().run()}
               title="Add Row After"
             >
-              <i className="fas fa-plus" />
+              <Icon icon="fas fa-plus" />
               <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Row</span>
             </TBtn>
             <TBtn
@@ -533,7 +537,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => chain().deleteRow().run()}
               title="Delete Row"
             >
-              <i className="fas fa-minus" />
+              <Icon icon="fas fa-minus" />
               <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Row</span>
             </TBtn>
             <TBtn
@@ -541,7 +545,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => chain().addColumnAfter().run()}
               title="Add Column After"
             >
-              <i className="fas fa-plus" />
+              <Icon icon="fas fa-plus" />
               <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Col</span>
             </TBtn>
             <TBtn
@@ -549,7 +553,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => chain().deleteColumn().run()}
               title="Delete Column"
             >
-              <i className="fas fa-minus" />
+              <Icon icon="fas fa-minus" />
               <span className="tiptap-toolbar__btn-label" style={{ fontSize: '9px' }}>Col</span>
             </TBtn>
             <TBtn
@@ -557,7 +561,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => chain().deleteTable().run()}
               title="Delete Table"
             >
-              <i className="fas fa-trash" />
+              <Icon icon="fas fa-trash" />
             </TBtn>
           </>
         )}
@@ -567,14 +571,14 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={handleInsertLink}
           title="Insert / Edit Link"
         >
-          <i className="fas fa-link" />
+          <Icon icon="fas fa-link" />
         </TBtn>
         <ToolbarDropdown label="More" icon="fas fa-plus">
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertFootnote().run()} title="Insert Footnote">
-            <i className="fas fa-superscript" /><span>Footnote</span>
+            <Icon icon="fas fa-superscript" /><span>Footnote</span>
           </button>
           <button className="tiptap-toolbar__dropdown-item" onClick={() => chain().insertComment().run()} title="Insert Comment (hidden in preview)">
-            <i className="fas fa-comment" /><span>Comment</span>
+            <Icon icon="fas fa-comment" /><span>Comment</span>
           </button>
         </ToolbarDropdown>
         <div className="tiptap-toolbar__icon-picker-wrap">
@@ -584,7 +588,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
             onClick={() => setIconPickerOpen((v) => !v)}
             title="Insert Icon"
           >
-            <i className="fas fa-icons" />
+            <Icon icon="fas fa-icons" />
           </TBtn>
           {iconPickerOpen && (
             <IconPicker
@@ -605,7 +609,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={onToggleLineNumbers}
           title="Toggle Line Numbers"
         >
-          <i className="fas fa-list-ol" style={{ opacity: 0.7 }} />
+          <Icon icon="fas fa-list-ol" style={{ opacity: 0.7 }} />
           <span className="tiptap-toolbar__btn-label">#</span>
         </TBtn>
         <TBtn
@@ -614,7 +618,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
           onClick={onToggleInkFriendly}
           title="Ink Friendly (strip backgrounds for printing)"
         >
-          <i className="fas fa-tint" style={{ opacity: 0.7 }} />
+          <Icon icon="fas fa-tint" style={{ opacity: 0.7 }} />
           <span className="tiptap-toolbar__btn-label">Ink</span>
         </TBtn>
         {/* UX-polish (closed alpha) toggles — only shown when the master flag is on */}
@@ -626,7 +630,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => onToggleUxFlag?.('outline')}
               title="Toggle Outline panel"
             >
-              <i className="fas fa-stream" style={{ opacity: 0.7 }} />
+              <Icon icon="fas fa-stream" style={{ opacity: 0.7 }} />
               <span className="tiptap-toolbar__btn-label">Outline</span>
             </TBtn>
             <TBtn
@@ -635,7 +639,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
               onClick={() => onToggleUxFlag?.('entities')}
               title="Highlight story entities (NPCs, locations…) inline"
             >
-              <i className="fas fa-project-diagram" style={{ opacity: 0.7 }} />
+              <Icon icon="fas fa-project-diagram" style={{ opacity: 0.7 }} />
               <span className="tiptap-toolbar__btn-label">Entities</span>
             </TBtn>
           </>

@@ -9,6 +9,7 @@ import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
 import { startFromTemplate } from '../../components/templatePicker/templatePicker.jsx';
 import { prefixPath } from '../../utils/basePath.js';
 import { ART, cssUrl } from '../../../art/tidewatch/art.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * THE IMPORT PATH - /legacy.
@@ -128,7 +129,7 @@ const ImportPage = createClass({
 					<section className='tide-solid tide-panel'>
 						<div className='tide-upload'>
 							<label>
-								<i className='fas fa-file-import' aria-hidden='true' />
+								<Icon icon='fas fa-file-import' aria-hidden='true' />
 								<span>{reading ? 'Reading…' : 'Choose a Markdown file'}</span>
 								<input
 									type='file'

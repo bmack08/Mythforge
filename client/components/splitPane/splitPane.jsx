@@ -1,5 +1,6 @@
 import './splitPane.less';
 import React, { useState, useEffect } from 'react';
+import Icon from '../Icon.jsx';
 
 const storageKey = 'naturalcrit-pane-split';
 
@@ -59,15 +60,15 @@ const SplitPane = (props)=>{
 		<>
 			<div className='arrow left'
 				onClick={()=>setMoveSource(!moveSource)} >
-				<i className='fas fa-arrow-left' />
+				<Icon icon='fas fa-arrow-left' />
 			</div>
 			<div className='arrow right'
 				onClick={()=>setMoveBrew(!moveBrew)} >
-				<i className='fas fa-arrow-right' />
+				<Icon icon='fas fa-arrow-right' />
 			</div>
 			<div id='scrollToggleDiv' className={liveScroll ? 'arrow lock' : 'arrow unlock'}
 				onClick={liveScrollToggle} >
-				<i id='scrollToggle' className={liveScroll ? 'fas fa-lock' : 'fas fa-unlock'} />
+				<Icon id='scrollToggle' icon={liveScroll ? 'fas fa-lock' : 'fas fa-unlock'} />
 			</div>
 		</>
 	);
@@ -75,10 +76,12 @@ const SplitPane = (props)=>{
 	const renderDivider = (
 		<div className={`divider ${isDragging && 'dragging'}`} onPointerDown={handleDown}>
 			{showDividerButtons && renderMoveArrows}
+			{/* One grip instead of three stacked 6px font dots (UNIT M5). Three
+			  * circles at 6px were three glyphs standing in for one affordance,
+			  * and at that size a stroked circle is mush; `grip-vertical` IS
+			  * six dots, drawn to be read at this size. */}
 			<div className='dots'>
-				<i className='fas fa-circle' />
-				<i className='fas fa-circle' />
-				<i className='fas fa-circle' />
+				<Icon icon='grip-vertical' />
 			</div>
 		</div>
 	);

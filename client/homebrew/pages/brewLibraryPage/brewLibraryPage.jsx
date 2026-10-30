@@ -9,6 +9,7 @@ import TemplatePicker, { TEMPLATES, startFromTemplate } from '../../components/t
 import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
 import { prefixPath } from '../../utils/basePath.js';
 import { ART, coversFor, cssUrl } from '../../../art/tidewatch/art.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * THE BREW LIBRARY - mocks/12-mythforge-home.html.
@@ -180,13 +181,13 @@ const BrewLibraryPage = createClass({
 
 					<div className='tide-actions'>
 						<button type='button' className='tide-btn-primary' onClick={this.openPicker}>
-							<i className='fas fa-plus' aria-hidden='true' /> New brew
+							<Icon icon='fas fa-plus' aria-hidden='true' /> New brew
 						</button>
 						<a className='tide-btn-quiet' href={prefixPath('/new-campaign')}>
-							<i className='fas fa-hat-wizard' aria-hidden='true' /> Generate a campaign
+							<Icon icon='fas fa-hat-wizard' aria-hidden='true' /> Generate a campaign
 						</a>
 						<a className='tide-btn-ghost' href={prefixPath('/legacy')}>
-							<i className='fas fa-file-import' aria-hidden='true' /> Import from Markdown
+							<Icon icon='fas fa-file-import' aria-hidden='true' /> Import from Markdown
 						</a>
 					</div>
 

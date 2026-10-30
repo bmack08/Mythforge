@@ -2,6 +2,7 @@ import React from 'react';
 import moment from 'moment';
 import UIPage from '../basePages/uiPage/uiPage.jsx';
 import NaturalCritIcon from 'naturalcrit/svg/naturalcrit.svg.jsx';
+import Icon from 'client/components/Icon.jsx';
 
 let SAVEKEY = '';
 
@@ -42,7 +43,7 @@ const AccountPage = (props)=>{
 		return (
 			<>
 				<div className='dataGroup'>
-					<h1>Account Information <i className='fas fa-user'></i></h1>
+					<h1>Account Information <Icon icon='fas fa-user'/></h1>
 					<p><strong>Username: </strong>{accountDetails.username || 'No user currently logged in'}</p>
 					<p><strong>Last Login: </strong>{moment(accountDetails.issued).format('dddd, MMMM Do YYYY, h:mm:ss a ZZ') || '-'}</p>
 				</div>
@@ -51,7 +52,7 @@ const AccountPage = (props)=>{
 					<p><strong>Brews on Homebrewery: </strong>{accountDetails.mongoCount}</p>
 				</div>
 				<div className='dataGroup'>
-					<h3>Google Information <i className='fab fa-google-drive'></i></h3>
+					<h3>Google Information <Icon icon='fab fa-google-drive'/></h3>
 					<p><strong>Linked to Google: </strong>{accountDetails.googleId ? 'YES' : 'NO'}</p>
 					{accountDetails.googleId && (
 						<p>

@@ -111,7 +111,28 @@ test.describe('icon font', ()=>{
 			}
 		});
 
-		await goto(page, '/');
+		/* UPDATED BY UNIT M5, and the reason is a product change rather than a
+		 * test that stopped being convenient.
+		 *
+		 * This used to load `/` and assert that a Font Awesome face reported
+		 * `loaded` and that a `.fas` glyph in the Mythforge bar measured more
+		 * than 4px. Neither can be true there any more: M5 replaced every icon
+		 * in the chrome with inline SVG, so the home page renders nothing in
+		 * the icon font and a browser does not download a webfont nothing
+		 * uses. Asserting `loaded` on `/` would now be asserting that the
+		 * dependence this redesign removed is still there.
+		 *
+		 * What M1 was actually protecting is kept, and split in two:
+		 *
+		 *   * the font path is still wired - measured on /changelog, which
+		 *     renders `{{fas,…}}` icons inline in the document and so is a
+		 *     page that genuinely still uses the font. A 200-text/html woff2
+		 *     or a 403 would show up there again.
+		 *   * the Mythforge bar's icons still RENDER - as drawn SVG now, which
+		 *     is what the owner was asking for. The thorough version of that
+		 *     is mythforge-m5.spec.cjs; this is the short one, so M1's own
+		 *     regression stays self-contained. */
+		await goto(page, '/changelog');
 		await page.evaluate(()=>document.fonts.ready);
 
 		// Nothing answered a woff2 request with something that is not a font.
@@ -119,14 +140,30 @@ test.describe('icon font', ()=>{
 
 		const loaded = await page.evaluate(()=>
 			Array.from(document.fonts).some((f)=>/Font Awesome/.test(f.family) && f.status === 'loaded'));
-		expect(loaded, 'a Font Awesome face reports status "loaded"').toBe(true);
+		expect(loaded, 'a Font Awesome face reports status "loaded" on a page that uses it').toBe(true);
 
 		// The real symptom was the fallback glyph: measure a rendered icon.
 		const width = await page.evaluate(()=>{
-			const i = document.querySelector('.tide-mbar i.fas');
+			// `{{fas,fa-dungeon}}` in the markdown renders as a <span>, not an
+			// <i>, so the tag is not part of the selector.
+			const i = document.querySelector('.tide-doc-article .fas[class*="fa-"]');
 			return i ? i.getBoundingClientRect().width : 0;
 		});
-		expect(width, 'a .fas icon in the Mythforge bar renders with width').toBeGreaterThan(4);
+		expect(width, 'a Font Awesome glyph in the changelog renders with width').toBeGreaterThan(4);
+
+		// And the bar the owner reported: inline SVG now, with geometry in it.
+		await goto(page, '/');
+		const barIcons = await page.evaluate(()=>
+			Array.from(document.querySelectorAll('.tide-mbar i.tide-icon')).map((i)=>{
+				const svg = i.querySelector('svg');
+				const r = svg ? svg.getBoundingClientRect() : { width: 0, height: 0 };
+				return {
+					geometry : svg ? svg.querySelectorAll('path, circle, rect, line, polyline, polygon, ellipse').length : 0,
+					width    : r.width
+				};
+			}));
+		expect(barIcons.length, 'the Mythforge bar has icons').toBeGreaterThan(4);
+		expect(barIcons.filter((i)=>i.geometry === 0 || i.width <= 4), 'bar icons with no drawn geometry').toEqual([]);
 	});
 });
 

@@ -146,6 +146,14 @@ const corsOptions = {
 			'http://localhost:3000',
 			'http://localhost:5173', // TaleForge Vite dev server (proxy origin)
 			'http://localhost:8081', // Vite dev server
+			/* The four localhost entries above are the default pair of ports
+			 * and nothing else, so a second checkout on another port - or any
+			 * deployment at a hostname not written here - has no way in. One
+			 * comma-separated env var, empty by default, so the shipped
+			 * behaviour is byte-identical. Added in UNIT M5, which had to run
+			 * on isolation ports. */
+			...(process.env.MYTHFORGE_EXTRA_CORS_ORIGINS || '')
+				.split(',').map((o)=>o.trim()).filter(Boolean)
 		];
 
 		const localNetworkRegex = /^http:\/\/(localhost|127\.0\.0\.1|10\.\d+\.\d+\.\d+|192\.168\.\d+\.\d+|172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+)(:\d+)?$/;
@@ -163,7 +171,29 @@ const corsOptions = {
 	credentials : true,
 };
 
-app.use(cors(corsOptions));
+/* Same origin is always allowed, whatever port this server happens to be on.
+ *
+ * Every @font-face fetch is made in CORS mode, so the browser attaches an
+ * `Origin` header even when it is asking THIS server for THIS server's own
+ * file. The allow-list above names four fixed localhost ports, so on any other
+ * one - PORT=3100, say - the origin check rejected the server's own requests,
+ * the error reached the catch-all handler, and every webfont came back as
+ * 5,502 bytes of the SPA's own index.html with a 200. `document.fonts` then
+ * reported eleven families in `error`, including the Davek, Iokharic and
+ * Rellanic rune ICON fonts, i.e. empty boxes - which is the defect UNIT M5 is
+ * here to remove. `curl` never saw it, because curl sends no Origin.
+ *
+ * The allow-list exists to stop OTHER people's pages using this server as a
+ * backend. A page on this same origin is not another page, so this only ever
+ * narrows the rejection; genuine cross-origin requests still go through the
+ * check above unchanged. Found in UNIT M5. */
+app.use(cors((req, callback)=>{
+	const origin = req.headers.origin;
+	const host   = req.headers.host;
+	if(origin && host && origin.replace(/^https?:\/\//, '') === host)
+		return callback(null, { ...corsOptions, origin: true });
+	return callback(null, corsOptions);
+}));
 
 //Account Middleware
 app.use((req, res, next)=>{

@@ -3,6 +3,7 @@ import { ensureJson, toPlainText } from 'shared/contentAdapter.js';
 import React from 'react';
 import createClass from 'create-react-class';
 import { stripPrefix } from '../../utils/basePath.js';
+import Icon from 'client/components/Icon.jsx';
 
 const MAX_REFERENCE_SIZE = 1024 * 1024 * 30; // 30 MB per reference
 const MAX_REFERENCE_CHARS = 20000;
@@ -848,7 +849,7 @@ const AiSidebar = createClass({
 
 					<label className='reference-upload'>
 
-						<i className='fas fa-upload' /> Upload files
+						<Icon icon='fas fa-upload' /> Upload files
 
 						<input type='file' multiple onChange={this.handleFileSelect} accept='.txt,.md,.markdown,.json,.yaml,.yml,.csv,.log,.pdf,.doc,.docx,.rtf,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/rtf' />
 
@@ -858,7 +859,7 @@ const AiSidebar = createClass({
 
 						<button className='reference-clear' onClick={this.clearReferences}>
 
-							<i className='fas fa-trash' /> Clear
+							<Icon icon='fas fa-trash' /> Clear
 
 						</button>
 
@@ -892,7 +893,7 @@ const AiSidebar = createClass({
 
 								<button className='reference-remove' onClick={()=>this.removeReference(idx)}>
 
-									<i className='fas fa-times' />
+									<Icon icon='fas fa-times' />
 
 								</button>
 
@@ -929,7 +930,7 @@ const AiSidebar = createClass({
 		return (
 			<div key={index} className={containerClass}>
 				<div className='message-header'>
-					<i className={`fas ${roleIcon}`} />
+					<Icon icon={`fas ${roleIcon}`} />
 					<span className='message-sender'>
 						{senderLabel}
 					</span>
@@ -954,10 +955,10 @@ const AiSidebar = createClass({
 							{!message.patchApplied && !message.patchDismissed && (
 								<div className='patch-actions'>
 									<button className='apply-patch-btn' onClick={()=>this.applyPatch(index, message.patch)}>
-										<i className='fas fa-check' /> Apply
+										<Icon icon='fas fa-check' /> Apply
 									</button>
 									<button className='reject-patch-btn' onClick={()=>this.rejectPatch(index)}>
-										<i className='fas fa-times' /> Dismiss
+										<Icon icon='fas fa-times' /> Dismiss
 									</button>
 								</div>
 							)}
@@ -1443,8 +1444,8 @@ const AiSidebar = createClass({
 
 		return <div className='rewrite-plan-panel'>
 			<div className='plan-header'>
-				<h4><i className='fas fa-project-diagram' /> Rewrite Plan</h4>
-				<button className='plan-close' onClick={this.cancelRewritePlan}><i className='fas fa-times' /></button>
+				<h4><Icon icon='fas fa-project-diagram' /> Rewrite Plan</h4>
+				<button className='plan-close' onClick={this.cancelRewritePlan}><Icon icon='fas fa-times' /></button>
 			</div>
 
 			<div className='plan-summary'>{plan.summary}</div>
@@ -1460,7 +1461,7 @@ const AiSidebar = createClass({
 					<strong>Broken Dependencies:</strong>
 					{plan.impactAnalysis.brokenDependencies.map((d, i) =>
 						<div key={i} className={`dep-item severity-${d.severity}`}>
-							<i className='fas fa-exclamation-triangle' /> {d.description}
+							<Icon icon='fas fa-exclamation-triangle' /> {d.description}
 						</div>
 					)}
 				</div>}
@@ -1468,7 +1469,7 @@ const AiSidebar = createClass({
 					<strong>Potential Plot Holes:</strong>
 					{plan.impactAnalysis.plotHoles.map((h, i) =>
 						<div key={i} className={`hole-item severity-${h.severity}`}>
-							<i className='fas fa-bug' /> {h.description}
+							<Icon icon='fas fa-bug' /> {h.description}
 							{h.suggestedFix && <div className='suggested-fix'>Fix: {h.suggestedFix}</div>}
 						</div>
 					)}
@@ -1489,27 +1490,27 @@ const AiSidebar = createClass({
 						{step.sectionTarget && <div className='step-target'>Target: {step.sectionTarget}</div>}
 						{!status && <div className='step-actions'>
 							<button className='approve-btn' onClick={() => this.approveRewriteStep(step.stepId)}>
-								<i className='fas fa-check' /> Approve
+								<Icon icon='fas fa-check' /> Approve
 							</button>
 							<button className='reject-btn' onClick={() => this.rejectRewriteStep(step.stepId)}>
-								<i className='fas fa-times' /> Reject
+								<Icon icon='fas fa-times' /> Reject
 							</button>
 						</div>}
-						{status === 'approved' && <div className='step-status approved'><i className='fas fa-check-circle' /> Approved</div>}
-						{status === 'rejected' && <div className='step-status rejected'><i className='fas fa-times-circle' /> Rejected</div>}
+						{status === 'approved' && <div className='step-status approved'><Icon icon='fas fa-check-circle' /> Approved</div>}
+						{status === 'rejected' && <div className='step-status rejected'><Icon icon='fas fa-times-circle' /> Rejected</div>}
 					</div>;
 				})}
 			</div>
 
 			<div className='plan-actions'>
 				<button className='approve-all-btn' onClick={this.approveAllRewriteSteps} disabled={this.state.applyingRewriteSteps}>
-					<i className='fas fa-check-double' /> Approve All
+					<Icon icon='fas fa-check-double' /> Approve All
 				</button>
 				<button className='apply-plan-btn' onClick={this.applyApprovedRewriteSteps}
 					disabled={this.state.applyingRewriteSteps || approvedCount === 0}>
 					{this.state.applyingRewriteSteps
-						? <><i className='fas fa-spinner fa-spin' /> Applying...</>
-						: <><i className='fas fa-magic' /> Apply {approvedCount} Step{approvedCount !== 1 ? 's' : ''}</>
+						? <><Icon icon='fas fa-spinner fa-spin' /> Applying...</>
+						: <><Icon icon='fas fa-magic' /> Apply {approvedCount} Step{approvedCount !== 1 ? 's' : ''}</>
 					}
 				</button>
 				<button className='cancel-plan-btn' onClick={this.cancelRewritePlan} disabled={this.state.applyingRewriteSteps}>
@@ -1605,7 +1606,7 @@ const AiSidebar = createClass({
 		return (
 			<div className={`ai-sidebar ${this.state.isExpanded ? 'expanded' : 'collapsed'}`}>
 				<div className='ai-toggle' onClick={this.toggleExpanded}>
-					<i className='fas fa-dragon' />
+					<Icon icon='fas fa-dragon' />
 					<span>Story Assistant</span>
 				</div>
 				
@@ -1613,7 +1614,7 @@ const AiSidebar = createClass({
 					<>
 						<div className='ai-header'>
 							<h3>
-								<i className='fas fa-dragon' />
+								<Icon icon='fas fa-dragon' />
 								Story Assistant
 							</h3>
 							<div className='ai-header-controls'>
@@ -1627,14 +1628,14 @@ const AiSidebar = createClass({
 								</label>
 								<div className='version-controls'>
 									<button className='undo-btn' onClick={this.handleUndoClick} title='Undo to previous version'>
-										<i className='fas fa-undo' /> Undo
+										<Icon icon='fas fa-undo' /> Undo
 									</button>
 									<button className='redo-btn' onClick={this.handleRedoClick} title='Redo to next version'>
-										<i className='fas fa-redo' /> Redo
+										<Icon icon='fas fa-redo' /> Redo
 									</button>
 								</div>
 								<button className='close-btn' onClick={this.toggleExpanded}>
-									<i className='fas fa-times' />
+									<Icon icon='fas fa-times' />
 								</button>
 							</div>
 						</div>
@@ -1643,7 +1644,7 @@ const AiSidebar = createClass({
 						<div className='chat-messages'>
 							{this.state.chatMessages.length === 0 && (
 								<div className='welcome-message'>
-									<i className='fas fa-dragon' />
+									<Icon icon='fas fa-dragon' />
 									<h4>Hello! I'm your D&D Story Assistant</h4>
 									<p>Ask questions, tune scenes, or request full rewrites. I can also propose patches you can apply instantly.</p>
 									<ul>
@@ -1659,11 +1660,11 @@ const AiSidebar = createClass({
 							{this.state.isProcessing && (
 								<div className='chat-message assistant processing'>
 									<div className='message-header'>
-										<i className='fas fa-dragon' />
+										<Icon icon='fas fa-dragon' />
 										<span className='message-sender'>Story Assistant</span>
 									</div>
 									<div className='message-content'>
-										<i className='fas fa-spinner fa-spin' /> Thinking through your request...
+										<Icon icon='fas fa-spinner fa-spin' /> Thinking through your request...
 									</div>
 								</div>
 							)}
@@ -1703,12 +1704,12 @@ const AiSidebar = createClass({
 									onClick={this.sendMessage}
 									disabled={this.state.isProcessing || !this.state.currentMessage.trim()}
 								>
-									<i className='fas fa-paper-plane' />
+									<Icon icon='fas fa-paper-plane' />
 								</button>
 							</div>
 							{this.state.statusMessage && (
 								<div className='status-message'>
-									<i className='fas fa-info-circle' /> {this.state.statusMessage}
+									<Icon icon='fas fa-info-circle' /> {this.state.statusMessage}
 								</div>
 							)}
 						</div>

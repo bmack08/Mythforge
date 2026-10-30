@@ -24,6 +24,23 @@ const fsAllow = [__dirname, ...(nodeModulesReal ? [nodeModulesReal] : [])];
 // Set MYTHFORGE_BASE_PATH=/ for standalone development
 const basePath = process.env.MYTHFORGE_BASE_PATH || '/mythforge/';
 
+// Where the BUILT files are SERVED from, which is a different question from
+// which route prefix the app answers on - and conflating the two is why the
+// production build did not work (UNIT M5).
+//
+// `build.outDir` is build/homebrew, and server/app.js serves that directory at
+// /homebrew: `/homebrew/bundle.js` and `/homebrew/creations-workshop-1280.webp`
+// both answer 200, while `/mythforge/...` is a 404 on that server. With `base`
+// set to the ROUTE prefix, every emitted asset URL and every modulepreload hint
+// pointed at /mythforge/ and came back as the SPA's own index.html - the art
+// band silently vanished and the console filled with
+// "Expected a JavaScript-or-Wasm module script ... MIME type of text/html".
+//
+// The dev server is the case where `base` genuinely IS the route prefix: it
+// serves the app itself at http://localhost:<port>/mythforge/. So the two
+// values differ by command, and both stay env-overridable.
+const assetBase = process.env.MYTHFORGE_ASSET_BASE || '/homebrew/';
+
 // Dev-server port and the Express origin it proxies to. Both are env-driven so a
 // second checkout can run beside the default one without fighting over a port;
 // the defaults are the historical hardcoded values, so `npm run dev` is unchanged.
@@ -31,8 +48,8 @@ const devPort   = Number(process.env.MYTHFORGE_VITE_PORT || 8081);
 const apiTarget = process.env.MYTHFORGE_API_TARGET || 'http://localhost:3000';
 
 // https://vitejs.dev/config/
-export default defineConfig({
-	base: basePath,
+export default defineConfig(({ command })=>({
+	base: command === 'build' ? assetBase : basePath,
 
 	plugins: [
 		react({
@@ -208,4 +225,4 @@ export default defineConfig({
 			'moment'
 		]
 	}
-});
+}));

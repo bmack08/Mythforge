@@ -242,4 +242,158 @@ function table(rows, limit = 12) {
 	return lines.join('\n');
 }
 
-module.exports = { probes, measure, table };
+/* ── Icons ──────────────────────────────────────────────────────────────
+ *
+ * WCAG 2.2 1.4.11: a graphic needed to understand the content has to clear
+ * 3:1 against what is adjacent to it. Every icon in the Tidewatch chrome is
+ * `stroke: currentColor` on a surface that may be a solid, a glass panel over
+ * art, or the gradient nav - so "the token is fine" is no more an answer here
+ * than it is for text, and the same screenshot method applies.
+ *
+ * The one difference: text is hidden with `color: transparent`, which leaves
+ * the element's own background in place. For an icon the ink IS the svg, so
+ * the svg is hidden with `visibility` and the host <i> - which carries no
+ * background of its own - is sampled. Added by UNIT M5.
+ *
+ * Decorative icons are measured too, deliberately. Every icon in this chrome
+ * is marked aria-hidden because it sits beside its own label, so exempting
+ * them would measure nothing at all; and an icon too faint to see is still a
+ * button nobody can find, label or no label. */
+async function measureIcons(page, { clipTop = 0, clipExempt = '' } = {}) {
+	const found = await page.evaluate(({ clip, exempt })=>{
+		const describe = (el)=>{
+			const parts = [];
+			let node = el;
+			for (let i = 0; node && i < 3; i += 1) {
+				const id = node.getAttribute?.('data-testid') || node.id;
+				parts.unshift(id ? `${node.tagName.toLowerCase()}[${id}]` : node.tagName.toLowerCase());
+				node = node.parentElement;
+			}
+			return parts.join('>');
+		};
+
+		/* On this screenshot, and not underneath something else.
+		 *
+		 * A measurement is only meaningful for an icon the camera can see:
+		 * one scrolled off the side of a horizontally scrolling toolbar gets
+		 * its sample box clamped to the canvas edge and reads back whatever
+		 * is at the edge, and one painted over by another element contributes
+		 * no pixels at all. Both are reported by their own assertions in
+		 * mythforge-m5.spec.cjs rather than being quietly folded into an
+		 * ink or contrast number here. */
+		const onCamera = (r)=>r.bottom > 0 && r.top < window.innerHeight
+			&& r.right > 0 && r.left < window.innerWidth;
+		const occluded = (el, r)=>{
+			const cx = r.x + r.width / 2;
+			const cy = r.y + r.height / 2;
+			if(cx < 0 || cy < 0 || cx > window.innerWidth || cy > window.innerHeight) return true;
+			const top = document.elementFromPoint(cx, cy);
+			if(!top) return true;
+			return !(top === el || el.contains(top) || top.contains(el));
+		};
+
+		const out = [];
+		for (const host of Array.from(document.querySelectorAll('i.tide-icon'))) {
+			if(!host.querySelector('svg')) continue;
+			const cs = getComputedStyle(host);
+			if(cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) === 0) continue;
+			if(host.closest('[disabled], [aria-disabled="true"]')) continue;
+			/* Behind an open dialog. The page under a 72%-black scrim is
+			 * decoration - it is aria-hidden and inert, nobody can reach it,
+			 * and measuring it compares real ink against a dimmed surface and
+			 * invents a failure. Unit M1 hit exactly this with text on
+			 * /create-project and fixed it the same way. */
+			if(host.closest('[aria-hidden="true"]:not(i):not(svg), [inert]')) continue;
+
+			const r = host.getBoundingClientRect();
+			if(r.width < 1 || r.height < 1) continue;
+			if(!onCamera(r) || occluded(host, r)) continue;
+			if(clip && r.top < clip && !(exempt && host.closest(exempt))) continue;
+
+			/* Sample the middle, not the whole box. An icon's ink is centred,
+			 * and the outer ring of its box belongs to whatever chip it sits
+			 * in - a rounded corner, a border, or the paper showing past the
+			 * edge of the splitPane's 19px toggle. Taking the 99th percentile
+			 * over the full rect let four of those corner pixels report a
+			 * white-on-#232B2F icon as 2.27:1. Same reasoning as the text
+			 * pass using GLYPH rects rather than element boxes. */
+			const inset = Math.min(3, Math.floor(Math.min(r.width, r.height) * 0.18));
+
+			out.push({
+				name  : (host.className.match(/tide-icon--([a-z0-9-]+)/) || [])[1] || '?',
+				where : describe(host),
+				color : cs.color,
+				box   : {
+					x : r.x + inset,
+					y : r.y + inset,
+					w : Math.max(1, r.width  - inset * 2),
+					h : Math.max(1, r.height - inset * 2)
+				}
+			});
+		}
+		return out;
+	}, { clip: clipTop, exempt: clipExempt });
+
+	if(found.length === 0) return [];
+
+	const styleId = 'tidewatch-icon-probe';
+	await page.evaluate((id)=>{
+		const el = document.createElement('style');
+		el.id = id;
+		el.textContent = 'i.tide-icon > svg { visibility: hidden !important; }';
+		document.head.appendChild(el);
+	}, styleId);
+
+	const shot = (await page.screenshot({ type: 'png' })).toString('base64');
+	const bg = await page.evaluate(async ({ b64, boxes })=>{
+		const img = new Image();
+		img.src = `data:image/png;base64,${b64}`;
+		await img.decode();
+		const canvas = document.createElement('canvas');
+		canvas.width  = img.naturalWidth;
+		canvas.height = img.naturalHeight;
+		const ctx = canvas.getContext('2d');
+		if(!ctx) return boxes.map(()=>1);
+		ctx.drawImage(img, 0, 0);
+		const scale = img.naturalWidth / window.innerWidth;
+		const lum = (r, g, b)=>{
+			const f = (v)=>{
+				const c = v / 255;
+				return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+			};
+			return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+		};
+		return boxes.map((bx)=>{
+			const x = Math.round(bx.x * scale);
+			const y = Math.round(bx.y * scale);
+			const w = Math.max(1, Math.min(Math.round(bx.w * scale), canvas.width - x));
+			const h = Math.max(1, Math.min(Math.round(bx.h * scale), canvas.height - y));
+			if(x < 0 || y < 0 || w < 1 || h < 1) return 0;
+			const data = ctx.getImageData(x, y, w, h).data;
+			const ls = [];
+			for (let i = 0; i < data.length; i += 4) ls.push(lum(data[i], data[i + 1], data[i + 2]));
+			ls.sort((a, b2)=>a - b2);
+			return ls[Math.max(0, Math.ceil(ls.length * 0.99) - 1)];
+		});
+	}, { b64: shot, boxes: found.map((p)=>p.box) });
+
+	await page.evaluate((id)=>document.getElementById(id)?.remove(), styleId);
+
+	return found.map((p, i)=>{
+		const rgb = parseColor(p.color);
+		const fg  = rgb ? relLuminance(rgb[0], rgb[1], rgb[2]) : 1;
+		const r   = ratio(fg, bg[i]);
+		return {
+			text       : p.name,
+			where      : p.where,
+			color      : p.color,
+			fontSize   : Math.round(p.box.w),
+			fontWeight : 400,
+			ratio      : Math.round(r * 100) / 100,
+			need       : 3.0,                 // WCAG 2.2 1.4.11, non-text contrast
+			pass       : r >= 3.0
+		};
+	});
+}
+
+module.exports = { probes, measure, measureIcons, table };

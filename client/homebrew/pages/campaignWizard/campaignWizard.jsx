@@ -8,6 +8,7 @@ import MythforgeBar from '../../components/mythforgeBar/mythforgeBar.jsx';
 import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
 import { prefixPath } from '../../utils/basePath.js';
 import { ART, cssUrl } from '../../../art/tidewatch/art.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * THE CAMPAIGN GENERATOR - unit M3 of the Tidewatch redesign.
@@ -63,13 +64,18 @@ const COMPLEXITY = [
 	{ id: 'complex',  label: 'Complex',  desc: 'Four or five interwoven threads, deep NPCs, ambiguous choices' }
 ];
 
+/* Lucide names (client/icons/lucide), rendered inline by <Icon> - UNIT M5.
+ * Three of the six changed glyph as well as format, because the Font Awesome
+ * choices were the closest FA had rather than the closest thing to the label:
+ * a chess queen for "political intrigue" is now a crown, a dungeon door is a
+ * castle, and a city skyline is a building. */
 const ADVENTURE_TYPES = [
-	{ id: 'dungeon',    label: 'Dungeon crawl',   icon: 'fas fa-dungeon',     desc: 'Exploration with traps, puzzles and combat' },
-	{ id: 'mystery',    label: 'Mystery',         icon: 'fas fa-search',      desc: 'Clues, suspects and revelations' },
-	{ id: 'intrigue',   label: 'Political intrigue', icon: 'fas fa-chess-queen', desc: 'Social encounters, factions and power' },
-	{ id: 'wilderness', label: 'Wilderness',      icon: 'fas fa-mountain',    desc: 'Survival across dangerous terrain' },
-	{ id: 'city',       label: 'Urban adventure', icon: 'fas fa-city',        desc: 'Quests among NPCs, shops and guilds' },
-	{ id: 'planar',     label: 'Planar travel',   icon: 'fas fa-globe',       desc: 'Adventures across several planes' }
+	{ id: 'dungeon',    label: 'Dungeon crawl',   icon: 'castle',     desc: 'Exploration with traps, puzzles and combat' },
+	{ id: 'mystery',    label: 'Mystery',         icon: 'search',     desc: 'Clues, suspects and revelations' },
+	{ id: 'intrigue',   label: 'Political intrigue', icon: 'crown',   desc: 'Social encounters, factions and power' },
+	{ id: 'wilderness', label: 'Wilderness',      icon: 'mountain',   desc: 'Survival across dangerous terrain' },
+	{ id: 'city',       label: 'Urban adventure', icon: 'building-2', desc: 'Quests among NPCs, shops and guilds' },
+	{ id: 'planar',     label: 'Planar travel',   icon: 'globe',      desc: 'Adventures across several planes' }
 ];
 
 const STEPS = ['Basics', 'World', 'Adventure', 'References', 'Generate'];
@@ -278,7 +284,7 @@ const CampaignWizard = createClass({
 				aria-pressed={this.state[key] === opt.id}
 				onClick={()=>this.setState({ [key]: opt.id })}
 			>
-				{icons && <i className={`${opt.icon} tide-choice-icon`} aria-hidden='true' />}
+				{icons && <Icon icon={opt.icon} className='tide-choice-icon' />}
 				<strong>{opt.label}</strong>
 				<span>{opt.desc}</span>
 			</button>
@@ -413,7 +419,7 @@ const CampaignWizard = createClass({
 						aria-pressed={this.state.adventureType === a.id}
 						onClick={()=>this.setState({ adventureType: a.id })}
 					>
-						<i className={`${a.icon} tide-choice-icon`} aria-hidden='true' />
+						<Icon icon={a.icon} className='tide-choice-icon' />
 						<strong>{a.label}</strong>
 						<span>{a.desc}</span>
 					</button>
@@ -452,7 +458,7 @@ const CampaignWizard = createClass({
 						style={{ display: 'none' }}
 					/>
 					<label htmlFor='campaign-file-input'>
-						<i className='fas fa-cloud-arrow-up' aria-hidden='true' />
+						<Icon icon='fas fa-cloud-arrow-up' aria-hidden='true' />
 						<span>Choose files — PDF, DOCX, TXT or MD</span>
 						<span className='tide-cap'>Up to {MAX_FILES} files, 30 MB each</span>
 					</label>
@@ -468,7 +474,7 @@ const CampaignWizard = createClass({
 			{this.state.references.length > 0 &&
 				<ul className='tide-reflist'>
 					{this.state.references.map((ref, i)=><li key={`${ref.name}-${i}`} className='tide-ref'>
-						<i className='fas fa-file-lines' aria-hidden='true' />
+						<Icon icon='fas fa-file-lines' aria-hidden='true' />
 						<span className='tide-ref-name'>{ref.name}</span>
 						<span className='tide-ref-size'>{(ref.size / 1024).toFixed(0)} KB</span>
 						<button
@@ -477,7 +483,7 @@ const CampaignWizard = createClass({
 							aria-label={`Remove ${ref.name}`}
 							onClick={()=>this.removeReference(i)}
 						>
-							<i className='fas fa-xmark' aria-hidden='true' />
+							<Icon icon='fas fa-xmark' aria-hidden='true' />
 						</button>
 					</li>
 					)}
@@ -554,7 +560,7 @@ const CampaignWizard = createClass({
 				<a className='tide-btn-ghost' href={prefixPath('/')}>Cancel</a>
 				{step > 1 &&
 					<button className='tide-btn-quiet' type='button' onClick={this.prevStep} disabled={isGenerating}>
-						<i className='fas fa-arrow-left' aria-hidden='true' /> Back
+						<Icon icon='fas fa-arrow-left' aria-hidden='true' /> Back
 					</button>
 				}
 			</div>
@@ -564,14 +570,14 @@ const CampaignWizard = createClass({
 			<div className='tide-actions'>
 				{step < LAST_STEP &&
 					<button className='tide-btn-primary' type='button' onClick={this.nextStep}>
-						Next step <i className='fas fa-arrow-right' aria-hidden='true' />
+						Next step <Icon icon='fas fa-arrow-right' aria-hidden='true' />
 					</button>
 				}
 				{step === LAST_STEP &&
 					<button className='tide-btn-primary' type='button' onClick={this.handleGenerate} disabled={isGenerating}>
 						{isGenerating
 							? <><span className='tide-spinner' aria-hidden='true' /> Generating…</>
-							: <><i className='fas fa-wand-magic-sparkles' aria-hidden='true' /> Generate campaign</>
+							: <><Icon icon='fas fa-wand-magic-sparkles' aria-hidden='true' /> Generate campaign</>
 						}
 					</button>
 				}

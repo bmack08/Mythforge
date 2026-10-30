@@ -1789,8 +1789,22 @@ export const getBrew = (type = 'share', requireAuth = false) => {
 			const { id } = req.params;
 			const { Homebrew } = await getModels();
 			
-			// Try to find by editId first, then by primary key
+			// Try to find by editId first, then by shareId, then by primary key.
+			//
+			// The shareId step was missing, and this middleware is what backs
+			// /share/:id, /source/:id and /download/:id - so every share link
+			// this app hands out answered `404 {"error":"Brew not found"}`.
+			// The `type` argument ('share' vs 'edit') was accepted and never
+			// used. Found in UNIT M5, which could not walk /share on the
+			// production server to check its icons because the route never
+			// reached the app.
+			//
+			// editId stays first so nothing that resolves today resolves
+			// differently; this only turns 404s into pages.
 			let brew = await Homebrew.findOne({ where: { editId: id } });
+			if (!brew) {
+				brew = await Homebrew.findOne({ where: { shareId: id } });
+			}
 			if (!brew) {
 				brew = await Homebrew.findByPk(id);
 			}

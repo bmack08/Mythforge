@@ -1,6 +1,7 @@
 import './tagInput.less';
 import React, { useState, useEffect } from 'react';
 import _ from 'lodash';
+import Icon from 'client/components/Icon.jsx';
 
 const TagInput = ({ unique = true, values = [], ...props })=>{
 	const [tempInputText, setTempInputText] = useState('');
@@ -64,7 +65,7 @@ const TagInput = ({ unique = true, values = [], ...props })=>{
 				className='tag'
 				onClick={()=>editTag(index)}>
 				{context.value}
-				<button onClick={(evt)=>{evt.stopPropagation(); submitTag(null, context.value, index);}}><i className='fa fa-times fa-fw'/></button>
+				<button onClick={(evt)=>{evt.stopPropagation(); submitTag(null, context.value, index);}}><Icon icon='fa fa-times fa-fw'/></button>
 			</li>
 		);
 	};

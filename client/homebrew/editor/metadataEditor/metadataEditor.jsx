@@ -10,6 +10,7 @@ import TagInput from '../tagInput/tagInput.jsx';
 import Themes from 'themes/themes.json';
 import validations from './validations.js';
 import homebreweryThumbnail from '../../thumbnail.png';
+import Icon from 'client/components/Icon.jsx';
 
 const SYSTEMS = ['5e', '4e', '3.5e', 'Pathfinder'];
 
@@ -181,11 +182,11 @@ const MetadataEditor = createClass({
 	renderPublish : function(){
 		if(this.props.metadata.published){
 			return <button className='unpublish' onClick={()=>this.handlePublish(false)}>
-				<i className='fas fa-ban' /> unpublish
+				<Icon icon='fas fa-ban' /> unpublish
 			</button>;
 		} else {
 			return <button className='publish' onClick={()=>this.handlePublish(true)}>
-				<i className='fas fa-globe' /> publish
+				<Icon icon='fas fa-globe' /> publish
 			</button>;
 		}
 	},
@@ -197,7 +198,7 @@ const MetadataEditor = createClass({
 			<label>delete</label>
 			<div className='value'>
 				<button className='publish' onClick={this.handleDelete}>
-					<i className='fas fa-trash-alt' /> delete brew
+					<Icon icon='fas fa-trash-alt' /> delete brew
 				</button>
 			</div>
 		</div>;
@@ -231,13 +232,13 @@ const MetadataEditor = createClass({
 						className={isCommercial ? 'tide-btn-quiet' : 'tide-btn-primary'}
 						aria-pressed={!isCommercial}
 						onClick={()=>this.handleComplianceMode('standard')}>
-						<i className='fas fa-feather-pointed' aria-hidden='true'></i>Standard
+						<Icon icon='fas fa-feather-pointed' aria-hidden='true'/>Standard
 					</button>
 					<button type='button'
 						className={isCommercial ? 'tide-btn-primary' : 'tide-btn-quiet'}
 						aria-pressed={isCommercial}
 						onClick={()=>this.handleComplianceMode('commercial')}>
-						<i className='fas fa-store' aria-hidden='true'></i>Commercial-safe
+						<Icon icon='fas fa-store' aria-hidden='true'/>Commercial-safe
 					</button>
 				</div>
 				<small>{isCommercial
@@ -408,7 +409,7 @@ const MetadataEditor = createClass({
 							className='value'
 							onChange={(e)=>this.handleFieldChange('thumbnail', e)} />
 						<button className='display' onClick={this.toggleThumbnailDisplay}>
-							<i className={`fas fa-caret-${this.state.showThumbnail ? 'right' : 'left'}`} />
+							<Icon icon={`fas fa-caret-${this.state.showThumbnail ? 'right' : 'left'}`} />
 						</button>
 					</div>
 				</div>

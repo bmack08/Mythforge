@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { searchIcons, ICON_SETS, getCategories } from '../data/iconRegistry';
 import './IconPicker.less';
+import Icon from './Icon.jsx';
 
 const BATCH_SIZE = 100;
 
@@ -144,7 +145,7 @@ export default function IconPicker({ editor, onClose }) {
       {/* ── Header: Search + Close ── */}
       <div className="icon-picker__header">
         <div className="icon-picker__search-wrap">
-          <i className="fas fa-search icon-picker__search-icon" />
+          <Icon icon="fas fa-search icon-picker__search-icon" />
           <input
             ref={searchRef}
             className="icon-picker__search"
@@ -160,7 +161,7 @@ export default function IconPicker({ editor, onClose }) {
           title="Close (Esc)"
           type="button"
         >
-          <i className="fas fa-times" />
+          <Icon icon="fas fa-times" />
         </button>
       </div>
 

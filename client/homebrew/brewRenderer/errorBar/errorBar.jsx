@@ -1,8 +1,9 @@
 import './errorBar.less';
 import React from 'react';
 import Dialog from '../../../components/dialog.jsx';
+import Icon from 'client/components/Icon.jsx';
 
-const DISMISS_BUTTON = <i className='fas fa-times dismiss' />;
+const DISMISS_BUTTON = <Icon icon='fas fa-times dismiss' />;
 
 const ErrorBar = (props)=>{
 	if(!props.errors.length) return null;
@@ -36,7 +37,7 @@ const ErrorBar = (props)=>{
 	return (
 		<Dialog className='errorBar' closeText={DISMISS_BUTTON} >
 			<div>
-				<i className='fas fa-exclamation-triangle' />
+				<Icon icon='fas fa-exclamation-triangle' />
 				<h2> There are HTML errors in your markup</h2>
 				<small>
 					If these aren't fixed your brew will not render properly when you print it to PDF or share it

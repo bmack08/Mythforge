@@ -20,6 +20,7 @@ import { printCurrentBrew } from 'shared/helpers.js';
 
 import HeaderNav from './headerNav/headerNav.jsx';
 import { safeHTML } from './safeHTML.js';
+import Icon from 'client/components/Icon.jsx';
 
 const PAGEBREAK_REGEX_V3 = /^(?=\\page(?:break)?(?: *{[^\n{}]*})?$)/m;
 const PAGEBREAK_REGEX_LEGACY = /\\page(?:break)?/m;
@@ -390,7 +391,7 @@ const BrewRenderer = (props)=>{
 
 	const renderDummyPage = (index)=>{
 		return <div className='phb page' id={`p${index + 1}`} key={index}>
-			<i className='fas fa-spinner fa-spin' />
+			<Icon icon='fas fa-spinner fa-spin' />
 		</div>;
 	};
 

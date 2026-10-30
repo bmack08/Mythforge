@@ -3,8 +3,9 @@ import React, { useEffect, useState } from 'react';
 import request from '../../utils/request-middleware.js';
 import { ensureJson, toHTML } from 'shared/contentAdapter.js';
 import Dialog from '../../../components/dialog.jsx';
+import Icon from 'client/components/Icon.jsx';
 
-const DISMISS_BUTTON = <i className='fas fa-times dismiss' />;
+const DISMISS_BUTTON = <Icon icon='fas fa-times dismiss' />;
 
 const NotificationPopup = ()=>{
 	const [notifications, setNotifications] = useState([]);
@@ -55,7 +56,7 @@ const NotificationPopup = ()=>{
 	if(!notifications.length) return;
 	return <Dialog className='notificationPopup' dismisskeys={dissmissKeyList} closeText={DISMISS_BUTTON} >
 		<div className='header'>
-			<i className='fas fa-info-circle info'></i>
+			<Icon icon='fas fa-info-circle info'/>
 			<h3>Notice</h3>
 			<small>This website is always improving and we are still adding new features and squashing bugs. Keep the following in mind:</small>
 		</div>

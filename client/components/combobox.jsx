@@ -2,6 +2,7 @@ import React from 'react';
 import createClass from 'create-react-class';
 import _ from 'lodash';
 import './combobox.less';
+import Icon from './Icon.jsx';
 
 const Combobox = createClass({
 	displayName     : 'Combobox',
@@ -83,7 +84,7 @@ const Combobox = createClass({
 						}
 					}}
 				/>
-				<i className='fas fa-caret-down'/>
+				<Icon icon='fas fa-caret-down'/>
 			</div>
 		);
 	},

@@ -18,6 +18,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey, TextSelection } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import slugify from './slugify.js';
+import { iconElement } from 'client/components/Icon.jsx';
 
 export const HEADING_FOLD_KEY = new PluginKey('headingFold');
 
@@ -66,9 +67,10 @@ function buildChevron(view, isFolded, id, headingStart) {
   span.className = `mf-fold-chevron${isFolded ? ' is-folded' : ''}`;
   span.setAttribute('contenteditable', 'false');
   span.title = isFolded ? 'Expand section' : 'Collapse section';
-  const icon = document.createElement('i');
-  icon.className = isFolded ? 'fas fa-chevron-right' : 'fas fa-chevron-down';
-  span.appendChild(icon);
+  // Inline SVG rather than an icon-font glyph (UNIT M5). This decoration is
+  // raw DOM, not JSX, so it uses iconElement() - same markup, same CSS, same
+  // vendored Lucide path as every <Icon> in the chrome.
+  span.appendChild(iconElement(isFolded ? 'chevron-right' : 'chevron-down'));
   span.addEventListener('mousedown', (e) => {
     e.preventDefault();
     e.stopPropagation();

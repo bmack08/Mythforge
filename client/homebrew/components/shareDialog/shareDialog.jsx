@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { prefixPath } from '../../utils/basePath.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * The share dialog - what the editor's "Share" button opens, and what the
@@ -50,7 +51,7 @@ const CopyField = ({ id, label, url, hint, danger })=>{
 				onFocus={(e)=>e.target.select()}
 			/>
 			<button type='button' className='tide-btn-quiet' onClick={copy}>
-				<i className='fas fa-copy' aria-hidden='true' />
+				<Icon icon='fas fa-copy' aria-hidden='true' />
 				Copy
 			</button>
 		</div>
@@ -106,14 +107,14 @@ const ShareDialog = ({ brew, shareLink, redditLink, onClose })=>{
 
 	const readerLink = readUrl
 		? <a className='tide-btn-primary' href={prefixPath(`/share/${shareLink}`)}>
-			<i className='fas fa-book-open' aria-hidden='true' />
+			<Icon icon='fas fa-book-open' aria-hidden='true' />
 			Open the reader view
 		</a>
 		: null;
 
 	const redditButton = redditLink
 		? <a className='tide-btn-quiet' href={redditLink} target='_blank' rel='noopener noreferrer'>
-			<i className='fab fa-reddit-alien' aria-hidden='true' />
+			<Icon icon='fab fa-reddit-alien' aria-hidden='true' />
 			Post to Reddit
 		</a>
 		: null;
@@ -143,7 +144,7 @@ const ShareDialog = ({ brew, shareLink, redditLink, onClose })=>{
 					aria-label='Close'
 					onClick={()=>onClose?.()}
 				>
-					<i className='fas fa-times' aria-hidden='true' />
+					<Icon icon='fas fa-times' aria-hidden='true' />
 				</button>
 			</div>
 

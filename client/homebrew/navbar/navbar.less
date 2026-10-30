@@ -334,7 +334,11 @@
 // this should likely be refactored into .navDropdownContainer
 .save-menu {
 	.dropdown { z-index : 1000; }
-	.navItem i.fa-power-off {
+	// `.tide-icon--power` is the same icon after UNIT M5 swapped the icon font
+	// for an inline Lucide path; the FA class is kept so this rule still works
+	// if anything is ever rendered with the font again.
+	.navItem i.fa-power-off,
+	.navItem i.tide-icon--power {
 		color : red;
 		&.active {
 			color  : rgb(0, 182, 52);

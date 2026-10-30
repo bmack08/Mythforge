@@ -14,6 +14,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { markdownToTiptap } from 'shared/helpers/markdownToTiptap.js';
 import { GENERATOR_FORMS } from '../data/generatorCommands.js';
+import Icon from './Icon.jsx';
 
 const PANEL_STYLE = {
   position: 'fixed', zIndex: 9999, background: '#fffdf6',
@@ -135,7 +136,7 @@ const SlashCommandList = ({ editor, srdSafe = false }) => {
             onMouseDown={(e) => { e.preventDefault(); openForm(cmd, range); }}
             onMouseEnter={() => setSelectedIndex(i)}
           >
-            <i className={cmd.icon} style={{ width: 16, textAlign: 'center', color: '#8a6d3b' }} />
+            <Icon icon={cmd.icon} style={{ width: 16, textAlign: 'center', color: '#8a6d3b' }} />
             <span style={{ fontWeight: 600 }}>/{cmd.key}</span>
             <span style={{ color: '#7a6a4a', fontSize: 11, marginLeft: 'auto' }}>{cmd.label}</span>
           </div>
@@ -158,7 +159,7 @@ const SlashCommandList = ({ editor, srdSafe = false }) => {
       style={{ ...PANEL_STYLE, top: coords.top, left: coords.left, padding: '4px 12px 12px' }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0 4px', borderBottom: '1px solid #e7dcc0' }}>
-        <i className={activeCmd.icon} style={{ color: '#8a6d3b' }} />
+        <Icon icon={activeCmd.icon} style={{ color: '#8a6d3b' }} />
         <strong>Generate {activeCmd.label}</strong>
       </div>
 

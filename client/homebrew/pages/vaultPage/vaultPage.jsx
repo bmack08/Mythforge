@@ -7,6 +7,7 @@ import MythforgeBar from '../../components/mythforgeBar/mythforgeBar.jsx';
 import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
 import { prefixPath } from '../../utils/basePath.js';
 import { ART, coversFor, cssUrl } from '../../../art/tidewatch/art.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * THE VAULT - mocks/12-mythforge-vault.html.
@@ -199,7 +200,7 @@ const VaultPage = (props)=>{
 			>
 				{busy
 					? <><span className='tide-spinner' aria-hidden='true' /> Searching…</>
-					: <><i className='fas fa-search' aria-hidden='true' /> Search</>}
+					: <><Icon icon='fas fa-search' aria-hidden='true' /> Search</>}
 			</button>
 			{!canSearch
 				? <p className='tide-hint'>{`Give a title of at least ${MIN_TITLE} letters, or an author.`}</p>
@@ -249,7 +250,7 @@ const VaultPage = (props)=>{
 
 		return <nav className='tide-pager' aria-label='Result pages'>
 			<button type='button' disabled={page <= 1 || busy} aria-label='Previous page' onClick={()=>go(page - 1)}>
-				<i className='fas fa-chevron-left' aria-hidden='true' />
+				<Icon icon='fas fa-chevron-left' aria-hidden='true' />
 			</button>
 			{from > 1 ? <button type='button' disabled={busy} onClick={()=>go(1)}>1</button> : null}
 			{nums.map((n)=><button
@@ -263,7 +264,7 @@ const VaultPage = (props)=>{
 			</button>)}
 			{to < pages ? <button type='button' disabled={busy} onClick={()=>go(pages)}>{pages}</button> : null}
 			<button type='button' disabled={page >= pages || busy} aria-label='Next page' onClick={()=>go(page + 1)}>
-				<i className='fas fa-chevron-right' aria-hidden='true' />
+				<Icon icon='fas fa-chevron-right' aria-hidden='true' />
 			</button>
 		</nav>;
 	};

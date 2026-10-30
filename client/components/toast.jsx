@@ -1,6 +1,7 @@
 import './toast.less';
 import React from 'react';
 import createClass from 'create-react-class';
+import Icon from './Icon.jsx';
 
 // Lightweight global toast utility. Mount <ToastHost /> once near the app root.
 // Use window.NCToast.show({ message, type, duration }) to display a toast.
@@ -34,10 +35,10 @@ const ToastHost = createClass({
     render(){
         if(!this.state.visible) return null;
         const type = this.state.type || 'info';
-        const iconClass = type === 'success' ? 'fas fa-check-circle' : type === 'error' ? 'fas fa-times-circle' : type === 'warning' ? 'fas fa-exclamation-triangle' : 'fas fa-info-circle';
+        const iconName = type === 'success' ? 'circle-check' : type === 'error' ? 'circle-x' : type === 'warning' ? 'triangle-alert' : 'info';
         return (
             <div className={`nc-toast ${type}`} role='status' aria-live='polite'>
-                <i className={`nc-toast__icon ${iconClass}`}></i>
+                <Icon icon={iconName} className='nc-toast__icon' />
                 <div className='nc-toast__message'>{this.state.message}</div>
                 <button className='nc-toast__close' aria-label='Close' onClick={this.hide}>×</button>
             </div>

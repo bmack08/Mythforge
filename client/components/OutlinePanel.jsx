@@ -15,6 +15,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import slugify from 'client/extensions/slugify.js';
 import { HEADING_FOLD_KEY } from 'client/extensions/HeadingFold.js';
 import './OutlinePanel.less';
+import Icon from './Icon.jsx';
 
 function readFoldedSet(editor) {
   try {
@@ -137,7 +138,7 @@ const OutlinePanel = ({ editor, enabled = true, foldEnabled = false }) => {
   return (
     <aside className="tiptap-editor__outline" aria-label="Document outline">
       <div className="mf-outline__header">
-        <i className="fas fa-stream" />
+        <Icon icon="fas fa-stream" />
         <span>Outline</span>
       </div>
       {headings.length === 0 ? (
@@ -161,7 +162,7 @@ const OutlinePanel = ({ editor, enabled = true, foldEnabled = false }) => {
                   title={foldedIds.has(h.id) ? 'Expand section' : 'Collapse section'}
                   onClick={(e) => toggleFold(e, h)}
                 >
-                  <i className={foldedIds.has(h.id) ? 'fas fa-chevron-right' : 'fas fa-chevron-down'} />
+                  <Icon icon={foldedIds.has(h.id) ? 'fas fa-chevron-right' : 'fas fa-chevron-down'} />
                 </button>
               )}
               <span className="mf-outline__label">{h.text || '(untitled)'}</span>

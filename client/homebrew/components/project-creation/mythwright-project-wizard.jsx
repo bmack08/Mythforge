@@ -2,6 +2,7 @@ import './mythwright-project-wizard.less';
 import React from 'react';
 import createClass from 'create-react-class';
 import { prefixPath } from '../../utils/basePath.js';
+import Icon from 'client/components/Icon.jsx';
 
 const MythwrightProjectWizard = createClass({
 	displayName : 'MythwrightProjectWizard',
@@ -418,11 +419,11 @@ const MythwrightProjectWizard = createClass({
 				<div className='mythwright-wizard'>
 					<div className='wizard-header'>
 						<h2>
-							<i className='fas fa-dragon'></i>
+							<Icon icon='fas fa-dragon'/>
 							Create AI-Generated Campaign
 						</h2>
 						<button className='close-btn' onClick={this.closeModal}>
-							<i className='fas fa-times'></i>
+							<Icon icon='fas fa-times'/>
 						</button>
 					</div>
 
@@ -435,7 +436,7 @@ const MythwrightProjectWizard = createClass({
 						{this.state.generating ? (
 							<div className='generation-screen'>
 								<div className='generation-animation'>
-									<i className='fas fa-dragon fa-spin'></i>
+									<Icon icon='fas fa-dragon fa-spin'/>
 									<h3>Generating Your Campaign...</h3>
 									<p>AI is crafting your complete adventure with encounters, NPCs, storylines, and Homebrewery formatting.</p>
 									<p>This may take 30-60 seconds depending on campaign complexity.</p>
@@ -456,7 +457,7 @@ const MythwrightProjectWizard = createClass({
 								<div className='wizard-footer'>
 									{this.state.currentStep > 1 && (
 										<button className='btn secondary' onClick={this.prevStep}>
-											<i className='fas fa-arrow-left'></i>
+											<Icon icon='fas fa-arrow-left'/>
 											Previous
 										</button>
 									)}
@@ -464,11 +465,11 @@ const MythwrightProjectWizard = createClass({
 									{this.state.currentStep < this.state.totalSteps ? (
 										<button className='btn primary' onClick={this.nextStep}>
 											Next
-											<i className='fas fa-arrow-right'></i>
+											<Icon icon='fas fa-arrow-right'/>
 										</button>
 									) : (
 										<button className='btn generate' onClick={this.generateCampaign}>
-											<i className='fas fa-dragon'></i>
+											<Icon icon='fas fa-dragon'/>
 											Generate Campaign
 										</button>
 									)}

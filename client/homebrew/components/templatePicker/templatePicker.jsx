@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { prefixPath } from '../../utils/basePath.js';
 import { markdownToTiptap } from '../../../../shared/helpers/markdownToTiptap.js';
+import Icon from 'client/components/Icon.jsx';
 
 /*
  * The template picker - what the "New brew" action opens.
@@ -155,7 +156,7 @@ const TemplatePicker = ({ onClose })=>{
 					aria-label='Close'
 					onClick={()=>onClose?.()}
 				>
-					<i className='fas fa-times' aria-hidden='true' />
+					<Icon icon='fas fa-times' aria-hidden='true' />
 				</button>
 			</div>
 

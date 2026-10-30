@@ -43,6 +43,7 @@ import { markdownToTiptap } from '../../../../shared/helpers/markdownToTiptap.js
 import { updateHistory, versionHistoryGarbageCollection } from '../../utils/versionHistory.js';
 
 import googleDriveIcon from '../../googleDrive.svg';
+import Icon from 'client/components/Icon.jsx';
 
 const SAVE_TIMEOUT = 10000;
 
@@ -621,7 +622,7 @@ const EditPage = createClass({
 
 	renderAutoSaveButton : function(){
 		return <Nav.item onClick={this.handleAutoSave}>
-			Autosave <i className={this.state.autoSave ? 'fas fa-power-off active' : 'fas fa-power-off'}></i>
+			Autosave <Icon icon={this.state.autoSave ? 'fas fa-power-off active' : 'fas fa-power-off'}/>
 		</Nav.item>;
 	},
 
@@ -723,7 +724,7 @@ const EditPage = createClass({
 		return <MythforgeBar active={this.props.mbarActive || 'brews'}>
 			<Nav.dropdown className='mythwright-tools'>
 				<button type='button' className='tide-mbar-tool'>
-					<i className='fas fa-wand-magic-sparkles' aria-hidden='true' />
+					<Icon icon='fas fa-wand-magic-sparkles' aria-hidden='true' />
 					Mythforge AI
 				</button>
 				<Nav.item color='purple' icon='fas fa-dragon' onClick={()=>this.mythwrightWizard.current?.openModal()}>
@@ -739,7 +740,7 @@ const EditPage = createClass({
 				className='tide-btn-quiet tide-mbar-action'
 				onClick={()=>this.toggleShare(true)}
 			>
-				<i className='fas fa-share-nodes' aria-hidden='true' />
+				<Icon icon='fas fa-share-nodes' aria-hidden='true' />
 				Share
 			</button>
 			<button
@@ -747,7 +748,7 @@ const EditPage = createClass({
 				className='tide-btn-primary tide-mbar-action'
 				onClick={printCurrentBrew}
 			>
-				<i className='far fa-file-pdf' aria-hidden='true' />
+				<Icon icon='far fa-file-pdf' aria-hidden='true' />
 				Export PDF
 			</button>
 		</MythforgeBar>;

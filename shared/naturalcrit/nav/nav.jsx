@@ -6,6 +6,7 @@ import cx from 'classnames';
 
 import NaturalCritIcon from 'naturalcrit/svg/naturalcrit.svg.jsx';
 import { prefixPath } from 'client/homebrew/utils/basePath.js';
+import Icon from 'client/components/Icon.jsx';
 
 const Nav = {
 	base : createClass({
@@ -51,10 +52,18 @@ const Nav = {
 		render : function(){
 			const classes = cx('navItem', this.props.color, this.props.className);
 
+			/* UNIT M5. Every Nav.item in the app passes `icon` as a class
+			 * string; <Icon> reads the same strings and renders the vendored
+			 * Lucide path inline instead of relying on the icon font, so all
+			 * ~25 call sites changed here rather than one at a time. The ones
+			 * <Icon> has no mapping for - brand marks like `fab fa-google-drive`
+			 * - come back out as the <i> they were. */
 			let icon;
-			if(this.props.icon) icon = <i className={this.props.icon} />;
+			if(this.props.icon) icon = <Icon icon={this.props.icon} />;
 
-			const props = _.omit(this.props, ['newTab']);
+			/* `icon` used to land on the DOM node as a stray attribute. It is
+			 * this component's own prop, not the anchor's. */
+			const props = _.omit(this.props, ['newTab', 'icon']);
 
 			if(this.props.href){
 				return <a {...props} href={prefixPath(this.props.href)} className={classes} target={this.props.newTab ? '_blank' : '_self'} >

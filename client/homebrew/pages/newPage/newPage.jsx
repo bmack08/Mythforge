@@ -270,7 +270,14 @@ const NewPage = createClass({
 	},
 
 	render : function(){
-		return <div className='newPage sitePage'>
+		/* `tide-editor` is what every override in client/styles/tidewatch-editor.css
+		 * hangs off, and this page - the editor for a brew that has not been
+		 * saved yet, where "Start from nothing" lands - did not carry it, so it
+		 * was still rendering in the inherited Homebrewery chrome while
+		 * /edit/:id was not. Found in UNIT M5 by its own icon-contrast pass:
+		 * six icons here measured below 3:1 that measure fine on /edit/:id,
+		 * all of them legacy colours this class is what replaces. */
+		return <div className='newPage sitePage tide-editor'>
 			{this.renderNavbar()}
 			<div className='content'>
 				<SplitPane onDragFinish={this.handleSplitMove}>

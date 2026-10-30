@@ -4,6 +4,7 @@ import createClass from 'create-react-class';
 import _ from 'lodash';
 
 import Dialog from '../../../client/components/dialog.jsx';
+import Icon from 'client/components/Icon.jsx';
 
 const RenderWarnings = createClass({
 	displayName     : 'RenderWarnings',
@@ -46,10 +47,10 @@ const RenderWarnings = createClass({
 		if(_.isEmpty(this.state.warnings)) return null;
 
 		const DISMISS_KEY = 'dismiss_render_warning';
-		const DISMISS_TEXT = <i className='fas fa-times dismiss' />;
+		const DISMISS_TEXT = <Icon icon='fas fa-times dismiss' />;
 
 		return <Dialog className='renderWarnings' dismissKey={DISMISS_KEY} closeText={DISMISS_TEXT}>
-			<i className='fas fa-exclamation-triangle ohno' />
+			<Icon icon='fas fa-exclamation-triangle ohno' />
 			<h3>Render Warnings</h3>
 			<small>If this homebrew is rendering badly if might be because of the following:</small>
 		<ul>{_.values(this.state.warnings)}</ul>

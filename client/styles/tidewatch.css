@@ -151,6 +151,53 @@
 	box-shadow: var(--tide-lift);
 }
 
+/* ── Icons ──────────────────────────────────────────────────────────────
+ *
+ * client/components/Icon.jsx renders a vendored Lucide path set inline, inside
+ * the <i> the icon font used to occupy. Keeping the <i> is the whole trick: the
+ * app's existing rules size icons with `font-size` on `i` (navbar.less,
+ * TipTapToolbar.less, snippetbar.less, toolBar.less and this sheet all do it),
+ * and a 1em-square svg tracks that with no second place to keep in sync.
+ *
+ * `vertical-align: -0.125em` is the value Font Awesome itself used, so icons
+ * sit on the same optical baseline they did before the swap.               */
+.tide-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	font-style: normal;
+	line-height: 1;
+	vertical-align: -0.125em;
+	flex-shrink: 0;
+}
+.tide-icon > svg {
+	display: block;
+	width: 1em;
+	height: 1em;
+	/* Stroke scales with the icon, so the geometry stays Lucide's and does not
+	 * need a second copy at another size. */
+	stroke-width: 1.9;
+	overflow: visible;
+}
+/* Font Awesome's `fa-fw` promised every icon the same advance width so labels
+ * in a dropdown line up. Same promise, kept. */
+.tide-icon--fw { width: 1.25em; }
+
+/* `fa-spin`. Mythforge uses it on exactly one icon, the saving/working
+ * spinner, so it animates the svg rather than the host - the host may be
+ * carrying layout classes from a caller. */
+@keyframes tide-icon-spin { to { transform: rotate(360deg); } }
+.tide-icon--spin > svg { animation: tide-icon-spin 1s linear infinite; }
+
+/* The editor's version history numbered its entries with the icon font's
+ * `fa-1` ... `fa-9` glyphs. Those are digits, so they are digits now - same
+ * host element, so the surrounding `.snippet i` rules still place them. */
+.tide-icon--num {
+	font-weight: 700;
+	font-size: 0.92em;
+	font-variant-numeric: tabular-nums;
+}
+
 /* ── Buttons: one primary per region, one quiet, one link ───────────────── */
 .tide-btn,
 .tide-btn-primary,
@@ -1352,6 +1399,9 @@ body .homebrew nav.tide-sidenav,
 	.tide-step,
 	.tide-card { transition: none; }
 	.tide-spinner { animation-duration: 2.4s; }
+	/* Still turning: it is the only thing saying work is in progress. Slower,
+	 * the way .tide-spinner above already is. */
+	.tide-icon--spin > svg { animation-duration: 2.4s; }
 }
 
 /* ── Narrow ─────────────────────────────────────────────────────────────── */

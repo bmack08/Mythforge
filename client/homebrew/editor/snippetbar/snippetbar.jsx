@@ -21,6 +21,7 @@ ThemeSnippets['V3_Journal'] = V3_Journal_Snippets;
 ThemeSnippets['V3_Blank'] = V3_Blank_Snippets;
 
 import EditorThemes from '../../../../themes/codeMirror/editorThemes.json';
+import Icon from 'client/components/Icon.jsx';
 
 const execute = function(val, props){
 	if(_.isFunction(val)) return val(props);
@@ -211,7 +212,7 @@ const Snippetbar = createClass({
 				if(diffSecs > (7 * 24 * 60 * 60)) diffString = `about ${Math.floor(diffSecs / (7 * 24 * 60 * 60))} weeks ago`;
 
 				return <div className='snippet' key={index} onClick={()=>{this.replaceContent(item);}} >
-					<i className={`fas fa-${index+1}`} />
+					<i className='tide-icon tide-icon--num' aria-hidden='true'>{index + 1}</i>
 					<span className='name' title={saveTime.toISOString()}>v{item.version} : {diffString}</span>
 				</div>;
 			})}
@@ -226,30 +227,30 @@ const Snippetbar = createClass({
 				{this.props.view !== 'meta' && <><div className='historyTools'>
 					<div className={`editorTool snippetGroup history ${this.state.historyExists ? 'active' : ''}`}
 						onClick={this.toggleHistoryMenu} >
-						<i className='fas fa-clock-rotate-left' />
+						<Icon icon='fas fa-clock-rotate-left' />
 						{ this.state.showHistory && this.renderHistoryItems() }
 					</div>
 					<div className={`editorTool undo ${this.props.historySize.undo ? 'active' : ''}`}
 						onClick={this.props.undo} >
-						<i className='fas fa-undo' />
+						<Icon icon='fas fa-undo' />
 					</div>
 					<div className={`editorTool redo ${this.props.historySize.redo ? 'active' : ''}`}
 						onClick={this.props.redo} >
-						<i className='fas fa-redo' />
+						<Icon icon='fas fa-redo' />
 					</div>
 				</div>
 				<div className='codeTools'>
 					<div className={`editorTool foldAll ${this.props.foldCode ? 'active' : ''}`}
 						onClick={this.props.foldCode} >
-						<i className='fas fa-compress-alt' />
+						<Icon icon='fas fa-compress-alt' />
 					</div>
 					<div className={`editorTool unfoldAll ${this.props.unfoldCode ? 'active' : ''}`}
 						onClick={this.props.unfoldCode} >
-						<i className='fas fa-expand-alt' />
+						<Icon icon='fas fa-expand-alt' />
 					</div>
 					<div className={`editorTheme ${this.state.themeSelector ? 'active' : ''}`}
 						onClick={this.toggleThemeSelector} >
-						<i className='fas fa-palette' />
+						<Icon icon='fas fa-palette' />
 						{this.state.themeSelector && this.renderThemeSelector()}
 					</div>
 				</div></>}
@@ -257,19 +258,19 @@ const Snippetbar = createClass({
 				<div className='tabs'>
 					<div className={cx('text', { selected: this.props.view === 'text' })}
 						onClick={()=>this.props.onViewChange('text')}>
-						<i className='fa fa-beer' />
+						<Icon icon='fa fa-beer' />
 					</div>
 					<div className={cx('style', { selected: this.props.view === 'style' })}
 						onClick={()=>this.props.onViewChange('style')}>
-						<i className='fa fa-paint-brush' />
+						<Icon icon='fa fa-paint-brush' />
 					</div>
 					<div className={cx('snippet', { selected: this.props.view === 'snippet' })}
 						onClick={()=>this.props.onViewChange('snippet')}>
-						<i className='fas fa-th-list' />
+						<Icon icon='fas fa-th-list' />
 					</div>
 					<div className={cx('meta', { selected: this.props.view === 'meta' })}
 						onClick={()=>this.props.onViewChange('meta')}>
-						<i className='fas fa-info-circle' />
+						<Icon icon='fas fa-info-circle' />
 					</div>
 				</div>
 
@@ -305,12 +306,12 @@ const SnippetGroup = createClass({
 	renderSnippets : function(snippets){
 		return _.map(snippets, (snippet)=>{
 			return <div className='snippet' key={snippet.name} onClick={(e)=>this.handleSnippetClick(e, snippet)}>
-				<i className={snippet.icon} />
+				<Icon icon={snippet.icon} />
 				<span className={`name${snippet.disabled ? ' disabled' : ''}`} title={snippet.name}>{snippet.name}</span>
 				{snippet.experimental && <span className='beta'>beta</span>}
 				{snippet.disabled     && <span className='beta' title='temporarily disabled due to large slowdown; under re-design'>disabled</span>}
 				{snippet.subsnippets && <>
-					<i className='fas fa-caret-right'></i>
+					<Icon icon='fas fa-caret-right'/>
 					<div className='dropdown side'>
 						{this.renderSnippets(snippet.subsnippets)}
 					</div></>}
@@ -323,7 +324,7 @@ const SnippetGroup = createClass({
 		const snippetGroup = `snippetGroup snippetBarButton ${this.props.snippets.length === 0 ? 'disabledSnippets' : ''}`;
 		return <div className={snippetGroup}>
 			<div className='text'>
-				<i className={this.props.icon} />
+				<Icon icon={this.props.icon} />
 				<span className='groupName'>{this.props.groupName}</span>
 			</div>
 			<div className='dropdown'>

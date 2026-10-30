@@ -50,6 +50,29 @@
 	min-height:     0;
 }
 
+/* The save state in the top bar.
+ *
+ * newPage.less paints it with the Homebrewery ORANGE SASH (#D35400) and turns
+ * it green on hover - the exact trade dress BUILD-BRIEF section 9 retires, and
+ * 2.54:1 for the icon sitting on it. editPage.less greys the "saved" state to
+ * #666 for the cream bar it was written for. Both are replaced here rather
+ * than edited out of the legacy sheets, the same way every other inherited
+ * colour in this file is. Found by the UNIT M5 icon-contrast pass on /new.
+ *
+ * The leading `body` is there for the same reason as in tidewatch.css: these
+ * selectors tie on class count with the ones they replace, and a type selector
+ * settles it without depending on emit order. */
+body .tide-editor .navItem.save {
+	background: transparent;
+	color:      var(--tide-ink50);
+}
+body .tide-editor .navItem.save:hover {
+	background: var(--tide-tealSel);
+	color:      var(--tide-ink);
+}
+body .tide-editor .navItem.save.saved { color: var(--tide-muted); }
+body .tide-editor .navItem.save.error { color: var(--tide-gold); }
+
 /* The chrome band: art behind the nav and the Mythforge bar only, faded out
  * by 112px so the writing surface below it is a flat, known colour. */
 .tide-art-band {
@@ -60,6 +83,15 @@
 }
 .editPage.tide-editor nav,
 .editPage.tide-editor .tide-mbar { position: relative; z-index: 6; }
+
+/* Both bars are flex ITEMS of the stack above, and a flex item shrinks by
+ * default. At 1440 nothing noticed; at 390 the global nav wraps to three rows
+ * that need 149px, the column gave it 66px, and the Mythforge bar was painted
+ * straight over the account menu and the save state. Found in UNIT M5 by the
+ * icon sweep, which could not find any ink for `save` or `log-in` because
+ * there was none to find - another element was on top of them. */
+.editPage.tide-editor > .tide-editor-stack > nav,
+.editPage.tide-editor > .tide-editor-stack > .tide-mbar { flex: 0 0 auto; }
 
 /* The inherited rule was `height: calc(100% - 29px)` - the navbar's height,
  * written as a number. Adding the Mythforge bar made it wrong by exactly the
@@ -146,6 +178,17 @@
 	border:     0;
 }
 .tide-editor .splitPane .divider .dots i { color: var(--tide-muted); }
+/* UNIT M5: the drag affordance is one `grip-vertical` now, not three 6px font
+ * dots. splitPane.less sets `display: block !important` and `font-size: 6px`
+ * on `.dots i` for the old stack - the grip keeps the block display (the
+ * !important wins and it does not matter) but needs a readable size, and auto
+ * margins to centre a block the way `text-align` centred the inline dots. */
+.tide-editor .splitPane .divider .dots i.tide-icon {
+	width:     14px;
+	height:    14px;
+	margin:    0 auto;
+	font-size: 14px;
+}
 .tide-editor .splitPane .arrow {
 	background: var(--tide-card);
 	color:      var(--tide-ink70);
@@ -186,6 +229,14 @@
 	border-bottom: 1px solid var(--tide-hair);
 	box-shadow:    none;
 	font-family:   var(--tide-ff-sans);
+	/* snippetbar.less:14 sets `color: black` on this bar for the cream
+	 * surface it was written for, and several tools inside it are
+	 * `color: inherit` - so on the dark surface the fold, unfold and
+	 * editor-theme icons were BLACK ON #12181C, 1.17:1. Invisible, and
+	 * invisible as font glyphs too before UNIT M5 made them svg; the
+	 * icon-contrast pass is what finally measured it. One declaration here
+	 * fixes every `inherit` below it. */
+	color:         var(--tide-ink50);
 }
 .tide-editor .snippetBar .snippetBarButton,
 .tide-editor .snippetBar .snippetGroup,
@@ -223,7 +274,34 @@
 .tide-editor .snippetBar .codeTools { display: flex; gap: 2px; align-items: center; }
 .tide-editor .snippetBar .disabledSnippets { opacity: 0.45; }
 
-/* Snippet drop-downs. Inherited as cream panels with gold edges. */
+/* The editor tools - history, undo, redo, fold, unfold, theme.
+ *
+ * snippetbar.less gives each of them `color: grey` (#808080, 2.91:1 on this
+ * surface) from a chain four compound selectors deep, which beat the shared
+ * `.tide-editor .snippetBar .editorTool` rule above; the extra `.editors`
+ * here is what settles it. Found by the UNIT M5 icon-contrast pass. */
+.tide-editor .editor .snippetBar .editors .editorTool,
+.tide-editor .editor .snippetBar .editors .editorTool.active,
+.tide-editor .editor .snippetBar .editors .editorTheme,
+.tide-editor .editor .snippetBar .editors .editorTheme.active { color: var(--tide-ink50); }
+.tide-editor .editor .snippetBar .editors .editorTool:hover,
+.tide-editor .editor .snippetBar .editors .editorTheme:hover { color: var(--tide-ink); }
+
+/* Snippet drop-downs. Inherited as cream panels with gold edges.
+ *
+ * The `background: #161D21` below loses to snippetbar.less's own
+ * `background-color: #DDDDDD` on specificity, so every open snippet menu was
+ * a #DDD panel with --tide-ink70 icons and labels on it - 1.1:1, which is the
+ * same invisibility as a missing glyph. The repeat with `.snippets` /
+ * `.editors` in the chain is what wins. UNIT M5. */
+.tide-editor .editor .snippetBar .snippets .dropdown,
+.tide-editor .editor .snippetBar .editors .dropdown {
+	border:        1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-md);
+	background:    #161D21;
+	box-shadow:    var(--tide-s3);
+	color:         var(--tide-ink70);
+}
 .tide-editor .snippetBar .dropdown {
 	z-index:       14;
 	min-width:     210px;

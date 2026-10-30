@@ -14,6 +14,7 @@
  */
 
 import React, { useEffect, useState, useRef, useCallback } from 'react';
+import Icon from './Icon.jsx';
 
 // Mirror graphPanel's palette/icons (kept local to avoid refactoring the
 // legacy createClass GraphPanel; ~15 lines, same source of truth values).
@@ -106,7 +107,7 @@ const EntityPopup = ({ editor, graph }) => {
           <strong style={{ flex: 1, fontSize: 14 }}>{entity.name}</strong>
           <button type="button" onClick={() => setPanel(null)}
             style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#8a6d3b', fontSize: 14 }}
-            title="Close"><i className="fas fa-times" /></button>
+            title="Close"><Icon icon="fas fa-times" /></button>
         </div>
         <div style={{ padding: '10px 12px' }}>
           <span style={{ display: 'inline-block', padding: '2px 9px', borderRadius: 10, fontSize: 11, fontWeight: 700, color: '#fff', background: colorOf(entity.type), textTransform: 'capitalize' }}>

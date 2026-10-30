@@ -3,6 +3,7 @@ import './toolBar.less';
 import React, { useState, useEffect } from 'react';
 import _ from 'lodash';
 import { Anchored, AnchoredBox, AnchoredTrigger } from '../../../components/Anchored.jsx';
+import Icon from 'client/components/Icon.jsx';
 
 const MAX_ZOOM = 300;
 const MIN_ZOOM = 10;
@@ -99,8 +100,8 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 				<button title={`${toolsVisible ? 'Hide' : 'Show'} Preview Toolbar`} onClick={()=>{
 					setToolsVisible(!toolsVisible);
 					localStorage.setItem('hb_toolbarVisibility', !toolsVisible);
-				}}><i className='fas fa-glasses' /></button>
-				<button title={`${headerState ? 'Hide' : 'Show'} Header Navigation`} onClick={()=>{setHeaderState(!headerState);}}><i className='fas fa-rectangle-list' /></button>
+				}}><Icon icon='fas fa-glasses' /></button>
+				<button title={`${headerState ? 'Hide' : 'Show'} Header Navigation`} onClick={()=>{setHeaderState(!headerState);}}><Icon icon='fas fa-rectangle-list' /></button>
 			</div>
 			{/*v=====----------------------< Zoom Controls >---------------------=====v*/}
 			<div className='group' role='group' aria-label='Zoom' aria-hidden={!toolsVisible}>
@@ -127,7 +128,7 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 					disabled={displayOptions.zoomLevel <= MIN_ZOOM}
 					title='Zoom Out'
 				>
-					<i className='fas fa-magnifying-glass-minus' />
+					<Icon icon='fas fa-magnifying-glass-minus' />
 				</button>
 				<input
 					id='zoom-slider'
@@ -153,7 +154,7 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 					disabled={displayOptions.zoomLevel >= MAX_ZOOM}
 					title='Zoom In'
 				>
-					<i className='fas fa-magnifying-glass-plus' />
+					<Icon icon='fas fa-magnifying-glass-plus' />
 				</button>
 			</div>
 
@@ -184,7 +185,7 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 
 				</div>
 				<Anchored>
-					<AnchoredTrigger id='spread-settings' className='tool' title='Spread options'><i className='fas fa-gear' /></AnchoredTrigger>
+					<AnchoredTrigger id='spread-settings' className='tool' title='Spread options'><Icon icon='fas fa-gear' /></AnchoredTrigger>
 					<AnchoredBox title='Options'>
 						<h1>Options</h1>
 						<label title='Modify the horizontal space between pages.'>
@@ -218,7 +219,7 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 					onClick={()=>scrollToPage(_.min(visiblePages) - visiblePages.length)}
 					disabled={visiblePages.includes(1)}
 				>
-					<i className='fas fa-arrow-left'></i>
+					<Icon icon='fas fa-arrow-left'/>
 				</button>
 
 				<div className='tool'>
@@ -248,7 +249,7 @@ const ToolBar = ({ displayOptions, onDisplayOptionsChange, visiblePages, totalPa
 					onClick={()=>scrollToPage(_.max(visiblePages) + 1)}
 					disabled={visiblePages.includes(totalPages)}
 				>
-					<i className='fas fa-arrow-right'></i>
+					<Icon icon='fas fa-arrow-right'/>
 				</button>
 			</div>
 		</div>
