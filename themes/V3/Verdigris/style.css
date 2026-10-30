@@ -1,0 +1,466 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * VERDIGRIS — Mythforge output theme candidate 2 of 3.  UNIT M6.
+ * NOT THE DEFAULT. Marked `hidden` in themes/themes.json.
+ *
+ * ── The idea ───────────────────────────────────────────────────────────────
+ * Oxidised copper on cold-pressed stock. One device carries the theme —
+ * THE BAND: a solid verdigris bar that runs the full width of the text area.
+ * A chapter opens with a band carrying its title reversed out of it; a stat
+ * block opens with the same band at a smaller size; a table head is a band
+ * in its lightest tint. Three weights of one gesture, so the page has an
+ * obvious rhythm from across a table and the reader always knows which band
+ * means "new chapter" and which means "new creature".
+ *
+ * This is the candidate for someone who wants the familiar two-column
+ * adventure density. Two columns are kept on purpose — the brief rules out
+ * PHB *mimicry* cues, not the column count, and long adventure prose is
+ * genuinely easier to set in two. Every actual cue is gone: no parchment,
+ * no maroon, no gold rule, no orange sash, no pastel-green zebra, no drop
+ * cap, no ornate border image, no red stat panel.
+ *
+ * ── Type ───────────────────────────────────────────────────────────────────
+ * Serif-led, which is what separates it from Cairn: TeX Gyre Pagella sets
+ * the display type as well as the body, so the voice is bookish rather than
+ * editorial. Overpass appears only on things that are looked up and never
+ * read — ability labels, table heads, folios.
+ *
+ * Pagella: GUST Font License, vendored at themes/fonts/Blank/ with the
+ * licence recorded in that folder's fonts.less. Overpass: OFL, vendored at
+ * themes/fonts/5e/. One weight (500); nothing here asks it for bold.
+ *
+ * Plain CSS, not LESS — see the note at the top of Tome's style.css.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-regular.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-italic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bold.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bolditalic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Overpass";
+	font-style:   normal;
+	font-weight:  500;
+	font-display: swap;
+	src:          url('../../fonts/5e/Overpass Medium.woff2') format('woff2');
+}
+
+:root {
+	--verd-paper:  #FAFAF7;   /* cold-pressed near-white                  */
+	--verd-ink:    #15211D;   /* 15.85:1 on paper                         */
+	--verd-soft:   #4A5652;   /*  7.32:1 on paper, 6.48:1 on fill         */
+	--verd-accent: #0F4034;   /* 11.14:1 on paper, 10.75:1 under band ink */
+	--verd-onband: #F2F7F4;   /* 10.75:1 on the accent band               */
+	--verd-fill:   #E6EEEA;   /* callout and table-head stock             */
+	--verd-rule:   #C2CFC9;   /* hairlines only; never carries text       */
+	--verd-card:   #FFFFFF;   /* stat block stock                         */
+
+	--verd-serif: "MF Pagella", "Palatino Linotype", "Iowan Old Style", Georgia, serif;
+	--verd-sans:  "MF Overpass", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+	--HB_Color_Background: #FAFAF7;
+}
+
+@page { margin: 0; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* ── The sheet ───────────────────────────────────────────────────────────── */
+.page {
+	position:       relative;
+	z-index:        15;
+	box-sizing:     border-box;
+	width:          215.9mm;
+	height:         279.4mm;
+	padding:        1.7cm 1.8cm 1.8cm;
+	overflow:       clip;
+	column-count:   2;
+	column-gap:     0.95cm;
+	/* `balance`, where Tome and the PHB theme both use `auto`. With `auto` a
+	 * page that is not full packs everything into column one and leaves
+	 * column two empty, which looks like a mistake rather than a short
+	 * chapter; balancing splits a short page evenly and a full page
+	 * identically. The cost is that an author cannot force a column break by
+	 * filling column one, which is a hand-tuning habit the PHB theme
+	 * encourages and this theme would rather not require. */
+	column-fill:    balance;
+	background:     var(--verd-paper);
+	color:          var(--verd-ink);
+	font:           16px/1.56 var(--verd-serif);
+	text-rendering: optimizeLegibility;
+	hyphens:        auto;
+}
+.page .columnWrapper {
+	max-height:  100%;
+	column-span: all;
+	columns:     inherit;
+	column-gap:  inherit;
+	column-fill: inherit;
+}
+.page.wide,
+.page .wide,
+.page .monster.wide,
+.page .classTable.wide { column-span: all; }
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+.page h1,
+.page h2,
+.page h3,
+.page h4,
+.page h5,
+.page h6 {
+	margin:      0;
+	color:       var(--verd-accent);
+	font-family: var(--verd-serif);
+	font-weight: 700;
+	line-height: 1.15;
+	break-after: avoid;
+}
+.page h1 { font-size: 36px; letter-spacing: -0.01em; }
+
+/* THE BAND. A chapter head reverses out of solid verdigris and spans both
+ * columns, with the bar pulled out to the full text width by negative
+ * margins so it reads as a bar across the sheet, not a filled heading. */
+.page h2 {
+	margin:      26px -1.8cm 0;
+	padding:     12px 1.8cm 13px;
+	background:  var(--verd-accent);
+	color:       var(--verd-onband);
+	column-span: all;
+	font-size:   25px;
+}
+/* An opening band bleeds to the top edge of the sheet rather than floating
+ * below the page margin, which looked like a mistake. */
+.page h2:first-child { margin-top: -1.7cm; }
+
+/* A section: accent type over a hairline, no fill. */
+.page h3 {
+	margin-top:    20px;
+	padding-bottom: 3px;
+	border-bottom: 1px solid var(--verd-rule);
+	font-size:     19px;
+}
+.page h4 { margin-top: 17px; font-size: 17px; }
+
+/* Sentence case, and set in the sans so it reads as a label without
+ * resorting to capitals and tracking. */
+.page h5,
+.page h6 {
+	margin-top:     14px;
+	color:          var(--verd-accent);
+	font-family:    var(--verd-sans);
+	font-size:      14px;
+	font-weight:    500;
+	letter-spacing: 0;
+}
+
+.page p { margin: 0.55em 0 0; overflow-wrap: break-word; }
+.page h1 + p,
+.page h2 + p,
+.page h3 + p,
+.page h4 + p { margin-top: 0.45em; }
+.page strong { font-weight: 700; }
+.page em { font-style: italic; }
+.page sup { font-size: smaller; line-height: 0; vertical-align: super; }
+.page sub { font-size: smaller; line-height: 0; vertical-align: sub; }
+.page a { color: var(--verd-accent); text-decoration: underline; text-underline-offset: 2px; }
+
+.page hr {
+	height:     0;
+	margin:     0.9em 0;
+	border:     0;
+	border-top: 1px solid var(--verd-rule);
+}
+
+/* A pulled quote. The band logic again, at its lightest: a 3px accent rule
+ * on the left instead of a fill. */
+.page blockquote,
+.page .quote {
+	margin:       1.1em 0 0;
+	padding-left: 12px;
+	border-left:  3px solid var(--verd-accent);
+	color:        var(--verd-soft);
+	font-size:    16px;
+	font-style:   italic;
+}
+.page blockquote p:first-child { margin-top: 0; }
+
+.page ul,
+.page ol { margin: 0.5em 0 0; padding-left: 1.25em; }
+.page ul { list-style: disc outside; }
+.page ol { list-style: decimal outside; }
+.page li { margin-top: 0.15em; }
+.page img { max-width: 100%; }
+
+.page code,
+.page pre {
+	font-family: ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace;
+	font-size:   0.88em;
+}
+.page code { padding: 1px 4px; background: var(--verd-fill); border-radius: 2px; }
+
+/* ── Definition lists ──────────────────────────────────────────────────────
+ * The renderer writes every spell and stat-block attribute line as a
+ * dl/dt/dd (`**Range** :: 60 feet`). Tome leaves them unstyled. */
+.page dl { margin: 0.5em 0 0; overflow: hidden; }
+.page dt {
+	float:        left;
+	clear:        left;
+	margin-right: 0.4em;
+	color:        var(--verd-ink);
+	font-weight:  700;
+}
+.page dd { margin: 0; }
+.page dl + dl { margin-top: 0; }
+
+/* ── Callouts ──────────────────────────────────────────────────────────────
+ * The band in its lightest tint, with a solid accent rule on top so a
+ * callout and a chapter opener are visibly the same family. */
+.page .note,
+.page .descriptive,
+.page .sidebar {
+	margin:       1.1em 0 0;
+	padding:      12px 14px;
+	background:   var(--verd-fill);
+	border-top:   3px solid var(--verd-accent);
+	font-size:    15px;
+	line-height:  1.5;
+	break-inside: avoid;
+}
+.page .note > :first-child,
+.page .descriptive > :first-child,
+.page .sidebar > :first-child { margin-top: 0; }
+.page .note h5,
+.page .descriptive h5,
+.page .sidebar h5 { margin-top: 0; margin-bottom: 0.25em; }
+
+/* ── Stat block ────────────────────────────────────────────────────────────
+ * White card, and the band once more: the creature's name reverses out of a
+ * solid accent header. No parchment fill, no red, no border image. */
+.page .monster,
+.page .statblock {
+	margin:       1.2em 0 0;
+	background:   var(--verd-card);
+	border:       1px solid var(--verd-rule);
+	break-inside: avoid;
+}
+.page .monster h2,
+.page .monster h3,
+.page .statblock h2,
+.page .statblock h3 {
+	margin:      0;
+	padding:     9px 14px 10px;
+	background:  var(--verd-accent);
+	border:      0;
+	color:       var(--verd-onband);
+	column-span: none;
+	font-family: var(--verd-serif);
+	font-size:   20px;
+}
+/* Everything that is not the header gets the card's own padding. */
+.page .monster > :not(h2):not(h3):not(table),
+.page .statblock > :not(h2):not(h3):not(table) {
+	margin-right: 14px;
+	margin-left:  14px;
+}
+.page .monster > p:first-of-type,
+.page .statblock > p:first-of-type { margin-top: 0.5em; }
+.page .monster > p:last-child,
+.page .statblock > p:last-child { margin-bottom: 12px; }
+.page .monster > p:first-of-type em,
+.page .statblock > p:first-of-type em {
+	color:      var(--verd-soft);
+	font-style: italic;
+}
+.page .monster hr,
+.page .statblock hr { margin: 0.6em 14px; border-top: 1px solid var(--verd-rule); }
+
+/* The six ability scores: a tinted strip, Overpass labels, tabular figures. */
+.page .monster table,
+.page .statblock table {
+	display:               grid;
+	grid-template-columns: repeat(6, 1fr);
+	width:                 100%;
+	margin:                0.7em 0;
+	padding:               6px 14px 7px;
+	box-sizing:            border-box;
+	background:            var(--verd-fill);
+	text-align:            center;
+}
+.page .monster table thead,
+.page .monster table tbody,
+.page .monster table tr,
+.page .statblock table thead,
+.page .statblock table tbody,
+.page .statblock table tr { display: contents; }
+.page .monster table th,
+.page .statblock table th {
+	padding:     0 2px 1px;
+	border:      0;
+	color:       var(--verd-accent);
+	font-family: var(--verd-sans);
+	font-size:   12.5px;
+	font-weight: 500;
+	text-align:  center;
+}
+.page .monster table td,
+.page .statblock table td {
+	padding:              0 1px;
+	border:               0;
+	/* 12.5px, not 14.5: six cells share a ~290px column here, and at the
+	 * larger size "20 (+5)" wrapped onto a second line. */
+	font-size:            12.5px;
+	font-variant-numeric: tabular-nums;
+	text-align:           center;
+	white-space:          nowrap;
+}
+
+/* ── Spell ─────────────────────────────────────────────────────────────────
+ * No wrapper exists for a spell, so the h4 and the school line carry it. */
+.page h4 + p em { color: var(--verd-soft); }
+
+/* ── Tables in the body ────────────────────────────────────────────────────
+ * A tinted head band and hairline rows. No pastel-green zebra. */
+.page .columnWrapper > table,
+.page .classTable table {
+	width:           100%;
+	margin:          1.1em 0 0;
+	border-collapse: collapse;
+	font-size:       14.5px;
+	break-inside:    avoid;
+}
+.page .columnWrapper > table th,
+.page .classTable table th {
+	padding:     7px 9px;
+	background:  var(--verd-accent);
+	color:       var(--verd-onband);
+	font-family: var(--verd-sans);
+	font-size:   12.5px;
+	font-weight: 500;
+}
+.page .columnWrapper > table td,
+.page .classTable table td {
+	padding:              6px 9px;
+	border-bottom:        1px solid var(--verd-rule);
+	font-variant-numeric: tabular-nums;
+}
+.page table th[align=center], .page table td[align=center] { text-align: center; }
+.page table th[align=right],  .page table td[align=right]  { text-align: right; }
+.page table th[align=left],   .page table td[align=left]   { text-align: left; }
+
+/* ── Title page ────────────────────────────────────────────────────────────
+ * The band at full strength: a deep verdigris field across the top third
+ * with the title reversed out of it, and the contents on paper below. */
+.page .titlePage {
+	display:        flex;
+	flex-direction: column;
+	height:         100%;
+	box-sizing:     border-box;
+	/* The negative margins cancel the page padding, so this box IS the
+	 * sheet. Stating the height outright is what lets the contents list
+	 * claim the space below with `margin: auto`. */
+	height:         279.4mm;
+	margin:         -1.7cm -1.8cm -1.8cm;
+	column-span:    all;
+}
+.page .titlePage h1 {
+	margin:      0;
+	padding:     4.4cm 1.8cm 0;
+	background:  var(--verd-accent);
+	color:       var(--verd-onband);
+	font-size:   54px;
+	line-height: 1.04;
+}
+.page .titlePage h1 + h2 {
+	margin:      0;
+	padding:     0.55cm 1.8cm 1.5cm;
+	background:  var(--verd-accent);
+	border:      0;
+	color:       var(--verd-onband);
+	column-span: none;
+	font-size:   18px;
+	font-style:  italic;
+	font-weight: 400;
+	line-height: 1.4;
+}
+.page .titlePage > p:first-of-type {
+	margin:      0.8cm 1.8cm 0;
+	font-family: var(--verd-sans);
+	font-size:   14px;
+}
+.page .titlePage > p {
+	margin-right: 1.8cm;
+	margin-left:  1.8cm;
+}
+.page .titlePage h3 {
+	margin:        auto 1.8cm 0;
+	padding:       0 0 4px;
+	border-bottom: 2px solid var(--verd-accent);
+	font-family:   var(--verd-sans);
+	font-size:     14px;
+	font-weight:   500;
+}
+.page .titlePage ul {
+	margin:       0.3cm 1.8cm 0;
+	padding-left: 0;
+	font-size:    15px;
+	list-style:   none;
+}
+.page .titlePage ul li {
+	padding:       4px 0;
+	border-bottom: 1px solid var(--verd-rule);
+}
+.page .titlePage > p:last-child {
+	margin-bottom: 2.6cm;
+	padding-top:   0.6cm;
+	color:         var(--verd-soft);
+	font-family:   var(--verd-sans);
+	font-size:     12.5px;
+}
+
+/* ── Page furniture ──────────────────────────────────────────────────────── */
+.page .pageNumber,
+.page .footnote {
+	position:             absolute;
+	bottom:               0.95cm;
+	color:                var(--verd-soft);
+	font-family:          var(--verd-sans);
+	font-size:            12.5px;
+	font-variant-numeric: tabular-nums;
+}
+.page .pageNumber { right: 1.8cm; }
+.page .footnote   { left: 1.8cm; }
+.page p:has(> .pageNumber),
+.page p:has(> .footnote) { margin: 0; line-height: 0; }
+
+/* ── Keeping a spell together ──────────────────────────────────────────────
+ * A spell has no wrapper element — it is an h4, an italic line, a dl and a
+ * paragraph as four siblings — so there is nothing to put `break-inside` on
+ * and a column or page break can land in the middle of one. These four rules
+ * are the closest the markup allows: the heading holds to the school line,
+ * the school line holds to the stat list, and the stat list never splits. */
+.page dl { break-inside: avoid; }
+.page h4 + p,
+.page h4 + p + dl { break-before: avoid; }
+.page h4 + p { break-after: avoid; }

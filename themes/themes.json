@@ -52,6 +52,30 @@
       "baseTheme": "Blank",
       "baseSnippets": "5ePHB",
       "path": "Journal"
+    },
+    "Cairn": {
+      "name": "Cairn (candidate)",
+      "renderer": "V3",
+      "baseTheme": false,
+      "baseSnippets": "5ePHB",
+      "path": "Cairn",
+      "hidden": true
+    },
+    "Verdigris": {
+      "name": "Verdigris (candidate)",
+      "renderer": "V3",
+      "baseTheme": false,
+      "baseSnippets": "5ePHB",
+      "path": "Verdigris",
+      "hidden": true
+    },
+    "Nocturne": {
+      "name": "Nocturne (candidate)",
+      "renderer": "V3",
+      "baseTheme": false,
+      "baseSnippets": "5ePHB",
+      "path": "Nocturne",
+      "hidden": true
     }
   }
 }

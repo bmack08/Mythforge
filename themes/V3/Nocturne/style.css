@@ -1,0 +1,485 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * NOCTURNE — Mythforge output theme candidate 3 of 3.  UNIT M6.
+ * NOT THE DEFAULT. Marked `hidden` in themes/themes.json.
+ *
+ * ── The idea ───────────────────────────────────────────────────────────────
+ * The others are sheets of paper. This one is a screen held at a table in a
+ * dim room, which is where a GM actually reads their own brew: phone or
+ * tablet propped behind a screen, one lamp on. Every brew theme in this space
+ * is a light theme, so a GM reading at the table either burns their own night
+ * vision or reads a white rectangle. Nocturne is the answer to that, and it
+ * is the reason to look at this candidate at all.
+ *
+ * It is NOT a dark theme that prints badly. @media print inverts the whole
+ * sheet to black-on-white with the accent darkened to a deep teal that holds
+ * 10.13:1 on white, so the same brew exported to PDF is a clean light
+ * document. Nothing is lost on paper and no ink is wasted: the dark surfaces
+ * exist only on screen.
+ *
+ * One device carries it — THE TAB: a short bar of sea-light above every
+ * structural block, and under every heading that opens one. On a dark sheet
+ * a border is nearly invisible and a fill is nearly indistinguishable from
+ * the page, so the light edge does the work a rule does on paper.
+ *
+ * ── Type ───────────────────────────────────────────────────────────────────
+ * TeX Gyre Pagella for reading, Overpass for looking up. On a dark ground a
+ * serif needs a little more room than it does on white, so the body is
+ * 16.5px on 1.68 rather than Verdigris's 16/1.56 — light type on dark
+ * blooms, and tight leading is what makes a dark theme feel unreadable.
+ *
+ * Pagella: GUST Font License, vendored at themes/fonts/Blank/ with the
+ * licence recorded in that folder's fonts.less. Overpass: OFL, vendored at
+ * themes/fonts/5e/, one weight (500); nothing here asks it for bold.
+ *
+ * Plain CSS, not LESS — see the note at the top of Tome's style.css.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-regular.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-italic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bold.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bolditalic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Overpass";
+	font-style:   normal;
+	font-weight:  500;
+	font-display: swap;
+	src:          url('../../fonts/5e/Overpass Medium.woff2') format('woff2');
+}
+
+:root {
+	--noct-paper:  #151A1E;   /* the sheet, on screen                    */
+	--noct-ink:    #E9EEF1;   /* 14.99:1 on paper                        */
+	--noct-soft:   #AEB9C0;   /*  8.76:1 on paper, 8.06:1 on block       */
+	--noct-accent: #86D6C6;   /* 10.39:1 on paper — sea-light            */
+	--noct-fill:   #1E262C;   /* callout stock, ink holds 13.12:1        */
+	--noct-card:   #1A2227;   /* stat block stock, ink holds 13.80:1     */
+	--noct-rule:   #36424A;   /* hairlines only; never carries text      */
+
+	--noct-serif: "MF Pagella", "Palatino Linotype", "Iowan Old Style", Georgia, serif;
+	--noct-sans:  "MF Overpass", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+	--HB_Color_Background: #151A1E;
+}
+
+@page { margin: 0; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* ── The sheet ───────────────────────────────────────────────────────────── */
+.page {
+	position:       relative;
+	z-index:        15;
+	box-sizing:     border-box;
+	width:          215.9mm;
+	height:         279.4mm;
+	padding:        2cm 2.2cm 1.9cm;
+	overflow:       clip;
+	background:     var(--noct-paper);
+	color:          var(--noct-ink);
+	font:           16.5px/1.68 var(--noct-serif);
+	text-rendering: optimizeLegibility;
+	hyphens:        none;
+}
+/* One column at a comfortable measure. A dark sheet is read on a screen,
+ * and nobody scrolls back up a column. */
+/* A definite height rather than a max-height, so the title page's
+ * `margin-top: auto` has free space to claim. Overlong content is clipped by
+ * `.page` either way. */
+.page .columnWrapper {
+	max-width: 15.6cm;
+	height:    100%;
+	margin:    0 auto;
+}
+.page.wide .columnWrapper,
+.page .wide { max-width: none; }
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+.page h1,
+.page h2,
+.page h3,
+.page h4,
+.page h5,
+.page h6 {
+	margin:      0;
+	color:       var(--noct-ink);
+	font-family: var(--noct-serif);
+	font-weight: 700;
+	line-height: 1.16;
+	break-after: avoid;
+}
+.page h1 { font-size: 38px; letter-spacing: -0.01em; }
+
+/* A chapter head, with THE TAB beneath it. */
+.page h2 {
+	position:      relative;
+	margin-top:    36px;
+	padding-bottom: 14px;
+	color:         var(--noct-accent);
+	font-size:     26px;
+}
+.page h2::after {
+	position:   absolute;
+	bottom:     0;
+	left:       0;
+	width:      2.4cm;
+	height:     3px;
+	background: var(--noct-accent);
+	content:    "";
+}
+.page h2:first-child { margin-top: 0; }
+
+.page h3 {
+	margin-top: 26px;
+	color:      var(--noct-accent);
+	font-size:  19.5px;
+}
+.page h4 { margin-top: 20px; font-size: 17.5px; }
+
+/* Sentence case in the sans; no capitals, no tracking. */
+.page h5,
+.page h6 {
+	margin-top:     16px;
+	color:          var(--noct-accent);
+	font-family:    var(--noct-sans);
+	font-size:      14px;
+	font-weight:    500;
+	letter-spacing: 0;
+}
+
+.page p { margin: 0.6em 0 0; overflow-wrap: break-word; }
+.page h1 + p,
+.page h2 + p,
+.page h3 + p,
+.page h4 + p { margin-top: 0.5em; }
+.page strong { font-weight: 700; }
+.page em { font-style: italic; }
+.page sup { font-size: smaller; line-height: 0; vertical-align: super; }
+.page sub { font-size: smaller; line-height: 0; vertical-align: sub; }
+.page a { color: var(--noct-accent); text-decoration: underline; text-underline-offset: 2px; }
+
+.page hr {
+	height:     0;
+	margin:     1em 0;
+	border:     0;
+	border-top: 1px solid var(--noct-rule);
+}
+
+.page blockquote,
+.page .quote {
+	margin:       1.2em 0 0;
+	padding-left: 14px;
+	border-left:  3px solid var(--noct-rule);
+	color:        var(--noct-soft);
+	font-size:    17px;
+	font-style:   italic;
+}
+.page blockquote p:first-child { margin-top: 0; }
+
+.page ul,
+.page ol { margin: 0.55em 0 0; padding-left: 1.3em; }
+.page ul { list-style: disc outside; }
+.page ol { list-style: decimal outside; }
+.page li { margin-top: 0.2em; }
+.page img { max-width: 100%; }
+
+.page code,
+.page pre {
+	font-family: ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace;
+	font-size:   0.88em;
+}
+.page code { padding: 1px 4px; background: var(--noct-fill); border-radius: 2px; }
+
+/* ── Definition lists ──────────────────────────────────────────────────────
+ * Spell and stat-block attribute lines (`**Range** :: 60 feet`) come out of
+ * the renderer as dl/dt/dd. Tome leaves them unstyled. */
+.page dl { margin: 0.55em 0 0; overflow: hidden; }
+.page dt {
+	float:        left;
+	clear:        left;
+	margin-right: 0.45em;
+	color:        var(--noct-ink);
+	font-weight:  700;
+}
+.page dd { margin: 0; color: var(--noct-soft); }
+.page dl + dl { margin-top: 0; }
+
+/* ── Callouts ──────────────────────────────────────────────────────────────
+ * A slightly lifted surface with the tab across its top edge. */
+.page .note,
+.page .descriptive,
+.page .sidebar {
+	margin:       1.25em 0 0;
+	padding:      14px 16px;
+	background:   var(--noct-fill);
+	border-top:   3px solid var(--noct-accent);
+	border-radius: 0 0 3px 3px;
+	font-size:    15.5px;
+	line-height:  1.6;
+	break-inside: avoid;
+}
+.page .note > :first-child,
+.page .descriptive > :first-child,
+.page .sidebar > :first-child { margin-top: 0; }
+.page .note h5,
+.page .descriptive h5,
+.page .sidebar h5 { margin-top: 0; margin-bottom: 0.3em; }
+
+/* ── Stat block ────────────────────────────────────────────────────────────
+ * The darkest surface on the sheet, so it reads as an object rather than a
+ * tint, with the tab on top and a hairline around it. */
+.page .monster,
+.page .statblock {
+	margin:        1.3em 0 0;
+	padding:       14px 16px 16px;
+	background:    var(--noct-card);
+	border:        1px solid var(--noct-rule);
+	border-top:    4px solid var(--noct-accent);
+	border-radius: 0 0 3px 3px;
+	break-inside:  avoid;
+}
+.page .monster > :first-child,
+.page .statblock > :first-child { margin-top: 0; }
+.page .monster h2,
+.page .monster h3,
+.page .statblock h2,
+.page .statblock h3 {
+	margin:      0;
+	padding:     0;
+	border:      0;
+	color:       var(--noct-ink);
+	font-family: var(--noct-serif);
+	font-size:   21px;
+}
+.page .monster h2::after,
+.page .statblock h2::after { content: none; }
+.page .monster > p:first-of-type em,
+.page .statblock > p:first-of-type em {
+	color:      var(--noct-soft);
+	font-style: italic;
+}
+.page .monster hr,
+.page .statblock hr { margin: 0.7em 0; border-top: 1px solid var(--noct-rule); }
+
+/* The six ability scores. Labels in sea-light, figures in full ink. */
+.page .monster table,
+.page .statblock table {
+	display:               grid;
+	grid-template-columns: repeat(6, 1fr);
+	width:                 100%;
+	margin:                0.8em 0;
+	padding:               7px 0;
+	border-top:            1px solid var(--noct-rule);
+	border-bottom:         1px solid var(--noct-rule);
+	text-align:            center;
+}
+.page .monster table thead,
+.page .monster table tbody,
+.page .monster table tr,
+.page .statblock table thead,
+.page .statblock table tbody,
+.page .statblock table tr { display: contents; }
+.page .monster table th,
+.page .statblock table th {
+	padding:     0 2px 2px;
+	border:      0;
+	color:       var(--noct-accent);
+	font-family: var(--noct-sans);
+	font-size:   12.5px;
+	font-weight: 500;
+	text-align:  center;
+}
+.page .monster table td,
+.page .statblock table td {
+	padding:              0 2px;
+	border:               0;
+	color:                var(--noct-ink);
+	font-size:            14.5px;
+	font-variant-numeric: tabular-nums;
+	text-align:           center;
+}
+
+/* ── Spell ───────────────────────────────────────────────────────────────── */
+.page h4 + p em { color: var(--noct-soft); }
+
+/* ── Tables in the body ──────────────────────────────────────────────────── */
+.page .columnWrapper > table,
+.page .classTable table {
+	width:           100%;
+	margin:          1.25em 0 0;
+	border-collapse: collapse;
+	font-size:       15px;
+	break-inside:    avoid;
+}
+.page .columnWrapper > table th,
+.page .classTable table th {
+	padding:       7px 10px 6px;
+	border-bottom: 2px solid var(--noct-accent);
+	color:         var(--noct-accent);
+	font-family:   var(--noct-sans);
+	font-size:     13px;
+	font-weight:   500;
+}
+.page .columnWrapper > table td,
+.page .classTable table td {
+	padding:              6px 10px;
+	border-bottom:        1px solid var(--noct-rule);
+	font-variant-numeric: tabular-nums;
+}
+.page table th[align=center], .page table td[align=center] { text-align: center; }
+.page table th[align=right],  .page table td[align=right]  { text-align: right; }
+.page table th[align=left],   .page table td[align=left]   { text-align: left; }
+
+/* ── Title page ────────────────────────────────────────────────────────────
+ * A single tab, the title in sea-light, and a great deal of dark. The point
+ * of the candidate is legible calm, and a title page is where that shows. */
+.page .titlePage {
+	display:        flex;
+	flex-direction: column;
+	box-sizing:     border-box;   /* the deep top padding is INSIDE the 100% */
+	max-width:      14.6cm;
+	height:         100%;
+	/* The foot padding keeps the contents list clear of the folio band. */
+	padding:        3.6cm 0 1.1cm;
+}
+.page .titlePage h1 {
+	position:    relative;
+	margin:      0;
+	color:       var(--noct-accent);
+	font-size:   56px;
+	line-height: 1.04;
+}
+.page .titlePage h1::before {
+	position:   absolute;
+	top:        -1.1cm;
+	left:       0;
+	width:      3.2cm;
+	height:     3px;
+	background: var(--noct-accent);
+	content:    "";
+}
+.page .titlePage h1 + h2 {
+	margin:         0.7cm 0 0;
+	padding-bottom: 0;
+	color:          var(--noct-ink);
+	font-size:      19px;
+	font-style:     italic;
+	font-weight:    400;
+	line-height:    1.42;
+}
+.page .titlePage h1 + h2::after { content: none; }
+.page .titlePage > p:first-of-type {
+	margin-top:  0.5cm;
+	color:       var(--noct-soft);
+	font-family: var(--noct-sans);
+	font-size:   14px;
+}
+.page .titlePage h3 {
+	margin-top:  auto;
+	font-family: var(--noct-sans);
+	font-size:   14px;
+	font-weight: 500;
+}
+.page .titlePage ul {
+	margin-top:   0.3cm;
+	padding-left: 0;
+	font-size:    15.5px;
+	list-style:   none;
+}
+.page .titlePage ul li {
+	padding:       5px 0;
+	border-bottom: 1px solid var(--noct-rule);
+}
+.page .titlePage > p:last-child {
+	margin-top:  0.7cm;
+	color:       var(--noct-soft);
+	font-family: var(--noct-sans);
+	font-size:   12.5px;
+}
+
+/* ── Page furniture ──────────────────────────────────────────────────────── */
+.page .pageNumber,
+.page .footnote {
+	position:             absolute;
+	bottom:               1cm;
+	color:                var(--noct-soft);
+	font-family:          var(--noct-sans);
+	font-size:            12.5px;
+	font-variant-numeric: tabular-nums;
+}
+.page .pageNumber { right: 2.2cm; }
+.page .footnote   { left: 2.2cm; }
+.page p:has(> .pageNumber),
+.page p:has(> .footnote) { margin: 0; line-height: 0; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * PRINT: the whole sheet inverts.
+ *
+ * A dark PDF is a bad PDF — it empties a toner cartridge and most print
+ * drivers drop the background anyway, which would leave pale ink on white
+ * and fail AA badly. So on paper Nocturne becomes a light document: white
+ * stock, near-black ink, and the sea-light accent darkened to #0E4A40,
+ * which holds 10.13:1 on white (the screen accent would hold 1.69:1 and is
+ * unusable). Verified pairs are listed in laneM6-theme-review.md.
+ * ════════════════════════════════════════════════════════════════════════════ */
+@media print {
+	:root {
+		--noct-paper:  #FFFFFF;
+		--noct-ink:    #14191C;   /* 17.71:1 on white */
+		--noct-soft:   #4C555B;   /*  7.61:1 on white */
+		--noct-accent: #0E4A40;   /* 10.13:1 on white */
+		--noct-fill:   #EEF3F1;
+		--noct-card:   #FFFFFF;
+		--noct-rule:   #C3CCC9;
+
+		--HB_Color_Background: #FFFFFF;
+	}
+	.page { background: #FFFFFF; color: var(--noct-ink); }
+	.page .monster,
+	.page .statblock {
+		background: var(--noct-card);
+		border:     1px solid var(--noct-rule);
+		border-top: 4px solid var(--noct-accent);
+	}
+	.page .note,
+	.page .descriptive,
+	.page .sidebar { background: var(--noct-fill); border-top: 3px solid var(--noct-accent); }
+	.page dd { color: var(--noct-ink); }
+	.page .monster table td,
+	.page .statblock table td { color: var(--noct-ink); }
+	.page .titlePage h1 { color: var(--noct-accent); }
+	.page .titlePage h1 + h2 { color: var(--noct-ink); }
+}
+
+/* ── Keeping a spell together ──────────────────────────────────────────────
+ * A spell has no wrapper element — it is an h4, an italic line, a dl and a
+ * paragraph as four siblings — so there is nothing to put `break-inside` on
+ * and a column or page break can land in the middle of one. These four rules
+ * are the closest the markup allows: the heading holds to the school line,
+ * the school line holds to the stat list, and the stat list never splits. */
+.page dl { break-inside: avoid; }
+.page h4 + p,
+.page h4 + p + dl { break-before: avoid; }
+.page h4 + p { break-after: avoid; }

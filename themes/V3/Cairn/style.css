@@ -1,0 +1,516 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * CAIRN — Mythforge output theme candidate 1 of 3.  UNIT M6. NOT THE DEFAULT.
+ *
+ * Marked `hidden` in themes/themes.json, so the metadata editor's theme list
+ * skips it and no user can pick it yet. Tome is still the default. This file
+ * exists to be looked at, not shipped.
+ *
+ * ── The idea ───────────────────────────────────────────────────────────────
+ * A stacked-stone waymarker. The page is cut, not decorated: hierarchy comes
+ * from scale, weight, rule weight and space, and there is no colour in the
+ * ink at all. One structural device carries the whole theme — THE RAIL, a
+ * 3cm left margin that every structural block hangs a mark into, so the
+ * reader learns a single column of "here is a thing" markers and can scan a
+ * page mid-session without reading it.
+ *
+ * Why achromatic: the PHB's trade dress IS its colour coding — maroon heads,
+ * gold rules, orange-parchment stat panels. Dropping colour entirely is the
+ * furthest a theme can get from that while staying warm, and it has two
+ * commercial side effects worth having: it prints on one ink, and every text
+ * pair is above 6:1 by construction.
+ *
+ * ── Type ───────────────────────────────────────────────────────────────────
+ * TeX Gyre Pagella (GUST Font License, already vendored at
+ * themes/fonts/Blank/ with its licence recorded in that folder's fonts.less)
+ * for everything that is read, and Overpass (already vendored at
+ * themes/fonts/5e/, Red Hat, OFL) for the few things that are only looked up.
+ * Pagella is a Palatino-class old-style serif: it is not, and does not
+ * resemble, Bookinsanity, Mrs Eaves, Scaly Sans or Solbera.
+ *
+ * Overpass ships here in ONE weight (500). Nothing in this file ever asks it
+ * for bold, so the browser never synthesises one.
+ *
+ * ── Deliberately not done ──────────────────────────────────────────────────
+ * No parchment image, no cream, no maroon, no gold, no red stat panel, no
+ * orange footer sash, no drop caps, no two columns. No raster art either: a
+ * theme cannot know what a brew is about, so the cover image belongs to the
+ * author's own image tag, not to the stylesheet.
+ *
+ * Plain CSS, not LESS, for the same reason Tome is: this checkout has never
+ * run scripts/buildHomebrew.js, so a .less theme never becomes CSS and 302s
+ * inside the preview iframe. Express falls back to serving source themes/,
+ * so this file is live at /themes/V3/Cairn/style.css with no build step.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-regular.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-italic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   normal;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bold.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Pagella";
+	font-style:   italic;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bolditalic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  "MF Overpass";
+	font-style:   normal;
+	font-weight:  500;
+	font-display: swap;
+	src:          url('../../fonts/5e/Overpass Medium.woff2') format('woff2');
+}
+
+:root {
+	--cairn-paper: #F6F6F4;   /* cool near-white stock, not cream       */
+	--cairn-ink:   #14171A;   /* 16.63:1 on paper                       */
+	--cairn-soft:  #52585E;   /*  6.65:1 on paper, 6.02:1 on fill       */
+	--cairn-rule:  #B9BDC1;   /* hairlines only; never carries text     */
+	--cairn-fill:  #EAEBE8;   /* callout stock                          */
+	--cairn-card:  #FFFFFF;   /* stat block stock                       */
+	--cairn-link:  #27486B;   /*  8.72:1 on paper — the one colour here */
+
+	--cairn-serif: "MF Pagella", "Palatino Linotype", "Iowan Old Style", Georgia, serif;
+	--cairn-sans:  "MF Overpass", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+	--cairn-rail:  3cm;       /* the left margin every mark hangs into  */
+
+	--HB_Color_Background: #F6F6F4;
+}
+
+@page { margin: 0; }
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* ── The sheet ───────────────────────────────────────────────────────────── */
+.page {
+	position:       relative;
+	z-index:        15;
+	box-sizing:     border-box;
+	width:          215.9mm;
+	height:         279.4mm;
+	padding:        2.1cm 2.2cm 1.9cm var(--cairn-rail);
+	overflow:       clip;
+	background:     var(--cairn-paper);
+	color:          var(--cairn-ink);
+	font:           16.5px/1.62 var(--cairn-serif);
+	text-rendering: optimizeLegibility;
+	hyphens:        none;
+}
+
+/* Single column, with a capped measure. 15.2cm is about 71 characters of
+ * Pagella at this size — inside the 80 the brief asks for, and the reason the
+ * rail can be this wide without the page looking empty. */
+/* A definite height, not a max-height: the title page is a flex column that
+ * pushes its contents list to the foot of the sheet with `margin-top: auto`,
+ * and auto margins only have space to claim if the parent's height resolves
+ * to something. Anything longer than the sheet is clipped by `.page` exactly
+ * as it would be with a max-height. */
+.page .columnWrapper {
+	max-width: 15.2cm;
+	height:    100%;
+}
+.page.wide .columnWrapper,
+.page .wide { max-width: none; }
+
+/* ── Type ────────────────────────────────────────────────────────────────── */
+.page h1,
+.page h2,
+.page h3,
+.page h4,
+.page h5,
+.page h6 {
+	margin:      0;
+	color:       var(--cairn-ink);
+	font-family: var(--cairn-serif);
+	line-height: 1.14;
+	break-after: avoid;
+}
+.page h1 { font-size: 40px; font-weight: 700; letter-spacing: -0.015em; }
+
+/* A chapter head. The rule sits ABOVE it and runs back into the rail, so the
+ * mark spans the full width of the page rather than underlining the words —
+ * the PHB's gold underline is the single most recognisable cue in the dress. */
+.page h2 {
+	margin-top:  34px;
+	margin-left: calc(2.2cm - var(--cairn-rail));
+	padding-top: 10px;
+	border-top:  3px solid var(--cairn-ink);
+	font-size:   27px;
+	font-weight: 700;
+}
+.page h2:first-child { margin-top: 0; }
+
+/* A section. Its mark hangs in the rail: a short square rule to the left of
+ * the text, sitting on the first line. */
+.page h3 {
+	position:    relative;
+	margin-top:  24px;
+	font-size:   20px;
+	font-weight: 700;
+}
+.page h3::before {
+	position:   absolute;
+	top:        0.58em;
+	left:       -1.5cm;
+	width:      0.95cm;
+	height:     3px;
+	background: var(--cairn-ink);
+	content:    "";
+}
+.page h4 {
+	margin-top:  20px;
+	font-size:   17.5px;
+	font-weight: 700;
+}
+
+/* Labels are sentence case, and earn their rank from weight and the change of
+ * face rather than from capitals and tracking. */
+.page h5,
+.page h6 {
+	margin-top:     16px;
+	color:          var(--cairn-ink);
+	font-family:    var(--cairn-sans);
+	font-size:      14px;
+	font-weight:    500;
+	letter-spacing: 0;
+}
+
+.page p { margin: 0.62em 0 0; overflow-wrap: break-word; }
+.page h1 + p,
+.page h2 + p,
+.page h3 + p,
+.page h4 + p { margin-top: 0.5em; }
+.page strong { font-weight: 700; }
+.page em { font-style: italic; }
+.page sup { font-size: smaller; line-height: 0; vertical-align: super; }
+.page sub { font-size: smaller; line-height: 0; vertical-align: sub; }
+.page a { color: var(--cairn-link); text-decoration: underline; text-underline-offset: 2px; }
+
+.page hr {
+	height:     0;
+	margin:     1em 0;
+	border:     0;
+	border-top: 1px solid var(--cairn-rule);
+}
+
+/* A pulled quote: larger and lighter than the body, hanging into the rail.
+ * The one place on the page where type is allowed to be a picture. */
+.page blockquote,
+.page .quote {
+	margin:      1.3em 0 0 -1.5cm;
+	color:       var(--cairn-soft);
+	font-size:   19px;
+	font-style:  italic;
+	line-height: 1.46;
+}
+.page blockquote p:first-child { margin-top: 0; }
+
+.page ul,
+.page ol { margin: 0.55em 0 0; padding-left: 1.3em; }
+.page ul { list-style: disc outside; }
+.page ol { list-style: decimal outside; }
+.page li { margin-top: 0.18em; }
+.page img { max-width: 100%; }
+
+.page code,
+.page pre {
+	font-family: ui-monospace, "Cascadia Mono", "JetBrains Mono", monospace;
+	font-size:   0.88em;
+}
+.page code { padding: 1px 4px; background: var(--cairn-fill); border-radius: 2px; }
+
+/* ── Definition lists ──────────────────────────────────────────────────────
+ * `**Range** :: 60 feet` is how this renderer writes every stat line in a
+ * spell and in a stat block, and it comes out as a dl/dt/dd. Tome never
+ * styles these, so they currently stack as unaligned blocks. Here they are a
+ * real two-column list whose value wraps under its own term. */
+.page dl { margin: 0.55em 0 0; overflow: hidden; }
+.page dt {
+	float:        left;
+	clear:        left;
+	margin-right: 0.45em;
+	font-weight:  700;
+}
+.page dt > strong { font-weight: 700; }
+.page dd { margin: 0; }
+.page dl + dl { margin-top: 0; }
+
+/* ── Callouts ──────────────────────────────────────────────────────────────
+ * Flat stock, one hairline, and an ink tab hanging in the rail. No radius
+ * worth noticing, no shadow, nothing that reads as a UI card. */
+.page .note,
+.page .descriptive,
+.page .sidebar {
+	position:     relative;
+	margin:       1.3em 0 0;
+	padding:      14px 16px;
+	background:   var(--cairn-fill);
+	border:       1px solid var(--cairn-rule);
+	font-size:    15.5px;
+	line-height:  1.55;
+	break-inside: avoid;
+}
+.page .note::before,
+.page .descriptive::before,
+.page .sidebar::before {
+	position:   absolute;
+	top:        14px;
+	left:       -1.5cm;
+	width:      0.95cm;
+	height:     3px;
+	background: var(--cairn-ink);
+	content:    "";
+}
+.page .note > :first-child,
+.page .descriptive > :first-child,
+.page .sidebar > :first-child { margin-top: 0; }
+.page .note h5,
+.page .descriptive h5,
+.page .sidebar h5 { margin-top: 0; margin-bottom: 0.3em; }
+
+/* ── Stat block ────────────────────────────────────────────────────────────
+ * A white card on grey stock with a heavy ink rule across the top. The PHB's
+ * version is a pink-orange parchment panel with a red triangle and an ornate
+ * border image; there is none of it here. */
+.page .monster,
+.page .statblock {
+	position:     relative;
+	margin:       1.4em 0 0;
+	padding:      14px 16px 16px;
+	background:   var(--cairn-card);
+	border:       1px solid var(--cairn-rule);
+	border-top:   4px solid var(--cairn-ink);
+	break-inside: avoid;
+}
+/* The rail again. A stat block, a callout and a section all hang the same
+ * mark in the same column, which is the whole point of the device — one mark
+ * on a page reads as a stray, three read as a system. */
+.page .monster::before,
+.page .statblock::before {
+	position:   absolute;
+	top:        14px;
+	left:       -1.5cm;
+	width:      0.95cm;
+	height:     3px;
+	background: var(--cairn-ink);
+	content:    "";
+}
+.page .monster > :first-child,
+.page .statblock > :first-child { margin-top: 0; }
+.page .monster h2,
+.page .monster h3,
+.page .statblock h2,
+.page .statblock h3 {
+	margin:      0;
+	padding:     0;
+	border:      0;
+	font-family: var(--cairn-serif);
+	font-size:   21px;
+	font-weight: 700;
+}
+.page .monster h2::before,
+.page .monster h3::before,
+.page .statblock h2::before,
+.page .statblock h3::before { content: none; }
+
+/* The creature type line. */
+.page .monster > p:first-of-type em,
+.page .statblock > p:first-of-type em {
+	color:      var(--cairn-soft);
+	font-style: italic;
+}
+.page .monster hr,
+.page .statblock hr { margin: 0.7em 0; border-top: 1px solid var(--cairn-rule); }
+
+/* The six ability scores: a hairline-ruled strip, Overpass for the
+ * three-letter labels, tabular figures so the modifiers line up. */
+.page .monster table,
+.page .statblock table {
+	display:               grid;
+	grid-template-columns: repeat(6, 1fr);
+	width:                 100%;
+	margin:                0.8em 0;
+	border-top:            1px solid var(--cairn-rule);
+	border-bottom:         1px solid var(--cairn-rule);
+	text-align:            center;
+}
+.page .monster table thead,
+.page .monster table tbody,
+.page .monster table tr,
+.page .statblock table thead,
+.page .statblock table tbody,
+.page .statblock table tr { display: contents; }
+.page .monster table th,
+.page .statblock table th {
+	padding:     6px 2px 2px;
+	color:       var(--cairn-soft);
+	font-family: var(--cairn-sans);
+	font-size:   12.5px;
+	font-weight: 500;
+	text-align:  center;
+}
+.page .monster table td,
+.page .statblock table td {
+	padding:              0 2px 6px;
+	border:               0;
+	font-size:            14.5px;
+	font-variant-numeric: tabular-nums;
+	text-align:           center;
+}
+
+/* ── Spell ─────────────────────────────────────────────────────────────────
+ * A spell in this renderer is an h4, an italic school line and a dl — there
+ * is no wrapper to hang a style on, so the h4 and that line carry it. */
+.page h4 + p em { color: var(--cairn-soft); }
+
+/* ── Tables in the body ────────────────────────────────────────────────────
+ * Rules top and bottom plus a hairline under the head. No zebra fill: the
+ * PHB's pastel-green banding is a trade-dress cue, and rules read better in
+ * print anyway. */
+.page .columnWrapper > table,
+.page .classTable table {
+	width:           100%;
+	margin:          1.3em 0 0;
+	border-top:      2px solid var(--cairn-ink);
+	border-bottom:   2px solid var(--cairn-ink);
+	border-collapse: collapse;
+	font-size:       15px;
+	break-inside:    avoid;
+}
+.page .columnWrapper > table th,
+.page .classTable table th {
+	padding:       7px 10px 6px;
+	border-bottom: 1px solid var(--cairn-rule);
+	color:         var(--cairn-ink);
+	font-family:   var(--cairn-sans);
+	font-size:     13px;
+	font-weight:   500;
+}
+.page .columnWrapper > table td,
+.page .classTable table td {
+	padding:              6px 10px;
+	font-variant-numeric: tabular-nums;
+}
+.page .columnWrapper > table tbody tr + tr td { border-top: 1px solid var(--cairn-rule); }
+.page table th[align=center], .page table td[align=center] { text-align: center; }
+.page table th[align=right],  .page table td[align=right]  { text-align: right; }
+.page table th[align=left],   .page table td[align=left]   { text-align: left; }
+
+/* ── Title page ────────────────────────────────────────────────────────────
+ * The cairn itself: three ink rules of decreasing length stacked above the
+ * title. Flush left, deep top margin, and the contents list anchored to the
+ * foot so the middle of the sheet stays empty. */
+.page .titlePage {
+	display:        flex;
+	flex-direction: column;
+	box-sizing:     border-box;   /* the deep top padding is INSIDE the 100% */
+	max-width:      14.2cm;
+	height:         100%;
+	/* The foot padding keeps the contents list clear of the folio band. */
+	padding:        3.2cm 0 1.1cm;
+}
+.page .titlePage h1 {
+	position:    relative;
+	margin-top:  0;
+	font-size:   58px;
+	line-height: 1.02;
+}
+/* The cairn: three rules of decreasing length, 0.42cm apart, drawn as three
+ * background layers of one element so the taper is exact and there is no
+ * second pseudo-element fighting it for position. */
+.page .titlePage h1::before {
+	position: absolute;
+	top:      -2.05cm;
+	left:     0;
+	width:    7.4cm;
+	height:   1.15cm;
+	content:  "";
+	background:
+		linear-gradient(var(--cairn-ink), var(--cairn-ink)) 0 0      / 7.4cm 3px no-repeat,
+		linear-gradient(var(--cairn-ink), var(--cairn-ink)) 0 0.42cm / 4.9cm 3px no-repeat,
+		linear-gradient(var(--cairn-ink), var(--cairn-ink)) 0 0.84cm / 2.6cm 3px no-repeat;
+}
+.page .titlePage h2 {
+	margin:      0.75cm 0 0;
+	padding:     0;
+	border:      0;
+	color:       var(--cairn-soft);
+	font-size:   19px;
+	font-style:  italic;
+	font-weight: 400;
+	line-height: 1.42;
+}
+.page .titlePage > p:first-of-type {
+	margin-top:  0.5cm;
+	font-family: var(--cairn-sans);
+	font-size:   14px;
+}
+.page .titlePage h3 {
+	margin-top:  auto;
+	font-family: var(--cairn-sans);
+	font-size:   14px;
+	font-weight: 500;
+}
+.page .titlePage h3::before { content: none; }
+.page .titlePage ul {
+	margin-top:   0.3cm;
+	padding-left: 0;
+	font-size:    15.5px;
+	list-style:   none;
+}
+.page .titlePage ul li {
+	padding:       5px 0;
+	border-bottom: 1px solid var(--cairn-rule);
+}
+.page .titlePage > p:last-child {
+	margin-top:  0.7cm;
+	color:       var(--cairn-soft);
+	font-family: var(--cairn-sans);
+	font-size:   12.5px;
+}
+
+/* ── Page furniture ──────────────────────────────────────────────────────── */
+.page .pageNumber,
+.page .footnote {
+	position:             absolute;
+	bottom:               1.05cm;
+	color:                var(--cairn-soft);
+	font-family:          var(--cairn-sans);
+	font-size:            12.5px;
+	font-variant-numeric: tabular-nums;
+}
+.page .pageNumber { right: 2.2cm; }
+.page .footnote   { left: var(--cairn-rail); }
+
+/* The spans arrive wrapped in a paragraph, which would otherwise hold open a
+ * line of empty flow at the foot of the page. */
+.page p:has(> .pageNumber),
+.page p:has(> .footnote) { margin: 0; line-height: 0; }
+
+/* ── Keeping a spell together ──────────────────────────────────────────────
+ * A spell has no wrapper element — it is an h4, an italic line, a dl and a
+ * paragraph as four siblings — so there is nothing to put `break-inside` on
+ * and a column or page break can land in the middle of one. These four rules
+ * are the closest the markup allows: the heading holds to the school line,
+ * the school line holds to the stat list, and the stat list never splits. */
+.page dl { break-inside: avoid; }
+.page h4 + p,
+.page h4 + p + dl { break-before: avoid; }
+.page h4 + p { break-after: avoid; }
