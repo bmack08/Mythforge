@@ -22,6 +22,14 @@ const ITEMS = [
 	{ key: 'help',      label: 'Help',      href: '/faq',            icon: 'fas fa-question-circle' }
 ];
 
+/* Settings sits after the spacer, on the right, and not in the five-item list
+ * above. In the mocks Mythforge is a section of TaleForge and Settings is in
+ * TaleForge's own account menu - but standalone, and signed out, there is no
+ * account menu to put it in, and unit M1 correctly took the item out of the
+ * global top bar. A settings page nobody can reach is the same defect as a
+ * nav item that goes nowhere, from the other end. */
+const SETTINGS = { key: 'settings', label: 'Settings', href: '/settings', icon: 'fas fa-sliders-h' };
+
 const MythforgeBar = ({ active, onNewBrew, children })=>{
 	return <div className='tide-mbar' role='navigation' aria-label='Mythforge'>
 		<span className='tide-mbar-brand'>Mythforge</span>
@@ -55,6 +63,14 @@ const MythforgeBar = ({ active, onNewBrew, children })=>{
 			</a>;
 		})}
 		<span className='tide-mbar-spacer' />
+		<a
+			href={prefixPath(SETTINGS.href)}
+			className={active === SETTINGS.key ? 'on' : undefined}
+			aria-current={active === SETTINGS.key ? 'page' : undefined}
+		>
+			<i className={SETTINGS.icon} aria-hidden='true' />
+			{SETTINGS.label}
+		</a>
 		{children}
 	</div>;
 };

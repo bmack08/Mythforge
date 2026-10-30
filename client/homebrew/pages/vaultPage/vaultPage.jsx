@@ -1,429 +1,376 @@
-/*eslint max-lines: ["warn", {"max": 400, "skipBlankLines": true, "skipComments": true}]*/
-/*eslint max-params:["warn", { max: 10 }], */
-import './vaultPage.less';
-
-import React, { useState, useEffect, useRef } from 'react';
-import { prefixPath } from '../../utils/basePath.js';
+import React, { useState, useEffect, useCallback } from 'react';
 
 import Nav from 'naturalcrit/nav/nav.jsx';
 import Navbar from '../../navbar/navbar.jsx';
-import { both as RecentNavItem } from '../../navbar/recent.navitem.jsx';
-import Account from '../../navbar/account.navitem.jsx';
-import NewBrew from '../../navbar/newbrew.navitem.jsx';
-import HelpNavItem from '../../navbar/help.navitem.jsx';
-import BrewItem from '../basePages/listPage/brewItem/brewItem.jsx';
-import SplitPane from 'client/components/splitPane/splitPane.jsx';
-import ErrorIndex from '../errorPage/errors/errorIndex.js';
+import AccountNavItem from '../../navbar/account.navitem.jsx';
+import MythforgeBar from '../../components/mythforgeBar/mythforgeBar.jsx';
+import SrdFooter from '../../components/srdFooter/srdFooter.jsx';
+import { prefixPath } from '../../utils/basePath.js';
+import { ART, coversFor, cssUrl } from '../../../art/tidewatch/art.js';
 
-import request from '../../utils/request-middleware.js';
+/*
+ * THE VAULT - mocks/12-mythforge-vault.html.
+ *
+ * Section 9: "A solid search card plus a designed empty state (art roundel,
+ * 'Search the vault', suggestions, 'Browse newest' / 'Publish your brew')."
+ * The before shot is a parchment texture behind a two-pane split with an
+ * orange Search button - all of it inherited Homebrewery trade dress that the
+ * brief retires - and, before any search, the whole right-hand pane said "No
+ * search yet" in a heading and nothing else.
+ *
+ * Two empty states, both from section 9's list, because they are not the same
+ * message: NO SEARCH YET invites you to search, NO RESULTS tells you the
+ * search worked and found nothing and offers a way out.
+ *
+ * WHAT THE SORT BAR USED TO CLAIM. The old page offered Title / Created /
+ * Updated / Views sort buttons and passed sort= and dir= to the API.
+ * server/vault.api.simple.js ignores both and always orders by createdAt
+ * DESC, so those four buttons re-ran the same query and the arrow moved for
+ * nothing. They are gone and the column says what the order actually is
+ * rather than pretending to offer a choice. Same for the "Brews found" total:
+ * it came from /api/vault/total, a route that does not exist in this
+ * checkout, so the number never arrived - the real response carries
+ * totalCount and that is what is shown now.
+ */
+
+const PER_PAGE = 20;
+
+/* A search is worth sending when it can match something. The API treats an
+ * empty title and author as "every published brew", which is what Browse
+ * newest wants - so emptiness is allowed, but a one-character title is not,
+ * because it would scan the whole vault for a letter. */
+const MIN_TITLE = 3;
+
+const authorsOf = (brew)=>{
+	const list = Array.isArray(brew.authors)
+		? brew.authors
+		: String(brew.authors || '').split(',').map((a)=>a.trim()).filter(Boolean);
+	return list.length ? list.join(', ') : null;
+};
 
 const VaultPage = (props)=>{
-	const [pageState, setPageState] = useState(parseInt(props.query.page) || 1);
+	const query = props.query || {};
 
-	const [sortState, setSort] = useState(props.query.sort || 'title');
-	const [dirState, setdir] = useState(props.query.dir || 'asc');
+	const [title,    setTitle]    = useState(query.title || '');
+	const [author,   setAuthor]   = useState(query.author || '');
+	const [older,    setOlder]    = useState(query.legacy !== 'false');
 
-	//Response state
-	const [brewCollection, setBrewCollection] = useState(null);
-	const [totalBrews, setTotalBrews]         = useState(null);
-	const [searching, setSearching]           = useState(false);
-	const [error, setError]                   = useState(null);
+	// What the last SENT search was, so the no-results message quotes the
+	// terms that actually returned nothing rather than whatever is in the
+	// boxes by the time it is read.
+	const [sent,     setSent]     = useState(null);
+	const [brews,    setBrews]    = useState(null);
+	const [total,    setTotal]    = useState(0);
+	const [pages,    setPages]    = useState(1);
+	const [page,     setPage]     = useState(parseInt(query.page, 10) || 1);
+	const [busy,     setBusy]     = useState(false);
+	const [error,    setError]    = useState(null);
 
-	const titleRef        = useRef(null);
-	const authorRef       = useRef(null);
-	const countRef        = useRef(null);
-	const v3Ref           = useRef(null);
-	const legacyRef       = useRef(null);
-	const submitButtonRef = useRef(null);
+	const canSearch = title.trim().length >= MIN_TITLE || author.trim().length > 0;
 
-	useEffect(()=>{
-		disableSubmitIfFormInvalid();
-		loadPage(pageState, true, props.query.sort, props.query.dir);
-	}, []);
+	const search = useCallback(async (opts)=>{
+		const terms = {
+			title  : (opts.title ?? '').trim(),
+			author : (opts.author ?? '').trim(),
+			older  : !!opts.older,
+			page   : opts.page || 1
+		};
 
-	const updateStateWithBrews = (brews, page)=>{
-		setBrewCollection(brews || null);
-		setPageState(parseInt(page) || 1);
-		setSearching(false);
-	};
+		setBusy(true);
+		setError(null);
+		setSent(terms);
 
-	const updateUrl = (titleValue, authorValue, countValue, v3Value, legacyValue, page, sort, dir)=>{
-		const url = new URL(window.location.href);
-		const urlParams = new URLSearchParams(url.search);
-
-		urlParams.set('title', titleValue);
-		urlParams.set('author', authorValue);
-		urlParams.set('count', countValue);
-		urlParams.set('v3', v3Value);
-		urlParams.set('legacy', legacyValue);
-		urlParams.set('page', page);
-		urlParams.set('sort', sort);
-		urlParams.set('dir', dir);
-
-		url.search = urlParams.toString();
-		window.history.replaceState(null, '', url.toString());
-	};
-
-	const performSearch = async (title, author, count, v3, legacy, page, sort, dir)=>{
-		updateUrl(title, author, count, v3, legacy, page, sort, dir);
-
-		const response = await request
-			.get(`/api/vault?title=${title}&author=${author}&v3=${v3}&legacy=${legacy}&count=${count}&page=${page}&sort=${sort}&dir=${dir}`)
-			.catch((error)=>{
-				console.log('error at loadPage: ', error);
-				setError(error);
-				updateStateWithBrews([], 1);
-			});
-
-		if(response.ok)
-			updateStateWithBrews(response.body.brews, page);
-	};
-
-	const loadTotal = async (title, author, v3, legacy)=>{
-		setTotalBrews(null);
-
-		const response = await request.get(`/api/vault/total?title=${title}&author=${author}&v3=${v3}&legacy=${legacy}`)
-		.catch((error)=>{
-			console.log('error at loadTotal: ', error);
-			setError(error);
-			updateStateWithBrews([], 1);
+		const params = new URLSearchParams({
+			title  : terms.title,
+			author : terms.author,
+			v3     : 'true',
+			legacy : terms.older ? 'true' : 'false',
+			count  : String(PER_PAGE),
+			page   : String(terms.page)
 		});
 
-		if(response.ok)
-			setTotalBrews(response.body.totalBrews);
+		// Linkable: a vault search is the kind of thing people paste to each
+		// other. replaceState rather than pushState so Back leaves the vault
+		// instead of walking every keystroke of a search.
+		try {
+			const url = new URL(window.location.href);
+			url.search = params.toString();
+			window.history.replaceState(null, '', url.toString());
+		} catch { /* a sandboxed iframe may refuse; the search still runs */ }
+
+		try {
+			const res  = await fetch(prefixPath(`/api/vault?${params}`), { credentials: 'same-origin' });
+			const body = await res.json().catch(()=>null);
+			if(!res.ok) throw new Error(body?.error || `The server answered ${res.status}.`);
+			setBrews(Array.isArray(body?.brews) ? body.brews : []);
+			setTotal(body?.totalCount ?? 0);
+			setPages(Math.max(1, body?.totalPages ?? 1));
+			setPage(body?.currentPage ?? terms.page);
+		} catch (err) {
+			// Shown, not swallowed: a failed request and a vault with nothing
+			// in it look identical, and only one of them is worth retrying.
+			setError(err.message || 'The vault search failed.');
+			setBrews([]);
+			setTotal(0);
+			setPages(1);
+		} finally {
+			setBusy(false);
+		}
+	}, []);
+
+	// A URL that already carries terms is a shared search: run it on arrival.
+	// A bare /vault is the "no search yet" state and must not fire a query.
+	useEffect(()=>{
+		if(query.title || query.author) search({ title: query.title, author: query.author, older, page });
+	}, []);
+
+	const submit = (e)=>{
+		e?.preventDefault();
+		if(!canSearch) return;
+		search({ title, author, older, page: 1 });
 	};
 
-	const loadPage = async (page, updateTotal, sort, dir)=>{
-		if(!validateForm()) return;
+	const browseNewest = ()=>{
+		setTitle('');
+		setAuthor('');
+		search({ title: '', author: '', older, page: 1 });
+	};
 
-		setSearching(true);
+	const clearFilters = ()=>{
+		setTitle('');
+		setAuthor('');
+		setOlder(true);
+		setBrews(null);
+		setSent(null);
 		setError(null);
-
-		const title      = titleRef.current.value || '';
-		const author     = authorRef.current.value || '';
-		const count      = countRef.current.value || 10;
-		const v3         = v3Ref.current.checked != false;
-		const legacy     = legacyRef.current.checked != false;
-		const sortOption = sort || 'title';
-		const dirOption  = dir || 'asc';
-		const pageProp   = page || 1;
-
-		setSort(sortOption);
-		setdir(dirOption);
-
-		performSearch(title, author, count, v3, legacy, pageProp, sortOption, dirOption);
-
-		if(updateTotal)
-			loadTotal(title, author, v3, legacy);
-	};
-
-	const renderNavItems = ()=>(
-		<Navbar>
-			<Nav.section>
-				<Nav.item className='brewTitle'>
-					Vault: Search for brews
-				</Nav.item>
-			</Nav.section>
-			<Nav.section>
-				<NewBrew />
-				<HelpNavItem />
-				<RecentNavItem />
-				<Account />
-			</Nav.section>
-		</Navbar>
-	);
-
-	const validateForm = ()=>{
-		//form validity: title or author must be written, and at least one renderer set
-		const isTitleValid      = titleRef.current.validity.valid && titleRef.current.value;
-		const isAuthorValid     = authorRef.current.validity.valid && authorRef.current.value;
-		const isCheckboxChecked = legacyRef.current.checked || v3Ref.current.checked;
-
-		const isFormValid = (isTitleValid || isAuthorValid) && isCheckboxChecked;
-
-		return isFormValid;
-	};
-
-	const disableSubmitIfFormInvalid = ()=>{
-		submitButtonRef.current.disabled = !validateForm();
+		setTotal(0);
+		setPages(1);
+		setPage(1);
+		try {
+			const url = new URL(window.location.href);
+			url.search = '';
+			window.history.replaceState(null, '', url.toString());
+		} catch { /* see above */ }
 	};
 
 	const renderForm = ()=>(
-		<div className='brewLookup'>
-			<h2 className='formTitle'>Brew Lookup</h2>
-			<div className='formContents'>
-				<label>
-					Title of the brew
-					<input
-						ref={titleRef}
-						type='text'
-						name='title'
-						defaultValue={props.query.title || ''}
-						onKeyUp={disableSubmitIfFormInvalid}
-						pattern='.{3,}'
-						title='At least 3 characters'
-						onKeyDown={(e)=>{
-							if(e.key === 'Enter' && !submitButtonRef.current.disabled)
-								loadPage(1, true);
-						}}
-						placeholder='v3 Reference Document'
-					/>
-				</label>
+		<form className='tide-solid tide-panel' onSubmit={submit}>
+			<h3>Find a brew</h3>
 
-				<label>
-					Author of the brew
-					<input
-						ref={authorRef}
-						type='text'
-						name='author'
-						pattern='.{1,}'
-						defaultValue={props.query.author || ''}
-						onKeyUp={disableSubmitIfFormInvalid}
-						onKeyDown={(e)=>{
-							if(e.key === 'Enter' && !submitButtonRef.current.disabled)
-								loadPage(1, true);
-						}}
-						placeholder='Username'
-					/>
-				</label>
+			<label className='tide-field'>
+				<span className='tide-label'>Title</span>
+				<input
+					className='tide-input'
+					type='text'
+					name='title'
+					value={title}
+					placeholder='Ember, lantern, hound…'
+					onChange={(e)=>setTitle(e.target.value)}
+				/>
+			</label>
 
-				<label>
-					Results per page
-					<select ref={countRef} name='count' defaultValue={props.query.count || 20}>
-						<option value='10'>10</option>
-						<option value='20'>20</option>
-						<option value='40'>40</option>
-						<option value='60'>60</option>
-					</select>
-				</label>
+			<label className='tide-field'>
+				<span className='tide-label'>Author</span>
+				<input
+					className='tide-input'
+					type='text'
+					name='author'
+					value={author}
+					placeholder='Any author'
+					onChange={(e)=>setAuthor(e.target.value)}
+				/>
+			</label>
 
-				<label>
-					<input
-						className='renderer'
-						ref={v3Ref}
-						type='checkbox'
-						defaultChecked={props.query.v3 !== 'false'}
-						onChange={disableSubmitIfFormInvalid}
-					/>
-					Search for v3 brews
-				</label>
+			<label className='tide-check'>
+				<input
+					type='checkbox'
+					name='older'
+					checked={older}
+					onChange={(e)=>setOlder(e.target.checked)}
+				/>
+				Include older brews
+			</label>
 
-				<label>
-					<input
-						className='renderer'
-						ref={legacyRef}
-						type='checkbox'
-						defaultChecked={props.query.legacy !== 'false'}
-						onChange={disableSubmitIfFormInvalid}
-					/>
-					Search for legacy brews
-				</label>
+			<button
+				type='submit'
+				className='tide-btn-primary'
+				style={{ width: '100%', justifyContent: 'center', height: '44px', marginTop: '16px' }}
+				disabled={!canSearch || busy}
+			>
+				{busy
+					? <><span className='tide-spinner' aria-hidden='true' /> Searching…</>
+					: <><i className='fas fa-search' aria-hidden='true' /> Search</>}
+			</button>
+			{!canSearch
+				? <p className='tide-hint'>{`Give a title of at least ${MIN_TITLE} letters, or an author.`}</p>
+				: null}
 
-				<button
-					id='searchButton'
-					ref={submitButtonRef}
-					onClick={()=>{
-						loadPage(1, true);
-					}}
-				>
-					Search
-					<i
-						className={searching ? 'fas fa-spin fa-spinner': 'fas fa-search'}
-					/>
-				</button>
-			</div>
-			<legend>
-				<h3>Tips and tricks</h3>
-				<ul>
-					<li>
-						Only <b>published</b> brews are searchable via this tool
-					</li>
-					<li>
-						Usernames are case-sensitive
-					</li>
-					<li>
-						Use <code>"word"</code> to match an exact string,
-						and <code>-</code> to exclude words (at least one word must not be negated)
-					</li>
-					<li>
-						Some common words like "a", "after", "through", "itself", "here", etc.,
-						are ignored in searches. The full list can be found&nbsp;
-						<a href='https://github.com/mongodb/mongo/blob/0e3b3ca8480ddddf5d0105d11a94bd4698335312/src/mongo/db/fts/stop_words_english.txt'>
-							here
-						</a>
-					</li>
-				</ul>
-				<small>New features will be coming, such as filters and search by tags.</small>
-			</legend>
-		</div>
+			<div className='tide-label' style={{ marginTop: '20px' }}>Tips</div>
+			<ul className='tide-tips'>
+				<li>Only published brews appear here.</li>
+				<li>Use &ldquo;quotes&rdquo; for an exact phrase, and a minus sign to exclude a word.</li>
+				<li>Author names are case-sensitive.</li>
+			</ul>
+		</form>
 	);
 
-	const renderSortOption = (optionTitle, optionValue)=>{
-		const oppositeDir = dirState === 'asc' ? 'desc' : 'asc';
-
-		return (
-			<div className={`sort-option ${sortState === optionValue ? `active` : ''}`}>
-				<button onClick={()=>loadPage(1, false, optionValue, oppositeDir)}>
-					{optionTitle}
-				</button>
-				{sortState === optionValue && (
-					<i className={`sortDir fas ${dirState === 'asc' ? 'fa-sort-up' : 'fa-sort-down'}`} />
-				)}
+	const renderCard = (brew, index, covers)=>{
+		const authors = authorsOf(brew);
+		return <a
+			key={brew.shareId || index}
+			className='tide-card'
+			href={prefixPath(`/share/${brew.shareId}`)}
+		>
+			<div
+				className='tide-card-cover'
+				style={{ backgroundImage: cssUrl(brew.thumbnail || covers[index]) }}
+				role='presentation'
+			/>
+			<div className='tide-card-body'>
+				<h3>{brew.title?.trim() || 'Untitled brew'}</h3>
+				{authors ? <div className='tide-cap'>{`by ${authors}`}</div> : null}
+				{typeof brew.views === 'number'
+					? <div className='tide-card-row'><span className='tide-chip'>{`${brew.views} views`}</span></div>
+					: null}
 			</div>
-		);
+		</a>;
 	};
 
-	const renderSortBar = ()=>{
+	const renderPager = ()=>{
+		if(pages <= 1) return null;
+		// A window of pages around the current one: 200 numbered buttons is not
+		// navigation.
+		const from = Math.max(1, Math.min(page - 4, pages - 8));
+		const to   = Math.min(pages, from + 8);
+		const nums = [];
+		for (let n = from; n <= to; n++) nums.push(n);
 
-		return (
-			<div className='sort-container'>
-				{renderSortOption('Title', 'title', props.query.dir)}
-				{renderSortOption('Created Date', 'createdAt', props.query.dir)}
-				{renderSortOption('Updated Date', 'updatedAt', props.query.dir)}
-				{renderSortOption('Views', 'views', props.query.dir)}
-			</div>
-		);
+		const go = (n)=>search({ ...sent, page: n });
+
+		return <nav className='tide-pager' aria-label='Result pages'>
+			<button type='button' disabled={page <= 1 || busy} aria-label='Previous page' onClick={()=>go(page - 1)}>
+				<i className='fas fa-chevron-left' aria-hidden='true' />
+			</button>
+			{from > 1 ? <button type='button' disabled={busy} onClick={()=>go(1)}>1</button> : null}
+			{nums.map((n)=><button
+				key={n}
+				type='button'
+				disabled={busy}
+				aria-current={n === page ? 'true' : undefined}
+				onClick={()=>go(n)}
+			>
+				{n}
+			</button>)}
+			{to < pages ? <button type='button' disabled={busy} onClick={()=>go(pages)}>{pages}</button> : null}
+			<button type='button' disabled={page >= pages || busy} aria-label='Next page' onClick={()=>go(page + 1)}>
+				<i className='fas fa-chevron-right' aria-hidden='true' />
+			</button>
+		</nav>;
 	};
 
-	const renderPaginationControls = ()=>{
-		if(!totalBrews || totalBrews < 10) return null;
-
-		const countInt = parseInt(brewCollection.length || 20);
-		const totalPages = Math.ceil(totalBrews / countInt);
-
-		let startPage, endPage;
-		if(pageState <= 6) {
-			startPage = 1;
-			endPage = Math.min(totalPages, 10);
-		} else if(pageState + 4 >= totalPages) {
-			startPage = Math.max(1, totalPages - 9);
-			endPage = totalPages;
-		} else {
-			startPage = pageState - 5;
-			endPage = pageState + 4;
-		}
-
-		const pagesAroundCurrent = new Array(endPage - startPage + 1)
-			.fill()
-			.map((_, index)=>(
-				<a
-					key={startPage + index}
-					className={`pageNumber ${pageState === startPage + index ? 'currentPage' : ''}`}
-					onClick={()=>loadPage(startPage + index, false, sortState, dirState)}
-				>
-					{startPage + index}
-				</a>
-			));
-
-		return (
-			<div className='paginationControls'>
-				<button
-					className='previousPage'
-					onClick={()=>loadPage(pageState - 1, false, sortState, dirState)}
-					disabled={pageState === startPage}
-				>
-					<i className='fa-solid fa-chevron-left'></i>
-				</button>
-				<ol className='pages'>
-					{startPage > 1 && (
-						<a
-							className='pageNumber firstPage'
-							onClick={()=>loadPage(1, false, sortState, dirState)}
-						>
-							1 ...
-						</a>
-					)}
-					{pagesAroundCurrent}
-					{endPage < totalPages && (
-						<a
-							className='pageNumber lastPage'
-							onClick={()=>loadPage(totalPages, false, sortState, dirState)}
-						>
-							... {totalPages}
-						</a>
-					)}
-				</ol>
-				<button
-					className='nextPage'
-					onClick={()=>loadPage(pageState + 1, false, sortState, dirState)}
-					disabled={pageState === totalPages}
-				>
-					<i className='fa-solid fa-chevron-right'></i>
-				</button>
-			</div>
-		);
-	};
-
-	const renderFoundBrews = ()=>{
-		if(searching && !brewCollection) {
-			return (
-				<div className='foundBrews searching'>
-					<h3 className='searchAnim'>Searching</h3>
+	/* Empty state 1 - no search yet. Section 9's own copy. */
+	const renderNoSearch = ()=>(
+		<section className='tide-solid tide-empty-panel'>
+			<div>
+				<div
+					className='tide-roundel'
+					style={{ backgroundImage: cssUrl(ART.workshop) }}
+					role='presentation'
+				/>
+				<h2>Search the vault</h2>
+				<p>Look up brews other creators have published, by title or by author.</p>
+				<div className='tide-actions'>
+					<button type='button' className='tide-btn-primary' onClick={browseNewest}>
+						Browse newest
+					</button>
+					<a className='tide-btn-quiet' href={prefixPath('/')}>Publish your brew</a>
 				</div>
-			);
-		}
+				<p className='tide-hint'>
+					Publishing happens in a brew&rsquo;s Share dialog, in the editor.
+				</p>
+			</div>
+		</section>
+	);
 
+	/* Empty state 2 - the search ran and matched nothing. */
+	const renderNoResults = ()=>{
+		const term = sent?.title || sent?.author || '';
+		return <section className='tide-solid tide-empty-panel'>
+			<div>
+				<h2>{term ? `No brews match “${term}”` : 'No published brews yet'}</h2>
+				<p>
+					{term
+						? 'Only published brews are searchable. Try fewer words, or a different spelling.'
+						: 'Nothing in this vault has been published yet.'}
+				</p>
+				<div className='tide-actions'>
+					{term
+						? <button type='button' className='tide-btn-primary' onClick={clearFilters}>Clear filters</button>
+						: null}
+					<button type='button' className='tide-btn-quiet' onClick={browseNewest}>Browse newest</button>
+				</div>
+				<p className='tide-hint'>
+					Tip: wrap words in &ldquo;quotes&rdquo; to match an exact phrase.
+				</p>
+			</div>
+		</section>;
+	};
+
+	const renderResults = ()=>{
 		if(error) {
-			const errorText = ErrorIndex()[error.HBErrorCode.toString()] || '';
-
-			return (
-				<div className='foundBrews noBrews'>
-					<h3>Error: {errorText}</h3>
-				</div>
-			);
+			return <div className='tide-note tide-note-error'>
+				<strong>The vault search failed.</strong> {error}
+				{' '}
+				<button type='button' className='tide-btn-ghost' onClick={()=>search(sent || { title, author, older, page: 1 })}>
+					Try again
+				</button>
+			</div>;
 		}
+		if(brews === null) return renderNoSearch();
+		if(busy && !brews.length) return <div className='tide-note'>Searching the vault…</div>;
+		if(!brews.length) return renderNoResults();
 
-		if(!brewCollection) {
-			return (
-				<div className='foundBrews noBrews'>
-					<h3>No search yet</h3>
-				</div>
-			);
-		}
-
-		if(brewCollection.length === 0) {
-			return (
-				<div className='foundBrews noBrews'>
-					<h3>No brews found</h3>
-				</div>
-			);
-		}
-
-		return (
-			<div className='foundBrews'>
-				<span className='totalBrews'>
-					{`Brews found: `}
-					<span>{totalBrews}</span>
-				</span>
-				{brewCollection.length > 10 && renderPaginationControls()}
-				{brewCollection.map((brew, index)=>{
-					return (
-						<BrewItem
-							brew={{ ...brew }}
-							key={index}
-							reportError={props.reportError}
-							renderStorage={false}
-						/>
-					);
-				})}
-				{renderPaginationControls()}
+		const covers = coversFor(brews.map((b)=>b.shareId || b.title));
+		return <div>
+			<div className='tide-section-head'>
+				<h2>{total === 1 ? '1 brew' : `${total} brews`}</h2>
+				<span className='tide-cap'>{`Newest first · page ${page} of ${pages}`}</span>
 			</div>
-		);
+			<div className='tide-grid' style={{ marginTop: '14px' }}>
+				{brews.map((brew, i)=>renderCard(brew, i, covers))}
+			</div>
+			{renderPager()}
+		</div>;
 	};
 
 	return (
-		<div className='sitePage vaultPage'>
-			<link href={prefixPath('/themes/V3/Blank/style.css')} rel='stylesheet' />
-			<link href={prefixPath('/themes/V3/5ePHB/style.css')} rel='stylesheet' />
-			{renderNavItems()}
-			<div className='content'>
-				<SplitPane showDividerButtons={false}>
-					<div className='form dataGroup'>{renderForm()}</div>
-					<div className='resultsContainer dataGroup'>
-						{renderSortBar()}
-						{renderFoundBrews()}
+		<div className='homebrew tide-page tide-vault vaultPage'>
+			<div className='tide-page-stack'>
+				<Navbar>
+					<Nav.section>
+						<AccountNavItem />
+					</Nav.section>
+				</Navbar>
+				<MythforgeBar active='vault' />
+
+				<div
+					className='tide-art'
+					style={{ '--tide-art-src': cssUrl(ART.workshop) }}
+					role='presentation'
+				/>
+
+				<main className='tide-page-body'>
+					<div className='tide-eyebrow'>Mythforge</div>
+					<h1>The vault</h1>
+					<p className='tide-lede'>Browse brews other creators have published.</p>
+
+					<div className='tide-two-col'>
+						{renderForm()}
+						<div className='tide-col'>{renderResults()}</div>
 					</div>
-				</SplitPane>
+				</main>
+
+				<SrdFooter />
 			</div>
 		</div>
 	);

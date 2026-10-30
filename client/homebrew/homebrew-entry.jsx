@@ -40,7 +40,6 @@ if (typeof window !== 'undefined' && BASE_PATH !== '/') {
 	};
 }
 
-import HomePage    from './pages/homePage/homePage.jsx';
 import EditPage    from './pages/editPage/editPage.jsx';
 import UserPage    from './pages/userPage/userPage.jsx';
 import SharePage   from './pages/sharePage/sharePage.jsx';
@@ -53,6 +52,9 @@ import CampaignWizard from './pages/campaignWizard/campaignWizard.jsx';
 import BrewLibraryPage from './pages/brewLibraryPage/brewLibraryPage.jsx';
 import NotFoundPage from './pages/notFoundPage/notFoundPage.jsx';
 import CollaboratePage from './pages/collaboratePage/collaboratePage.jsx';
+import DocsPage from './pages/docsPage/docsPage.jsx';
+import SettingsPage from './pages/settingsPage/settingsPage.jsx';
+import ImportPage from './pages/importPage/importPage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -135,17 +137,31 @@ const Homebrew = (props)=>{
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>
 					<Route path='/preview' element={<WithRoute el={PreviewPage}/>} />
-					<Route path='/changelog' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
-					<Route path='/faq' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
-					<Route path='/migrate' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
+					{/* ── Help ────────────────────────────────────────────────
+					  * One docs template, three routes (section 9). They used
+					  * to be SharePage - the brew viewer - with the markdown
+					  * handed in as a 5ePHB brew, which is both the wrong
+					  * surface and, because the server's props never reach the
+					  * bundle, the reason all three rendered blank. */}
+					<Route path='/changelog' element={<WithRoute el={DocsPage} slug='changelog' />} />
+					<Route path='/faq' element={<WithRoute el={DocsPage} slug='faq' />} />
+					<Route path='/migrate' element={<WithRoute el={DocsPage} slug='migrate' />} />
+
+					{/* Section 9: settings "should become a Mythforge tab in
+					  * TaleForge Settings (09 layout), or be removed". The
+					  * route existed and fell through to the home page. */}
+					<Route path='/settings' element={<WithRoute el={SettingsPage} />} />
+
 					<Route path='/account' element={<WithRoute el={AccountPage} brew={brew} accountDetails={brew.accountDetails} />} />
 					<Route path='/error' element={<WithRoute el={ErrorPage} brew={brew} />} />
 
-					{/* The legacy paste-and-edit surface, kept as an unlinked
-					  * import path only - section 9: "legacy should be a hidden
-					  * import path". It is reachable from the library's
-					  * "Import from Markdown" action and from nowhere else. */}
-					<Route path='/legacy' element={<WithRoute el={HomePage} brew={brew} />} />
+					{/* The import path, kept unlinked from the nav - section 9:
+					  * "legacy should be a hidden import path". It was a second
+					  * home page on the legacy renderer; it is now the one
+					  * place a Markdown file from another editor comes in, and
+					  * it is reachable from the library's "Import from
+					  * Markdown" action and from nowhere else. */}
+					<Route path='/legacy' element={<WithRoute el={ImportPage} />} />
 
 					{/* A real 404 instead of silently rendering the home page,
 					  * which told a reader with a broken link that their link

@@ -4,7 +4,6 @@ import './homebrew.less';
 import React from 'react';
 import { StaticRouter as Router, Route, Routes, useParams, useSearchParams } from 'react-router';
 
-import HomePage    from './pages/homePage/homePage.jsx';
 import EditPage    from './pages/editPage/editPage.jsx';
 import UserPage    from './pages/userPage/userPage.jsx';
 import SharePage   from './pages/sharePage/sharePage.jsx';
@@ -15,6 +14,9 @@ import AccountPage from './pages/accountPage/accountPage.jsx';
 import PreviewPage from './pages/previewPage/previewPage.jsx';
 import BrewLibraryPage from './pages/brewLibraryPage/brewLibraryPage.jsx';
 import NotFoundPage from './pages/notFoundPage/notFoundPage.jsx';
+import DocsPage from './pages/docsPage/docsPage.jsx';
+import SettingsPage from './pages/settingsPage/settingsPage.jsx';
+import ImportPage from './pages/importPage/importPage.jsx';
 
 const WithRoute = ({ el: Element, ...rest })=>{
 	const params = useParams();
@@ -65,11 +67,12 @@ const Homebrew = (props)=>{
 					<Route path='/preview' element={<WithRoute el={PreviewPage}/>} />
 					<Route path='/user/:username' element={<WithRoute el={UserPage} brews={brews} />} />
 					<Route path='/vault' element={<WithRoute el={VaultPage}/>}/>
-					<Route path='/changelog' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
-					<Route path='/faq' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
-					<Route path='/migrate' element={<WithRoute el={SharePage} brew={brew} disableMeta={true} />} />
+					<Route path='/changelog' element={<WithRoute el={DocsPage} slug='changelog' />} />
+					<Route path='/faq' element={<WithRoute el={DocsPage} slug='faq' />} />
+					<Route path='/migrate' element={<WithRoute el={DocsPage} slug='migrate' />} />
+					<Route path='/settings' element={<WithRoute el={SettingsPage} />} />
 					<Route path='/account' element={<WithRoute el={AccountPage} brew={brew} accountDetails={brew.accountDetails} />} />
-					<Route path='/legacy' element={<WithRoute el={HomePage} brew={brew} />} />
+					<Route path='/legacy' element={<WithRoute el={ImportPage} />} />
 					<Route path='/error' element={<WithRoute el={ErrorPage} brew={brew} />} />
 					<Route path='/*' element={<WithRoute el={NotFoundPage} />} />
 				</Routes>

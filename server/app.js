@@ -257,7 +257,6 @@ app.get('/test-wizard.html', (req, res) => {
 });
 
 const welcomeText       = fs.readFileSync('client/homebrew/pages/homePage/welcome_msg.md', 'utf8');
-const welcomeTextLegacy = fs.readFileSync('client/homebrew/pages/homePage/welcome_msg_legacy.md', 'utf8');
 const migrateText       = fs.readFileSync('client/homebrew/pages/homePage/migrate.md', 'utf8');
 const changelogText     = fs.readFileSync('changelog.md', 'utf8');
 const faqText           = fs.readFileSync('faq.md', 'utf8');
@@ -275,6 +274,37 @@ const defaultMetaTags = {
 	image       : `${config.get('publicUrl')}/thumbnail.png`,
 	type        : 'website'
 };
+
+/* ── Mythforge docs ─────────────────────────────────────────────────────
+ * BUILD-BRIEF section 9: "One docs template: a left TOC and a dark solid
+ * article column. App docs never render on paper."
+ *
+ * changelog, faq and migrate used to be served as BREWS with theme 5ePHB,
+ * which is both the wrong surface and - because client/template.js hands the
+ * server's props to a `start_app` function the bundle never defines - the
+ * reason all three rendered as blank pages. The three markdown files stay
+ * the single source of truth; the docs page fetches them from here and
+ * renders them into the dark article column.
+ *
+ * The leading ```css block in each file is a PAPER stylesheet (cm units, PHB
+ * selectors). splitTextStyleAndMetadata lifts it off the text exactly as it
+ * does for a brew, and the docs page throws it away rather than applying it.
+ */
+const DOCS = {
+	changelog : { title: 'Changelog',                   text: changelogText },
+	faq       : { title: 'FAQ',                         text: faqText },
+	migrate   : { title: 'Migrate from another editor', text: migrateText }
+};
+
+app.get('/api/docs/:slug', (req, res)=>{
+	const doc = DOCS[req.params.slug];
+	if(!doc) return res.status(404).json({ error: `There is no document called "${req.params.slug}".` });
+
+	const split = { text: doc.text };
+	splitTextStyleAndMetadata(split);
+
+	return res.json({ slug: req.params.slug, title: doc.title, markdown: split.text });
+});
 
 //Robots.txt
 app.get('/robots.txt', (req, res)=>{
@@ -298,73 +328,66 @@ app.get('/', (req, res, next)=>{
 	return next();
 });
 
-//Home page Legacy
+/* The import path. BUILD-BRIEF section 9: "legacy should be a hidden import
+ * path" - it used to be a second home page on the legacy renderer, linked
+ * from the top bar, which is why it looked like a duplicate of the home page
+ * that had lost its styling. It is now reachable from the brew library's
+ * "Import from Markdown" action and from nowhere else, and it carries no brew
+ * of its own: the page pastes or reads a file and hands it to /new. */
 app.get('/legacy', (req, res, next)=>{
-	req.brew = {
-		text     : welcomeTextLegacy,
-		renderer : 'legacy',
-		theme    : '5ePHB'
-	},
-
+	req.pageTitle = 'Import from Markdown';
 	req.ogMeta = { ...defaultMetaTags,
-		title       : 'Homepage (Legacy)',
-		description : 'Homepage'
+		title       : 'Import from Markdown',
+		description : 'Bring a Markdown document in from another editor and open it as a brew.'
 	};
 
-	splitTextStyleAndMetadata(req.brew);
 	return next();
 });
 
-//Legacy/Other Document -> v3 Migration Guide
+/* ── The three docs routes ──────────────────────────────────────────────
+ * No brew, no theme, no paper: the page fetches its markdown from
+ * /api/docs/:slug and renders it into the dark article column. See the DOCS
+ * map above for why. */
 app.get('/migrate', (req, res, next)=>{
-	req.brew = {
-		text     : migrateText,
-		renderer : 'V3',
-		theme    : '5ePHB'
-	},
-
+	req.pageTitle = 'Migrate from another editor';
 	req.ogMeta = { ...defaultMetaTags,
-		title       : 'v3 Migration Guide',
+		title       : 'Migrate from another editor',
 		description : 'A brief guide to converting Legacy documents to the v3 renderer.'
 	};
 
-	splitTextStyleAndMetadata(req.brew);
 	return next();
 });
 
-//Changelog page
-app.get('/changelog', async (req, res, next)=>{
-	req.brew = {
-		title    : 'Changelog',
-		text     : changelogText,
-		renderer : 'V3',
-		theme    : '5ePHB'
-	},
-
+app.get('/changelog', (req, res, next)=>{
+	req.pageTitle = 'Changelog';
 	req.ogMeta = { ...defaultMetaTags,
 		title       : 'Changelog',
-		description : 'Development changelog.'
+		description : 'What changed in Mythforge, newest first.'
 	};
 
-	splitTextStyleAndMetadata(req.brew);
 	return next();
 });
 
-//FAQ page
-app.get('/faq', async (req, res, next)=>{
-	req.brew = {
-		title    : 'FAQ',
-		text     : faqText,
-		renderer : 'V3',
-		theme    : '5ePHB'
-	},
-
+app.get('/faq', (req, res, next)=>{
+	req.pageTitle = 'FAQ';
 	req.ogMeta = { ...defaultMetaTags,
 		title       : 'FAQ',
-		description : 'Frequently Asked Questions'
+		description : 'Frequently asked questions about writing and sharing brews.'
 	};
 
-	splitTextStyleAndMetadata(req.brew);
+	return next();
+});
+
+/* Mythforge settings. Section 9 asks for "a Mythforge tab in TaleForge
+ * Settings (09 layout), or be removed" - the route existed and fell through
+ * to the home page, so until now it was neither. */
+app.get('/settings', (req, res, next)=>{
+	req.pageTitle = 'Settings';
+	req.ogMeta = { ...defaultMetaTags,
+		title       : 'Settings',
+		description : 'Mythforge editor and assistant preferences.'
+	};
+
 	return next();
 });
 
@@ -724,6 +747,19 @@ app.use('/themes', express.static(join(process.cwd(), 'themes')));
 // Serve icon font files at /fonts/iconFonts/ (theme CSS resolves font URLs to this path)
 app.use('/fonts', express.static(join(process.cwd(), 'themes', 'fonts')));
 
+/* The custom icon SVGs. client/icons/customIcons.less masks them in with
+ * url('../icons/<name>.svg'), and bundle.css is served from /homebrew/, so
+ * every one of them resolves to /icons/<name>.svg. Nothing served that path:
+ * the Vite build leaves the relative URL alone and only the retired
+ * browserify script (scripts/buildHomebrew.js:102) ever copied the folder
+ * into build/, so build/icons does not exist in this checkout.
+ *
+ * Found by unit M4 because the changelog documents those toolbar icons with
+ * {{fac,single-spread}} and friends, so the docs page asked for eleven of
+ * them and got eleven 404s - the same empty-box failure as the icon font,
+ * one directory along. Served from source, like /fonts above. */
+app.use('/icons', express.static(join(process.cwd(), 'client', 'icons')));
+
 //Vault Page
 app.get('/vault', asyncHandler(async(req, res, next)=>{
 	req.ogMeta = { ...defaultMetaTags,
@@ -836,7 +872,26 @@ app.post('/api/mythwright/generate', asyncHandler(async (req, res) => {
 
 //Send rendered page
 app.use(asyncHandler(async (req, res, next)=>{
-	if(!req.route) return res.redirect('/'); // Catch-all for invalid routes
+	/* An unknown path used to 302 to '/', which is the server half of the
+	 * fall-through BUILD-BRIEF section 9 calls out: "unknown routes should get
+	 * a real 404". A redirect tells a reader with a broken or renamed link
+	 * that their link was fine, costs them their place, and tells a crawler
+	 * the page moved. Unit M1 gave the client router a styled 404 page; this
+	 * is what makes a direct hit on the server reach it, with the status code
+	 * that says so.
+	 *
+	 * customUrl keeps the path in the address bar - the 404 page prints it -
+	 * while the client router matches its catch-all route either way. */
+	if(!req.route) {
+		req.pageTitle = 'Page not found';
+		req.ogMeta = { ...defaultMetaTags,
+			title       : 'Page not found',
+			description : 'That page does not exist.'
+		};
+		const notFound = await renderPage(req, res);
+		if(!notFound) return;
+		return res.status(404).send(notFound);
+	}
 
 	const page = await renderPage(req, res);
 	if(!page) return;
@@ -866,7 +921,9 @@ const renderPage = async (req, res)=>{
 		ogMeta        : req.ogMeta,
 		userThemes    : req.userThemes
 	};
-	const title = req.brew ? req.brew.title : '';
+	// req.pageTitle is for routes that are PAGES rather than brews - the docs,
+	// settings, the import path. They have a title but no document.
+	const title = req.pageTitle ?? (req.brew ? req.brew.title : '');
 	const page = await templateFn('homebrew', title, props)
 		.catch((err)=>{
 			console.log(err);

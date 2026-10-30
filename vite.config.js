@@ -118,6 +118,10 @@ export default defineConfig({
 		fs   : { allow: fsAllow },
 		proxy: {
 			// Proxy API calls to your Express server
+			// The custom icon SVGs. customIcons.less masks them in with a relative
+			// url() that resolves to the server root, and Express serves them from
+			// client/icons - see the /icons mount in server/app.js.
+			'/icons': apiTarget,
 			'/themes': apiTarget,      // ← ADDED
       		'/assets': apiTarget,      // ← ADDED  
       		'/fonts': apiTarget,       // ← ADDED
@@ -144,6 +148,10 @@ export default defineConfig({
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},
 			'/mythforge/assets': {
+				target: apiTarget,
+				rewrite: (p) => p.replace(/^\/mythforge/, '')
+			},
+			'/mythforge/icons': {
 				target: apiTarget,
 				rewrite: (p) => p.replace(/^\/mythforge/, '')
 			},

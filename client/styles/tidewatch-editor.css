@@ -485,6 +485,13 @@
 	border-left-color: var(--tide-teal);
 	color:             var(--tide-ink);
 }
+/* OutlinePanel.less:100 paints h4, h5 AND h6 labels #6b6048 - parchment-era
+ * olive, meant for a #e6dcc2 panel. On the Tidewatch dark panel it measures
+ * 2.99:1, under AA. Unit M2 overrode h6 only; the grouped selector means an
+ * h4 or h5 heading in a brew kept the olive, which unit M4 hit the moment
+ * its test fixture used an h5 inside a note. All three, now. */
+.tide-editor .tiptap-editor__outline .mf-outline__item--h4 .mf-outline__label,
+.tide-editor .tiptap-editor__outline .mf-outline__item--h5 .mf-outline__label,
 .tide-editor .tiptap-editor__outline .mf-outline__item--h6 .mf-outline__label { color: var(--tide-muted); }
 .tide-editor .tiptap-editor__outline button {
 	background: transparent;

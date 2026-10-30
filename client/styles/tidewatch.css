@@ -185,6 +185,18 @@
 	color: var(--tide-tealB);
 }
 .tide-btn-ghost:hover { background: rgba(79, 179, 176, 0.12); color: var(--tide-tealB); }
+/* A disabled primary button that still reads as the brightest thing on the
+ * screen is an invitation to click something that will not respond. */
+.tide-btn-primary:disabled,
+.tide-btn-quiet:disabled,
+.tide-btn-ghost:disabled {
+	background: var(--tide-card);
+	color: var(--tide-muted);
+	cursor: default;
+}
+.tide-btn-primary:disabled:hover,
+.tide-btn-quiet:disabled:hover,
+.tide-btn-ghost:disabled:hover { background: var(--tide-card); color: var(--tide-muted); }
 .tide-btn-primary:focus-visible,
 .tide-btn-quiet:focus-visible,
 .tide-btn-ghost:focus-visible {
@@ -373,6 +385,7 @@ body .homebrew nav .navDropdown .navItem {
  * PAGE SHELL - every Tidewatch Mythforge page that is not the editor.
  * ════════════════════════════════════════════════════════════════════════ */
 .tide-page {
+	color-scheme: dark;
 	position: relative;
 	display: flex;
 	flex-direction: column;
@@ -933,6 +946,379 @@ body .homebrew nav .navDropdown .navItem {
 	animation: tideSpin 0.8s linear infinite;
 }
 @keyframes tideSpin { to { transform: rotate(360deg); } }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * UNIT M4 - the two-column pages: vault, docs, settings, the import path
+ * and the user page.
+ *
+ * All of them are the same shape - a narrow nav or filter card on the left
+ * and a column of solid panels on the right - which is the 09 layout
+ * (mocks/09-profile-settings.html) and the 12-docs layout
+ * (mocks/12-mythforge-docs.html) with a different aside width. One set of
+ * classes, so a change to the shape is one edit rather than four.
+ * ════════════════════════════════════════════════════════════════════════ */
+
+/* ── The two-column shell ───────────────────────────────────────────────── */
+.tide-two-col {
+	display: grid;
+	grid-template-columns: var(--tide-aside, 240px) minmax(0, 1fr);
+	gap: 28px;
+	align-items: start;
+	margin-top: 22px;
+}
+.tide-col {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-width: 0;
+}
+
+/* ── The side nav, shared by the docs TOC and the settings nav ──────────── */
+/* The global top bar is styled by ELEMENT - `body .homebrew nav` above -
+ * so every other <nav> in the app inherits a 48px flex row, a gradient and
+ * a backdrop blur. A table of contents is navigation and should stay a
+ * <nav> for a screen reader; it just has to opt out of the chrome, which
+ * takes the same specificity plus one class. */
+body .homebrew nav.tide-sidenav,
+.tide-sidenav {
+	position: static;
+	display: block;
+	min-height: 0;
+	padding: 8px;
+	align-self: start;
+	background: var(--tide-solid);
+	-webkit-backdrop-filter: none;
+	backdrop-filter: none;
+	box-shadow: var(--tide-lift);
+	/* the top bar's own space-between, which would fling a two-item wrapped
+	 * TOC to opposite edges of its card */
+	justify-content: flex-start;
+}
+.tide-sidenav a,
+.tide-sidenav button {
+	display: block;
+	width: 100%;
+	padding: 10px 14px;
+	border: 0;
+	border-radius: 10px;
+	background: transparent;
+	color: var(--tide-ink50);
+	font: 600 14px/1.35 var(--tide-ff-sans);
+	text-align: left;
+	text-decoration: none;
+	cursor: pointer;
+}
+.tide-sidenav a:hover,
+.tide-sidenav button:hover { background: rgba(79, 179, 176, 0.12); color: var(--tide-ink); }
+.tide-sidenav a:focus-visible,
+.tide-sidenav button:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-sidenav [aria-current="page"],
+.tide-sidenav [aria-current="true"] { background: var(--tide-tealSel); color: var(--tide-ink); }
+.tide-sidenav-label {
+	padding: 10px 14px 4px;
+	font: 600 12px/1.2 var(--tide-ff-sans);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	color: var(--tide-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE DOCS ARTICLE - changelog, faq, migrate.
+ *
+ * BUILD-BRIEF section 9: "One docs template: a left TOC and a dark solid
+ * article column. App docs never render on paper." Before this the three
+ * routes were served as BREWS with theme 5ePHB, so the help text was styled
+ * as a Player's Handbook page - and, because the server's props never
+ * reached the client bundle, rendered as nothing at all.
+ *
+ * The markdown is the repo's own and goes through the repo's own Markdown+
+ * renderer, so {{taskList}} blocks and task-list checkboxes keep working.
+ * Every rule below is scoped to .tide-doc-article: the renderer emits the
+ * same class names the PHB stylesheet claims (.block, .note, .wide), and an
+ * unscoped rule here would repaint the brew preview.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-doc { padding: 6px 28px 24px; min-width: 0; }
+.tide-doc-article {
+	font: 16px/1.7 var(--tide-ff-sans);
+	color: var(--tide-ink50);
+	overflow-wrap: break-word;
+}
+.tide-doc-article > :first-child { margin-top: 0; }
+.tide-doc-article h1,
+.tide-doc-article h2 {
+	margin: 28px 0 8px;
+	padding-left: 12px;
+	border-left: 4px solid var(--tide-teal);
+	font: 600 26px/1.25 var(--tide-ff-display);
+	color: var(--tide-ink);
+	text-transform: none;
+}
+.tide-doc-article h3 {
+	margin: 22px 0 6px;
+	font: 600 19px/1.3 var(--tide-ff-sans);
+	color: var(--tide-ink);
+}
+.tide-doc-article h4,
+.tide-doc-article h5,
+.tide-doc-article h6 {
+	margin: 16px 0 4px;
+	font: 600 15px/1.35 var(--tide-ff-sans);
+	color: var(--tide-tealB);
+}
+.tide-doc-article p { margin: 8px 0; }
+.tide-doc-article a { color: var(--tide-tealB); font-weight: 600; }
+.tide-doc-article a:hover { color: var(--tide-ink); }
+.tide-doc-article ul,
+.tide-doc-article ol { margin: 8px 0; padding-left: 20px; }
+.tide-doc-article li { margin: 4px 0; }
+.tide-doc-article hr { margin: 22px 0; border: 0; border-top: 1px solid var(--tide-hair); }
+.tide-doc-article strong { color: var(--tide-ink); }
+.tide-doc-article code {
+	padding: 1px 5px;
+	border: 1px solid var(--tide-hair);
+	border-radius: 6px;
+	background: var(--tide-well);
+	font: 13px/1.5 var(--tide-ff-mono);
+	color: var(--tide-tealB);
+}
+.tide-doc-article pre {
+	margin: 12px 0;
+	padding: 12px 14px;
+	border: 1px solid var(--tide-hair);
+	border-radius: var(--tide-radius-md);
+	background: var(--tide-well);
+	overflow: auto;
+}
+.tide-doc-article pre code {
+	padding: 0;
+	border: 0;
+	background: none;
+	color: var(--tide-ink50);
+}
+.tide-doc-article blockquote {
+	margin: 12px 0;
+	padding: 10px 14px;
+	border-left: 3px solid var(--tide-teal);
+	background: rgba(79, 179, 176, 0.08);
+}
+.tide-doc-article table {
+	width: 100%;
+	margin: 12px 0;
+	border-collapse: collapse;
+	font-size: 14px;
+}
+.tide-doc-article th,
+.tide-doc-article td {
+	padding: 8px 10px;
+	border-bottom: 1px solid var(--tide-hair);
+	text-align: left;
+}
+.tide-doc-article th { color: var(--tide-ink); font-weight: 600; }
+.tide-doc-article img { max-width: 100%; height: auto; border-radius: var(--tide-radius-sm); }
+
+/* The Markdown+ blocks the docs actually use. A {{note}} is a callout and
+ * gets the callout treatment; everything else just needs to stop being a
+ * paper element and start being a card. */
+.tide-doc-article .block,
+.tide-doc-article .note {
+	margin: 12px 0;
+	padding: 12px 14px;
+	border: 1px solid var(--tide-hair);
+	border-radius: var(--tide-radius-md);
+	background: var(--tide-card);
+}
+.tide-doc-article .note { border-left: 3px solid var(--tide-teal); }
+.tide-doc-article .block .block { margin: 8px 0; background: var(--tide-card2); }
+.tide-doc-article .block > :first-child,
+.tide-doc-article .note > :first-child { margin-top: 0; }
+.tide-doc-article .taskList ul { padding-left: 0; list-style: none; }
+.tide-doc-article .taskList li { display: flex; gap: 8px; align-items: baseline; }
+.tide-doc-article input[type="checkbox"] {
+	flex: 0 0 auto;
+	width: 15px;
+	height: 15px;
+	accent-color: var(--tide-teal);
+}
+/* Column and page breaks are paper instructions. One dark column has no use
+ * for them, and a stray empty div would add a gap for no reason. */
+.tide-doc-article .columnSplit,
+.tide-doc-article .pageNumber { display: none; }
+
+.tide-doc-foot {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	justify-content: space-between;
+	margin-top: 24px;
+	padding-top: 16px;
+	border-top: 1px solid var(--tide-hair);
+	font-size: 13px;
+	color: var(--tide-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * THE VAULT - mocks/12-mythforge-vault.html.
+ * A solid filter card plus a designed empty state. The results themselves
+ * are the 12-home card grid, which already exists.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-vault { --tide-aside: 320px; }
+.tide-roundel {
+	width: 120px;
+	height: 120px;
+	margin: 0 auto;
+	border-radius: 50%;
+	background: var(--tide-art-placeholder) center / cover no-repeat;
+	box-shadow: 0 0 0 1px var(--tide-hair);
+}
+/* The brief's empty state is a panel in its own right, not the small inline
+ * card .tide-empty draws: it has to hold its own against a 420px-tall
+ * results column so the page does not look broken before you search. */
+.tide-empty-panel {
+	display: grid;
+	place-items: center;
+	min-height: 420px;
+	padding: 48px 32px;
+	text-align: center;
+}
+.tide-empty-panel h2 { margin-top: 18px; }
+.tide-empty-panel p { max-width: 440px; margin: 8px auto 0; color: var(--tide-ink50); }
+.tide-empty-panel .tide-actions { justify-content: center; }
+
+.tide-check {
+	display: flex;
+	gap: 10px;
+	align-items: center;
+	margin-top: 16px;
+	color: var(--tide-ink50);
+	font: 600 13px/1.35 var(--tide-ff-sans);
+	cursor: pointer;
+}
+.tide-check input {
+	width: 18px;
+	height: 18px;
+	accent-color: var(--tide-teal);
+}
+.tide-tips {
+	margin: 6px 0 0;
+	padding-left: 18px;
+	list-style: disc outside;
+	color: var(--tide-ink50);
+	font-size: 14px;
+}
+.tide-tips li { margin: 4px 0; }
+
+/* ── Pagination ─────────────────────────────────────────────────────────── */
+.tide-pager {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	align-items: center;
+	justify-content: center;
+	margin-top: 22px;
+}
+.tide-pager button {
+	min-width: 36px;
+	height: 36px;
+	padding: 0 10px;
+	border: 1px solid var(--tide-edge);
+	border-radius: var(--tide-radius-sm);
+	background: rgba(13, 18, 21, 0.9);
+	color: var(--tide-ink50);
+	font: 600 13px/1 var(--tide-ff-sans);
+	cursor: pointer;
+}
+.tide-pager button:hover:not(:disabled) { background: rgba(79, 179, 176, 0.16); color: var(--tide-ink); }
+.tide-pager button:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+.tide-pager button:disabled { color: var(--tide-muted); cursor: default; }
+.tide-pager button[aria-current="true"] {
+	border-color: transparent;
+	background: var(--tide-tealSel);
+	color: var(--tide-ink);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+ * SETTINGS - the 09 layout (mocks/09-profile-settings.html).
+ * A row per preference: what it does on the left, the control on the right.
+ * ════════════════════════════════════════════════════════════════════════ */
+.tide-setting {
+	display: flex;
+	gap: 16px;
+	align-items: flex-start;
+	justify-content: space-between;
+	padding: 14px 0;
+	border-bottom: 1px solid var(--tide-hair);
+}
+.tide-setting:last-child { border-bottom: 0; }
+.tide-setting-text { min-width: 0; }
+.tide-setting-text strong {
+	display: block;
+	font: 600 15px/1.35 var(--tide-ff-sans);
+	color: var(--tide-ink);
+}
+.tide-setting-text span {
+	display: block;
+	margin-top: 2px;
+	font-size: 13px;
+	color: var(--tide-muted);
+}
+
+/* A switch, not a checkbox: the state has to read at a glance from across
+ * the row. role=switch + aria-checked is the whole accessibility contract. */
+.tide-switch {
+	position: relative;
+	flex: 0 0 auto;
+	width: 46px;
+	height: 26px;
+	padding: 0;
+	border: 1px solid var(--tide-edge);
+	border-radius: 13px;
+	background: rgba(13, 18, 21, 0.9);
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+.tide-switch::after {
+	content: '';
+	position: absolute;
+	top: 3px;
+	left: 3px;
+	width: 18px;
+	height: 18px;
+	border-radius: 50%;
+	background: var(--tide-card3);
+	transition: transform 0.15s ease, background 0.15s ease;
+}
+.tide-switch[aria-checked="true"] { border-color: var(--tide-teal); background: var(--tide-teal); }
+.tide-switch[aria-checked="true"]::after { transform: translateX(20px); background: var(--tide-onTeal); }
+.tide-switch:focus-visible { outline: 2px solid var(--tide-teal); outline-offset: 2px; }
+
+.tide-panel-head {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: baseline;
+	justify-content: space-between;
+	margin-bottom: 4px;
+}
+.tide-panel-head h2 { margin: 0; }
+
+/* ════════════════════════════════════════════════════════════════════════
+ * Narrow. The aside stops being an aside.
+ * ════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 900px) {
+	.tide-two-col { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+	body .homebrew nav.tide-sidenav,
+	.tide-sidenav { display: flex; flex-wrap: wrap; gap: 4px; }
+	.tide-sidenav a,
+	.tide-sidenav button { width: auto; }
+	.tide-sidenav-label { width: 100%; }
+}
+@media (max-width: 720px) {
+	.tide-doc { padding: 6px 16px 20px; }
+	.tide-doc-article h1,
+	.tide-doc-article h2 { font-size: 23px; }
+	.tide-empty-panel { min-height: 320px; padding: 32px 18px; }
+}
 
 /* ── Fallbacks, per BUILD-BRIEF section 5 ───────────────────────────────── */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
