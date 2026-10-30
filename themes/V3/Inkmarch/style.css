@@ -1,5 +1,6 @@
 /* ════════════════════════════════════════════════════════════════════════════
- * INKMARCH — Mythforge output theme candidate.  UNIT M7. NOT THE DEFAULT.
+ * INKMARCH — Mythforge output theme candidate.  UNIT M7, revised in UNIT M7b.
+ * NOT THE DEFAULT.
  *
  * Marked `hidden` in themes/themes.json, so the metadata editor's theme list
  * skips it and no user can pick it yet (the same flag M2 used to retire the
@@ -8,21 +9,32 @@
  *
  * ── Why it exists ──────────────────────────────────────────────────────────
  * M6 shipped three candidates (Cairn, Verdigris, Nocturne) and the owner's
- * verdict was "they need a fantasy look". All three were typographic — cut
- * paper, rules, space, no pictures. This one is the opposite bet: a theme
- * that puts weather on the page. Ink-wash landscape in the margins, violet
- * and charcoal splatter at the corners, a thin double-line frame with its
- * corners chamfered off, hexagon chapter badges, and headings in caps sans.
+ * verdict was "they need a fantasy look". M7 answered that by putting weather
+ * on the page: an ink-wash landscape in all four margins — dragon, floating
+ * citadel, castle, ridge, cliffs, mountains — under eight pieces of wash,
+ * drip, streak and speckle.
+ *
+ * The owner's verdict on THAT was "close but maybe not all the images, just
+ * the lining around the paper is a good start and the color". So M7b takes the
+ * pictures back out. What is left is the lining and the colour: a thin
+ * double-line frame with its corners chamfered off, a cold near-white sheet,
+ * indigo and charcoal ink, hexagon badges, headings in caps sans, chamfered
+ * callout boxes, and two small drip splats in the side margins.
+ *
+ * ── Two variants ───────────────────────────────────────────────────────────
+ * This file is the one with the splats. themes/V3/InkmarchClean imports it
+ * whole and switches them off, so the owner can compare a page with a trace of
+ * ink against a page with none. Both are hidden, neither is the default.
  *
  * ── The look, and where it is NOT from ─────────────────────────────────────
  * The brief's reference storyboards were used for MOOD AND LAYOUT ONLY: cool
  * near-white stock rather than tan parchment, a chamfered double frame,
- * purple/charcoal wash at the corners, numbered hexagons, caps-sans labels
- * over a serif body. Nothing was traced, lifted or reproduced from them — no
- * logo, no ampersand, no wordmark, no icon, no line of their copy. The art in
- * assets/ is first-party (generated for this project, approved by the owner),
- * the frames and badges are CSS geometry, and the grain is an feTurbulence
- * data-URI computed in the browser.
+ * numbered hexagons, caps-sans labels over a serif body. Nothing was traced,
+ * lifted or reproduced from them — no logo, no ampersand, no wordmark, no
+ * icon, no line of their copy. The two splats still in assets/ are first-party
+ * (generated for this project, approved by the owner), the frames and badges
+ * are CSS geometry, and the grain is an feTurbulence data-URI computed in the
+ * browser.
  *
  * Distance from the PHB's own trade dress is deliberate and total: no tan
  * parchment, no maroon, no gold rule under a heading, no pink-orange stat
@@ -39,18 +51,18 @@
  * Overpass ships here in ONE weight (500). Nothing in this file ever asks it
  * for bold, so the browser never synthesises one.
  *
- * ── The rule the art obeys ─────────────────────────────────────────────────
- * Every painted thing — landscape, wash, splat, streak, speckle — is placed so
- * that its box lies wholly inside one of the four MARGIN BANDS:
+ * ── The rule the ink obeys ─────────────────────────────────────────────────
+ * Both splats are placed so that the painted box lies wholly inside a SIDE
+ * MARGIN BAND:
  *
  *     left band    x < 121px        right band   x > 695px
- *     top band     y <  89px        bottom band  y > 935px
  *
  * on the 816 x 1056px sheet. The text column is 15.2cm wide and centred, so it
  * occupies exactly x 121 -> 695; nothing is painted inside it. That is why the
  * geometry below is written in centimetres with the arithmetic spelled out in
  * comments rather than eyeballed. The contrast run is the proof, not the
- * claim: 0 text nodes below AA on screen and under print emulation.
+ * claim: 0 text nodes below AA on screen and under print emulation, in both
+ * variants.
  *
  * Plain CSS, not LESS, for the same reason Tome and the M6 candidates are:
  * this checkout has never run scripts/buildHomebrew.js, so a .less theme never
@@ -171,59 +183,53 @@
 	hyphens:        none;
 }
 
-/* ── The painted layers ──────────────────────────────────────────────────────
- * Both sit at a NEGATIVE z-index, which is the only way to get them above the
- * sheet's own background and below the text: a positioned pseudo-element at
- * z-index 0 paints after the non-positioned inline content, i.e. on top of
+/* ── The one painted layer ───────────────────────────────────────────────────
+ * UNIT M7b. This used to be TWO layers and fourteen pictures: .page::before
+ * carried an ink-wash landscape in all four margins and .page::after carried
+ * eight pieces of wash, drip, streak and speckle over it. The owner asked for
+ * the images out and the lining and the colour kept, so .page::before is gone
+ * entirely — along with the twelve webps that only it and the old ink layer
+ * used, deleted from assets/ — and this is what remains: two small drip
+ * splats, one in the top of the left margin and one at the foot of the right,
+ * at about a third of the old ink layer's opacity.
+ *
+ * InkmarchClean (themes/V3/InkmarchClean/style.css) imports this file and
+ * switches even these two off.
+ *
+ * The layer sits at a NEGATIVE z-index, which is the only way to get it above
+ * the sheet's own background and below the text: a positioned pseudo-element
+ * at z-index 0 paints after the non-positioned inline content, i.e. on top of
  * every word on the page.
  *
- * `inset: 0` really is the whole 816 x 1056 sheet, so every position below can
+ * `inset: 0` really is the whole 816 x 1056 sheet, so both positions below can
  * be read straight off the page. An absolutely positioned child resolves
  * against its ancestor's PADDING box, and .page is `box-sizing: border-box`
  * with no border — so its padding box IS its border box, padding and all, and
- * the padding does not need undoing. (It was undone in the first draft of this
- * file, which blew both layers up to 997 x 1266 and threw every corner piece
- * off the sheet.) `overflow: clip` on .page trims whatever hangs over.
+ * the padding does not need undoing. `overflow: clip` on .page trims whatever
+ * hangs over.
+ *
+ * Where the two boxes land, at 96dpi (1cm = 37.795px):
+ *
+ *   violet    2.00cm wide on a 192x282 source  ->   75.6 x 111.0px
+ *             x 0.25cm          ->    9.4 ->   85.0   left band is x < 121
+ *             y 0.85cm          ->   32.1 ->  143.1
+ *   charcoal  1.80cm wide on a 212x245 source  ->   68.0 x  78.6px
+ *             x 100% - 0.25cm   ->  738.5 ->  806.6   right band is x > 695
+ *             y 100% - 0.85cm   ->  945.3 -> 1023.9
+ *
+ * Both clear the text column, and the charcoal one clears the page-number
+ * hexagon (x 699 -> 725) by 13px. laneM7b-render.cjs proves the first of those
+ * by pixels rather than by arithmetic — see artIntrusion() there.
  * ──────────────────────────────────────────────────────────────────────────── */
-.page::before,
 .page::after {
-	position: absolute;
-	inset:    0;
-	content:  '';
-}
-
-/* Layer 1: the landscape. Dragon top-left, floating citadel top-right, castle
- * bottom-left, ridge bottom-right, a tall cliff face down the left margin and
- * a low mountain range across the foot. Sizes are chosen so that each box
- * lands inside a margin band — the four corner pieces are all <= 3.15cm wide,
- * which is 119px against a 121px band. */
-.page::before {
-	z-index:    -2;
-	background:
-		url('assets/mf-corner-tl-dragon.webp')      0.05cm 0.25cm                       / 3.20cm auto no-repeat,
-		url('assets/mf-corner-tr-citadel.webp')     calc(100% - 0.10cm) 0.15cm          / 3.10cm auto no-repeat,
-		url('assets/mf-corner-bl-castle.webp')      0.05cm calc(100% - 0.05cm)          / 3.15cm auto no-repeat,
-		url('assets/mf-corner-br-ridge.webp')       calc(100% - 0.10cm) calc(100% - 0.15cm) / 3.10cm auto no-repeat,
-		url('assets/mf-edge-side-cliffs.webp')      0.10cm 42%                          / 2.90cm auto no-repeat,
-		url('assets/mf-edge-bottom-mountains.webp') 50% calc(100% - 0.05cm)             / 8.40cm auto no-repeat;
-	opacity:    0.68;
-}
-
-/* Layer 2: the ink. Two corner washes on the diagonal, two drip splats, two
- * dry-brush streaks and two speckle bursts. Lower opacity than the landscape,
- * so the violet reads as a stain rather than as paint. */
-.page::after {
+	position:   absolute;
+	inset:      0;
 	z-index:    -1;
 	background:
-		url('assets/mf-wash-corner-indigo.webp')   100% -0.25cm                  / 3.20cm auto no-repeat,
-		url('assets/mf-wash-corner-charcoal.webp') -0.15cm 100%                  / 3.10cm auto no-repeat,
-		url('assets/mf-splat-drip-violet.webp')    -0.20cm 16%                   / 2.10cm auto no-repeat,
-		url('assets/mf-splat-drip-charcoal.webp')  calc(100% + 0.15cm) 55%       / 1.90cm auto no-repeat,
-		url('assets/mf-streak-violet.webp')        calc(100% - 0.10cm) 86%       / 2.50cm auto no-repeat,
-		url('assets/mf-streak-charcoal.webp')      62% -0.10cm                   / 2.00cm auto no-repeat,
-		url('assets/mf-speckle-indigo.webp')       calc(100% - 0.35cm) 24%       / 2.40cm auto no-repeat,
-		url('assets/mf-speckle-violet.webp')       0.15cm 72%                    / 2.30cm auto no-repeat;
-	opacity:    0.52;
+		url('assets/mf-splat-drip-violet.webp')   0.25cm 0.85cm / 2.00cm auto no-repeat,
+		url('assets/mf-splat-drip-charcoal.webp') calc(100% - 0.25cm) calc(100% - 0.85cm) / 1.80cm auto no-repeat;
+	opacity:    0.20;
+	content:    '';
 }
 
 /* ── The text column ─────────────────────────────────────────────────────────
@@ -296,11 +302,14 @@
 	content:        '';
 }
 
-/* The page frame. Hung off .columnWrapper::before rather than .page::before
- * because both of .page's pseudo-elements are already carrying art, and
- * .columnWrapper is in normal flow so its own ::before is free — and, being
- * absolutely positioned, it resolves against .page's padding box, i.e. the
- * sheet, not against the 574px text column its host occupies. */
+/* The page frame — "the lining around the paper", the part the owner kept.
+ * Hung off .columnWrapper::before rather than .page::before: it was written
+ * that way when both of .page's pseudo-elements were carrying art, and it
+ * stays that way in M7b because moving it would churn a rule nobody
+ * complained about. .columnWrapper is in normal flow so its own ::before is
+ * free — and, being absolutely positioned, it resolves against .page's
+ * padding box, i.e. the sheet, not against the 574px text column its host
+ * occupies. */
 .page .columnWrapper::before {
 	inset:   var(--mf-frame);
 	z-index: 0;
@@ -800,8 +809,9 @@
 
 /* ════════════════════════════════════════════════════════════════════════════
  * PAGE FURNITURE
- * The folio sits inside the frame and above the mountain range: the range is
- * placed from y 964 and the folio's line box ends at about y 960.
+ * The folio sits inside the frame, in the bottom margin. The mountain range it
+ * used to have to clear is gone; the only painted thing left down here is the
+ * charcoal splat, and that is 13px clear of the page-number hexagon.
  * ════════════════════════════════════════════════════════════════════════════ */
 .page .footnote,
 .page .pageNumber {

@@ -1,0 +1,44 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * INKMARCH CLEAN — the same theme with no ink on it.  UNIT M7b.
+ * NOT THE DEFAULT, and not selectable: `hidden: true` in themes/themes.json,
+ * which metadataEditor.jsx:264 skips. Tome is still the default.
+ *
+ * The owner's note on M7's Inkmarch was "close but maybe not all the images,
+ * just the lining around the paper is a good start and the color". M7b's
+ * Inkmarch keeps a trace of ink — two small drip splats in the side margins at
+ * 0.20 opacity. This variant exists so the owner can see what the same page
+ * looks like with NO splatter at all and pick between the two, rather than
+ * being asked to imagine the difference.
+ *
+ * It is a two-line theme. Everything — paper, grain, palette, the chamfered
+ * double-line frame, the type, the hexagons, the line icons, the chamfered
+ * callout and stat-block boxes — comes from Inkmarch, unchanged, via @import.
+ * There is deliberately no copy of any of it here: one stylesheet to edit
+ * means the two variants cannot drift apart, and the only difference between
+ * them is the one thing the owner is being asked about.
+ *
+ * ── Two details worth recording ────────────────────────────────────────────
+ * `@import` must come before every other rule in the file (CSS 2.1 §6.3 — an
+ * @import after a style rule is dropped), which is why the override sits
+ * below it rather than above.
+ *
+ * The relative urls inside Inkmarch's stylesheet — `../../fonts/...` for the
+ * five woff2 faces and `assets/...` for the two splats — resolve against the
+ * stylesheet that WRITES them, not against this one. So the fonts still come
+ * from themes/fonts/ and nothing here needs a path of its own. The renderer's
+ * font probe is the check on that: it loads all five faces on this variant
+ * too.
+ *
+ * `content: none` removes the pseudo-element rather than just blanking its
+ * paint, so there is no 816 x 1056 transparent box left over the sheet. The
+ * `background: none` beside it is belt and braces for the same reason it is
+ * cheap: if a future edit to Inkmarch gives .page::after something other than
+ * a background, this file should still be the variant with nothing on it.
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+@import url('../Inkmarch/style.css');
+
+.page::after {
+	background: none;
+	content:    none;
+}
