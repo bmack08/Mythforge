@@ -116,10 +116,46 @@ const printCurrentBrew = ()=>{
 	}
 };
 
+/* UNIT M8 - WHICH STYLESHEET A STORED THEME ACTUALLY RENDERS IN.
+ *
+ * Two V3 themes ship only a `style.less`: 5ePHB and 5eDMG. A .less file becomes
+ * CSS only after scripts/buildHomebrew.js writes build/themes/..., a step this
+ * checkout has never run and that `npm run build` (vite build) does not do. So
+ * /themes/V3/5ePHB/style.css is a 404 and always has been, and a brew storing
+ * either theme has no stylesheet to render in at all.
+ *
+ * Until M8 that never showed, for the wrong reason: the preview iframe's
+ * stylesheet <link> is written once from react-frame-component's
+ * `initialContent`, which is evaluated at FIRST MOUNT - before the brew has
+ * loaded - so every brew got whatever the DEFAULT theme was, whatever it had
+ * stored. M2 made that default Tome, so a 5ePHB brew silently previewed in
+ * Tome and looked fine.
+ *
+ * M8 moves the default to Inkmarch, which would have turned that accident into
+ * a visible regression: every brew already saved - Tome ones included - would
+ * have previewed in Inkmarch. brewRenderer.jsx now keys the Frame on the
+ * resolved theme so the iframe follows the brew instead of the default, and
+ * this map keeps the one behaviour the owner asked to preserve: a brew that
+ * stores a legacy V3 PHB/DMG theme still renders in Tome.
+ *
+ * 5eDMG is here for the same reason as 5ePHB and not because the brief named
+ * it: it is the identical case - .less only, hidden since M2, nothing to serve.
+ * Remove either line and those brews render with no theme CSS at all.
+ *
+ * Everything else, Inkmarch and Tome included, resolves to itself. */
+const THEME_RENDER_ALIAS = {
+	V3 : { '5ePHB': 'Tome', '5eDMG': 'Tome' }
+};
+
+const resolveRenderTheme = (renderer, theme)=>THEME_RENDER_ALIAS[renderer]?.[theme] ?? theme;
+
 const fetchThemeBundle = async (obj, renderer, theme)=>{
 	// Provide default fallbacks for renderer and theme
 	const finalRenderer = renderer || 'V3';
-	const finalTheme = theme || 'Tome';
+	// UNIT M8: Inkmarch is the default output theme, and a stored legacy
+	// PHB/DMG theme is bundled as Tome - the same resolution the preview's
+	// stylesheet link uses, so the bundle and the sheet can never disagree.
+	const finalTheme = resolveRenderTheme(finalRenderer, theme || 'Inkmarch');
 	
 	if(!finalRenderer || !finalTheme) {
 		console.log('❌ fetchThemeBundle: Missing renderer or theme', { renderer: finalRenderer, theme: finalTheme });
@@ -197,6 +233,7 @@ export {
 	splitTextStyleAndMetadata,
 	printCurrentBrew,
 	fetchThemeBundle,
+	resolveRenderTheme,
 	brewSnippetsToJSON,
 	debugTextMismatch
 };

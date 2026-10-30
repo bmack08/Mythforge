@@ -101,7 +101,7 @@ app.put('/api/update/:id', async (req, res) => {
 				brew.title    = String(newTitle || '').trim() || 'Untitled Brew';
 				brew.text     = typeof newText === 'string' ? newText : brew.text;
 				brew.renderer = newRenderer || brew.renderer || 'V3';
-				brew.theme    = newTheme || brew.theme || 'Tome';
+				brew.theme    = newTheme || brew.theme || 'Inkmarch';   // UNIT M8 default
 				brew.updatedAt = new Date();
 				brew.version = (Number(brew.version) || 1) + 1;
 
@@ -346,7 +346,11 @@ app.get('/', (req, res, next)=>{
 	req.brew = {
 		text     : welcomeText,
 		renderer : 'V3',
-		theme    : '5ePHB'
+		// UNIT M8: Inkmarch is the default output theme. This stub brew is what
+		// the home route hands the bundle; it was still asking for the legacy
+		// V3/5ePHB theme, which has no built style.css in this checkout and so
+		// resolved to nothing at all.
+		theme    : 'Inkmarch'
 	},
 
 	req.ogMeta = { ...defaultMetaTags,
@@ -878,7 +882,7 @@ app.post('/api/mythwright/generate', asyncHandler(async (req, res) => {
 			title       : req.body.title || 'AI Generated Campaign',
 			text        : tiptapDoc,
 			renderer    : 'V3',
-			theme       : 'Tome',
+			theme       : 'Inkmarch',   // UNIT M8 default output theme
 			description : `AI-generated ${req.body.adventureType || ''} campaign for ${req.body.partySize || 4} players, levels ${req.body.level || 'low'}`
 		});
 

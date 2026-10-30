@@ -81,7 +81,7 @@ const Homebrew = (props)=>{
 			updatedAt : null,
 			lang      : '',
 			renderer  : 'V3',
-			theme     : 'Tome'
+			theme     : 'Inkmarch'   // UNIT M8 default output theme
 		},
 		userThemes = [],
 		brews = []

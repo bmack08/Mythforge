@@ -110,7 +110,7 @@ export const startFromTemplate = (template)=>{
 		localStorage.setItem(METAKEY, JSON.stringify({
 			title    : template.id === 'blank' ? '' : template.name,
 			renderer : 'V3',
-			theme    : 'Tome'
+			theme    : 'Inkmarch'   // UNIT M8 default output theme
 		}));
 	} catch (e) {
 		// A blocked or full localStorage must not swallow the click: fall

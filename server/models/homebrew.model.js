@@ -136,7 +136,10 @@ const initHomebrewModel = (sequelize) => {
 		},
 		theme: {
 			type: DataTypes.STRING(50), // Theme name
-			defaultValue: 'Tome',
+			// UNIT M8: Inkmarch is the default output theme. Rows already
+			// written keep their stored value - a column default only applies
+			// to an INSERT that omits the column.
+			defaultValue: 'Inkmarch',
 			allowNull: true
 		},
 		textBin: {

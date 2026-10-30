@@ -1,11 +1,15 @@
 /* ════════════════════════════════════════════════════════════════════════════
- * INKMARCH — Mythforge output theme candidate.  UNIT M7, revised in UNIT M7b.
- * NOT THE DEFAULT.
+ * INKMARCH — the Mythforge DEFAULT output theme.  UNIT M7, revised in UNIT
+ * M7b, promoted in UNIT M8.
  *
- * Marked `hidden` in themes/themes.json, so the metadata editor's theme list
- * skips it and no user can pick it yet (the same flag M2 used to retire the
- * legacy PHB/DMG themes). Tome is still the default. This file exists to be
- * looked at, not shipped.
+ * The owner picked the splash variant, so UNIT M8 dropped `hidden` from this
+ * theme's entry in themes/themes.json and from its own settings.json, and
+ * pointed every new-brew default and preview fallback at it. Tome is still
+ * built, still listed in the picker and still rendered by every brew already
+ * saved with it — it is simply no longer what a brew starts on.
+ *
+ * Only Inkmarch was unhidden. InkmarchClean, Cairn, Verdigris, Nocturne and
+ * the legacy PHB/DMG themes stay hidden.
  *
  * ── Why it exists ──────────────────────────────────────────────────────────
  * M6 shipped three candidates (Cairn, Verdigris, Nocturne) and the owner's
@@ -22,9 +26,9 @@
  * callout boxes, and two small drip splats in the side margins.
  *
  * ── Two variants ───────────────────────────────────────────────────────────
- * This file is the one with the splats. themes/V3/InkmarchClean imports it
- * whole and switches them off, so the owner can compare a page with a trace of
- * ink against a page with none. Both are hidden, neither is the default.
+ * This file is the one with the splats, and it is the one the owner chose.
+ * themes/V3/InkmarchClean imports it whole and switches them off; it stays
+ * hidden, kept as the rejected comparison rather than deleted.
  *
  * ── The look, and where it is NOT from ─────────────────────────────────────
  * The brief's reference storyboards were used for MOOD AND LAYOUT ONLY: cool
@@ -45,8 +49,13 @@
  * ── Type ───────────────────────────────────────────────────────────────────
  * TeX Gyre Pagella (GUST Font License, already vendored at themes/fonts/Blank/
  * with its licence recorded in that folder's fonts.less) for everything that
- * is read, and Overpass (already vendored at themes/fonts/5e/, Red Hat, OFL)
- * for everything that is a label. No new font is added by this theme.
+ * is read, and Overpass (already vendored at themes/fonts/5e/; commissioned by
+ * Red Hat, drawn by Delve Fonts, SIL OFL 1.1) for everything that is a label.
+ * No new font is added by this theme.
+ *
+ * UNIT M8 added the OFL text that was missing: themes/fonts/5e/"LICENSE -
+ * Overpass.txt", the upstream OFL.txt verbatim under the copyright line the
+ * vendored woff2 carries in its own name table.
  *
  * Overpass ships here in ONE weight (500). Nothing in this file ever asks it
  * for bold, so the browser never synthesises one.

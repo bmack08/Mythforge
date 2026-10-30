@@ -160,7 +160,7 @@ const api = {
 					style: brew.style || '',
 					snippets: brew.snippets || '',
 					renderer: brew.renderer,
-					theme: brew.theme || 'Tome',
+					theme: brew.theme || 'Inkmarch',   // UNIT M8 default; a stored theme always wins
 					shareId: brew.shareId,
 					editId: brew.editId,
 					description: brew.description || '',
@@ -508,7 +508,7 @@ const api = {
 					text: text || defaultDoc,
 					style: style || '',
 					renderer: renderer || 'V3',
-					theme: theme || 'Tome',
+					theme: theme || 'Inkmarch',   // UNIT M8 default output theme
 					description: description || '',
 					shareId: nanoid(8),
 					editId: nanoid(8)
@@ -1830,7 +1830,7 @@ export const getBrew = (type = 'share', requireAuth = false) => {
 				style: brew.style || '',
 				snippets: brew.snippets || '',
 				renderer: brew.renderer,
-				theme: brew.theme || 'Tome',
+				theme: brew.theme || 'Inkmarch',   // UNIT M8 default; a stored theme always wins
 				shareId: brew.shareId,
 				editId: brew.editId,
 				createdAt: brew.createdAt,

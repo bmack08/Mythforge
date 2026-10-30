@@ -430,7 +430,7 @@ const EditPage = createClass({
 				title: brewState.title || 'Untitled Brew',
 				text: brewState.text,
 				renderer: brewState.renderer || 'V3',
-				theme: brewState.theme || 'Tome',
+				theme: brewState.theme || 'Inkmarch',   // UNIT M8 default
 				style: brewState.style || '',
 				description: brewState.description || ''
 			};

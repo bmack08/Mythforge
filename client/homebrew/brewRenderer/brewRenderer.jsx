@@ -16,7 +16,7 @@ import RenderWarnings from 'homebrewery/renderWarnings/renderWarnings.jsx';
 import NotificationPopup from './notificationPopup/notificationPopup.jsx';
 import Frame from 'react-frame-component';
 import dedent from 'dedent-tabs';
-import { printCurrentBrew } from 'shared/helpers.js';
+import { printCurrentBrew, resolveRenderTheme } from 'shared/helpers.js';
 
 import HeaderNav from './headerNav/headerNav.jsx';
 import { safeHTML } from './safeHTML.js';
@@ -73,12 +73,23 @@ const toReactStyle = (styles = {})=>{
 	}, {});
 };
 
-// Dynamic initial content will be set in the component
-const getInitialContent = (renderer = 'V3', theme = 'Tome') => dedent`
+// Dynamic initial content will be set in the component.
+//
+// UNIT M8: the theme here goes through resolveRenderTheme, so a brew storing a
+// legacy V3 PHB/DMG theme - neither of which has a style.css to serve - links
+// Tome rather than a 404. See the map in shared/helpers.js.
+//
+// This string is react-frame-component's `initialContent`, which it uses ONCE,
+// at mount. The Frame below is therefore keyed on the resolved theme: without
+// that key the iframe keeps the stylesheet it was born with, which on /edit/:id
+// is the default theme, because the brew has not been fetched yet when the
+// Frame first mounts. That is why every brew used to preview in whatever the
+// default was instead of in its own theme.
+const getInitialContent = (renderer = 'V3', theme = 'Inkmarch') => dedent`
 	<!DOCTYPE html><html><head>
 	<link href="//fonts.googleapis.com/css?family=Open+Sans:400,300,600,700" rel="stylesheet" type="text/css" />
 	<link href='${prefixPath('/homebrew/bundle.css')}' type="text/css" rel='stylesheet' />
-	<link href='${prefixPath(`/themes/${renderer}/${theme}/style.css`)}' type="text/css" rel='stylesheet' />
+	<link href='${prefixPath(`/themes/${renderer}/${resolveRenderTheme(renderer, theme)}/style.css`)}' type="text/css" rel='stylesheet' />
 	<base target=_blank>
 	</head><body style='overflow: hidden'><div></div></body></html>`;
 
@@ -144,7 +155,7 @@ const BrewRenderer = (props)=>{
 		text                       : '',
 		style                      : '',
 		renderer                   : 'legacy',
-		theme                      : 'Tome',
+		theme                      : 'Inkmarch',   // UNIT M8 default output theme
 		lang                       : '',
 		errors                     : [],
 		currentEditorCursorPageNum : 1,
@@ -581,7 +592,9 @@ const BrewRenderer = (props)=>{
 			<ToolBar displayOptions={displayOptions} onDisplayOptionsChange={handleDisplayOptionsChange} visiblePages={state.visiblePages.length > 0 ? state.visiblePages : [state.centerPage]} totalPages={rawPages.length} headerState={headerState} setHeaderState={setHeaderState}/>
 
 			{/*render in iFrame so broken code doesn't crash the site.*/}
-			<Frame id='BrewRenderer' initialContent={getInitialContent(props.renderer, props.theme)}
+			<Frame id='BrewRenderer'
+				key={`${props.renderer}/${resolveRenderTheme(props.renderer, props.theme)}`}
+				initialContent={getInitialContent(props.renderer, props.theme)}
 				style={{ width: '100%', height: '100%', visibility: state.visibility }}
 				contentDidMount={frameDidMount}
 				onClick={()=>{emitClick();}}

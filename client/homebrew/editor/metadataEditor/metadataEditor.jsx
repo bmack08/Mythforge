@@ -35,7 +35,7 @@ const MetadataEditor = createClass({
 				authors     : [],
 				systems     : [],
 				renderer    : 'legacy',
-				theme       : 'Tome',
+				theme       : 'Inkmarch',   // UNIT M8 default output theme
 				lang        : 'en'
 			},
 
@@ -134,11 +134,12 @@ const MetadataEditor = createClass({
 		// Compliance mode is derived from the chosen theme, so switching it just
 		// swaps the theme through the existing handleTheme path:
 		//   'commercial' => CommercialSafe (neutral, print-ready, disclaimer footer)
-		//   'standard'   => Tome (the Mythforge default)
+		//   'standard'   => Inkmarch (the Mythforge default, UNIT M8)
 		// This used to switch back to 5ePHB. BUILD-BRIEF section 9 hides the
 		// legacy PHB/DMG themes, so a button that selected one would have set a
-		// theme the picker beside it no longer offers.
-		const path = mode === 'commercial' ? 'CommercialSafe' : 'Tome';
+		// theme the picker beside it no longer offers. M2 pointed it at Tome;
+		// M8 moved the default to Inkmarch, so "standard" follows it.
+		const path = mode === 'commercial' ? 'CommercialSafe' : 'Inkmarch';
 		this.handleTheme({ renderer : 'V3', path });
 	},
 
@@ -243,7 +244,7 @@ const MetadataEditor = createClass({
 				</div>
 				<small>{isCommercial
 					? 'Commercial-safe: a neutral, print-ready layout with an SRD attribution + disclaimer footer. Safe to sell.'
-					: 'Standard: the Tome layout, built on SRD 5.2.1 content. Check the licence of anything you add yourself before selling it.'}</small>
+					: 'Standard: the Inkmarch layout, built on SRD 5.2.1 content. Check the licence of anything you add yourself before selling it.'}</small>
 			</div>
 		</div>;
 	},

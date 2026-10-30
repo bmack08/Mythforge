@@ -1,14 +1,16 @@
 /* ════════════════════════════════════════════════════════════════════════════
  * INKMARCH CLEAN — the same theme with no ink on it.  UNIT M7b.
  * NOT THE DEFAULT, and not selectable: `hidden: true` in themes/themes.json,
- * which metadataEditor.jsx:264 skips. Tome is still the default.
+ * which metadataEditor.jsx skips. Inkmarch — the splash variant, the one WITH
+ * the two drip splats — is the default as of UNIT M8.
  *
  * The owner's note on M7's Inkmarch was "close but maybe not all the images,
  * just the lining around the paper is a good start and the color". M7b's
  * Inkmarch keeps a trace of ink — two small drip splats in the side margins at
- * 0.20 opacity. This variant exists so the owner can see what the same page
- * looks like with NO splatter at all and pick between the two, rather than
- * being asked to imagine the difference.
+ * 0.20 opacity. This variant existed so the owner could see what the same page
+ * looks like with NO splatter at all and pick between the two. They picked the
+ * splats. This file is kept, hidden, as the record of what was rejected and as
+ * the one-line way to turn the splats off again if that changes.
  *
  * It is a two-line theme. Everything — paper, grain, palette, the chamfered
  * double-line frame, the type, the hexagons, the line icons, the chamfered

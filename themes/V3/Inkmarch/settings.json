@@ -2,6 +2,5 @@
   "name" : "Inkmarch",
   "renderer" : "V3",
   "baseTheme" : false,
-  "baseSnippets" : "5ePHB",
-  "hidden" : true
+  "baseSnippets" : "5ePHB"
 }
