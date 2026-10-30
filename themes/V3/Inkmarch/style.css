@@ -1,0 +1,848 @@
+/* ════════════════════════════════════════════════════════════════════════════
+ * INKMARCH — Mythforge output theme candidate.  UNIT M7. NOT THE DEFAULT.
+ *
+ * Marked `hidden` in themes/themes.json, so the metadata editor's theme list
+ * skips it and no user can pick it yet (the same flag M2 used to retire the
+ * legacy PHB/DMG themes). Tome is still the default. This file exists to be
+ * looked at, not shipped.
+ *
+ * ── Why it exists ──────────────────────────────────────────────────────────
+ * M6 shipped three candidates (Cairn, Verdigris, Nocturne) and the owner's
+ * verdict was "they need a fantasy look". All three were typographic — cut
+ * paper, rules, space, no pictures. This one is the opposite bet: a theme
+ * that puts weather on the page. Ink-wash landscape in the margins, violet
+ * and charcoal splatter at the corners, a thin double-line frame with its
+ * corners chamfered off, hexagon chapter badges, and headings in caps sans.
+ *
+ * ── The look, and where it is NOT from ─────────────────────────────────────
+ * The brief's reference storyboards were used for MOOD AND LAYOUT ONLY: cool
+ * near-white stock rather than tan parchment, a chamfered double frame,
+ * purple/charcoal wash at the corners, numbered hexagons, caps-sans labels
+ * over a serif body. Nothing was traced, lifted or reproduced from them — no
+ * logo, no ampersand, no wordmark, no icon, no line of their copy. The art in
+ * assets/ is first-party (generated for this project, approved by the owner),
+ * the frames and badges are CSS geometry, and the grain is an feTurbulence
+ * data-URI computed in the browser.
+ *
+ * Distance from the PHB's own trade dress is deliberate and total: no tan
+ * parchment, no maroon, no gold rule under a heading, no pink-orange stat
+ * panel, no ornate border image, no drop caps, no two columns, and none of
+ * Bookinsanity / Scaly Sans / Nodesto / Solbera. The palette is cold — indigo
+ * and charcoal on a grey-white sheet.
+ *
+ * ── Type ───────────────────────────────────────────────────────────────────
+ * TeX Gyre Pagella (GUST Font License, already vendored at themes/fonts/Blank/
+ * with its licence recorded in that folder's fonts.less) for everything that
+ * is read, and Overpass (already vendored at themes/fonts/5e/, Red Hat, OFL)
+ * for everything that is a label. No new font is added by this theme.
+ *
+ * Overpass ships here in ONE weight (500). Nothing in this file ever asks it
+ * for bold, so the browser never synthesises one.
+ *
+ * ── The rule the art obeys ─────────────────────────────────────────────────
+ * Every painted thing — landscape, wash, splat, streak, speckle — is placed so
+ * that its box lies wholly inside one of the four MARGIN BANDS:
+ *
+ *     left band    x < 121px        right band   x > 695px
+ *     top band     y <  89px        bottom band  y > 935px
+ *
+ * on the 816 x 1056px sheet. The text column is 15.2cm wide and centred, so it
+ * occupies exactly x 121 -> 695; nothing is painted inside it. That is why the
+ * geometry below is written in centimetres with the arithmetic spelled out in
+ * comments rather than eyeballed. The contrast run is the proof, not the
+ * claim: 0 text nodes below AA on screen and under print emulation.
+ *
+ * Plain CSS, not LESS, for the same reason Tome and the M6 candidates are:
+ * this checkout has never run scripts/buildHomebrew.js, so a .less theme never
+ * becomes CSS and 302s inside the preview iframe. Express falls back to
+ * serving source themes/, so this file is live at
+ * /themes/V3/Inkmarch/style.css with no build step. (A side effect worth
+ * recording: the repo's stylelint script only globs **\/*.less, so the
+ * data-URIs below — which its function-url-scheme-disallowed-list would
+ * reject — are never linted. Noted rather than worked around; the brief asks
+ * for the grain to be made in CSS.)
+ * ════════════════════════════════════════════════════════════════════════════ */
+
+@font-face {
+	font-family:  'MF Pagella';
+	font-style:   normal;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-regular.woff2') format('woff2');
+}
+@font-face {
+	font-family:  'MF Pagella';
+	font-style:   italic;
+	font-weight:  400;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-italic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  'MF Pagella';
+	font-style:   normal;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bold.woff2') format('woff2');
+}
+@font-face {
+	font-family:  'MF Pagella';
+	font-style:   italic;
+	font-weight:  700;
+	font-display: swap;
+	src:          url('../../fonts/Blank/texgyrepagella-bolditalic.woff2') format('woff2');
+}
+@font-face {
+	font-family:  'MF Overpass';
+	font-style:   normal;
+	font-weight:  500;
+	font-display: swap;
+	src:          url('../../fonts/5e/Overpass Medium.woff2') format('woff2');
+}
+
+:root {
+	/* ── Ink ────────────────────────────────────────────────────────────────
+	 * Ratios are against the paper below, computed the same way the harness
+	 * computes them. Every pair that carries text clears 6.5:1; AA wants 4.5. */
+	--mf-paper:   #F2F2EF;   /* cool near-white stock, no cream in it        */
+	--mf-ink:     #171A21;   /* body — 15.52:1 on paper                      */
+	--mf-head:    #2A2050;   /* headings, deep indigo — 13.18:1              */
+	--mf-soft:    #4C4A60;   /* secondary — 7.62:1 on paper, 6.90 on fill    */
+	--mf-violet:  #5B3E8E;   /* the one bright accent — 7.42:1               */
+	--mf-link:    #3B3080;   /* 9.75:1                                       */
+	--mf-rule:    #A9A7B8;   /* hairlines only; never carries text           */
+	--mf-line:    #2A2050;   /* frame line — overridden on the title band    */
+	--mf-fill:    #E7E6EE;   /* callout stock, faintly violet                */
+	--mf-card:    #FBFBF9;   /* stat block stock                             */
+	--mf-hex:     #241D4B;   /* badge / table-head fill — paper on it 13.84  */
+
+	--mf-serif:   'MF Pagella', 'Palatino Linotype', 'Iowan Old Style', Georgia, serif;
+	--mf-sans:    'MF Overpass', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+	/* ── Sheet geometry ─────────────────────────────────────────────────────
+	 * 2.35cm = 88.8px top band       2.40cm = 90.7px side padding
+	 * 3.20cm = 121.0px bottom band   15.2cm = 574px column, centred, so the
+	 * column sits at x 121 -> 695 and the side bands are 121px wide. */
+	--mf-pt:      2.35cm;
+	--mf-px:      2.40cm;
+	--mf-pb:      3.20cm;
+	--mf-measure: 15.2cm;
+
+	/* ── The chamfered double frame ─────────────────────────────────────────
+	 * --mf-fc outer chamfer, --mf-fg gap between the two lines, --mf-fi inner
+	 * chamfer. --mf-fi is --mf-fc minus about 0.59 * --mf-fg, which is the
+	 * offset that keeps the two 45-degree cuts the same distance apart as the
+	 * two straight sides they join. Defaults are the callout size; each
+	 * component resets them. --mf-frame is how far the page frame sits inside
+	 * the sheet. */
+	--mf-fc:      14px;
+	--mf-fg:       4px;
+	--mf-fi:      12px;
+	--mf-frame:   1.05cm;
+
+	--HB_Color_Background: #F2F2EF;
+}
+
+@page { margin: 0; }
+
+/* The art, the grain and the badge fills all have to survive a print. */
+* { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * THE SHEET
+ * Paper is a flat cool white under two things: an feTurbulence grain tile
+ * (grey noise at 18% — enough to kill the plastic flatness of #F2F2EF, far
+ * too faint to move a contrast reading) and a cold vignette that darkens the
+ * outer sheet by about 2%.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page {
+	position:       relative;
+	z-index:        15;
+	box-sizing:     border-box;
+	width:          215.9mm;
+	height:         279.4mm;
+	padding:        var(--mf-pt) var(--mf-px) var(--mf-pb);
+	overflow:       clip;
+	background:
+		url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.62' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='0.22'/%3E%3C/svg%3E") 0 0 / 330px 330px repeat,
+		radial-gradient(118% 88% at 50% 6%, #FAFAF8 0%, #F2F2EF 52%, #E9E9E6 100%);
+	color:          var(--mf-ink);
+	font:           16px/1.52 var(--mf-serif);
+	text-rendering: optimizeLegibility;
+	hyphens:        none;
+}
+
+/* ── The painted layers ──────────────────────────────────────────────────────
+ * Both sit at a NEGATIVE z-index, which is the only way to get them above the
+ * sheet's own background and below the text: a positioned pseudo-element at
+ * z-index 0 paints after the non-positioned inline content, i.e. on top of
+ * every word on the page.
+ *
+ * `inset: 0` really is the whole 816 x 1056 sheet, so every position below can
+ * be read straight off the page. An absolutely positioned child resolves
+ * against its ancestor's PADDING box, and .page is `box-sizing: border-box`
+ * with no border — so its padding box IS its border box, padding and all, and
+ * the padding does not need undoing. (It was undone in the first draft of this
+ * file, which blew both layers up to 997 x 1266 and threw every corner piece
+ * off the sheet.) `overflow: clip` on .page trims whatever hangs over.
+ * ──────────────────────────────────────────────────────────────────────────── */
+.page::before,
+.page::after {
+	position: absolute;
+	inset:    0;
+	content:  '';
+}
+
+/* Layer 1: the landscape. Dragon top-left, floating citadel top-right, castle
+ * bottom-left, ridge bottom-right, a tall cliff face down the left margin and
+ * a low mountain range across the foot. Sizes are chosen so that each box
+ * lands inside a margin band — the four corner pieces are all <= 3.15cm wide,
+ * which is 119px against a 121px band. */
+.page::before {
+	z-index:    -2;
+	background:
+		url('assets/mf-corner-tl-dragon.webp')      0.05cm 0.25cm                       / 3.20cm auto no-repeat,
+		url('assets/mf-corner-tr-citadel.webp')     calc(100% - 0.10cm) 0.15cm          / 3.10cm auto no-repeat,
+		url('assets/mf-corner-bl-castle.webp')      0.05cm calc(100% - 0.05cm)          / 3.15cm auto no-repeat,
+		url('assets/mf-corner-br-ridge.webp')       calc(100% - 0.10cm) calc(100% - 0.15cm) / 3.10cm auto no-repeat,
+		url('assets/mf-edge-side-cliffs.webp')      0.10cm 42%                          / 2.90cm auto no-repeat,
+		url('assets/mf-edge-bottom-mountains.webp') 50% calc(100% - 0.05cm)             / 8.40cm auto no-repeat;
+	opacity:    0.68;
+}
+
+/* Layer 2: the ink. Two corner washes on the diagonal, two drip splats, two
+ * dry-brush streaks and two speckle bursts. Lower opacity than the landscape,
+ * so the violet reads as a stain rather than as paint. */
+.page::after {
+	z-index:    -1;
+	background:
+		url('assets/mf-wash-corner-indigo.webp')   100% -0.25cm                  / 3.20cm auto no-repeat,
+		url('assets/mf-wash-corner-charcoal.webp') -0.15cm 100%                  / 3.10cm auto no-repeat,
+		url('assets/mf-splat-drip-violet.webp')    -0.20cm 16%                   / 2.10cm auto no-repeat,
+		url('assets/mf-splat-drip-charcoal.webp')  calc(100% + 0.15cm) 55%       / 1.90cm auto no-repeat,
+		url('assets/mf-streak-violet.webp')        calc(100% - 0.10cm) 86%       / 2.50cm auto no-repeat,
+		url('assets/mf-streak-charcoal.webp')      62% -0.10cm                   / 2.00cm auto no-repeat,
+		url('assets/mf-speckle-indigo.webp')       calc(100% - 0.35cm) 24%       / 2.40cm auto no-repeat,
+		url('assets/mf-speckle-violet.webp')       0.15cm 72%                    / 2.30cm auto no-repeat;
+	opacity:    0.52;
+}
+
+/* ── The text column ─────────────────────────────────────────────────────────
+ * A definite height, not a max-height: the title page is a flex column that
+ * pushes its contents list to the foot with `margin-top: auto`, and auto
+ * margins only have space to claim if the parent's height resolves. */
+.page .columnWrapper {
+	max-width:     var(--mf-measure);
+	height:        100%;
+	margin:        0 auto;
+	counter-reset: mf-chapter;
+}
+.page.wide .columnWrapper,
+.page .wide { max-width: none; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * THE CHAMFERED DOUBLE FRAME
+ *
+ * Sixteen background layers on one element: eight for the outer line, eight
+ * for the inner. Four of each eight are the straight sides (1px gradient bars
+ * positioned and sized to stop short of the corners), and four are the corner
+ * cuts (a 45-degree hairline across a --mf-fc square).
+ *
+ * Why not clip-path or border-image: a border under a clip-path gets sliced
+ * away at the diagonal and leaves the cut corner unlined, and an SVG border
+ * stretched to a 574 x 846 box renders its vertical strokes at a different
+ * weight from its horizontal ones. Gradients stay 1px on every side at every
+ * size, and the whole recipe is driven by three custom properties, so one
+ * rule frames the page, the callouts, the stat block and the title band.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page .columnWrapper::before,
+.page .note::after,
+.page .descriptive::after,
+.page .sidebar::after,
+.page .monster::after,
+.page .statblock::after,
+.page .titlePage h1::after {
+	position:       absolute;
+	pointer-events: none;
+	/* These three live HERE, on the framed pseudo-element, and not on :root.
+	 * A custom property's var() references are substituted when the property
+	 * is computed on the element that declares it — so a --mf-bar written at
+	 * :root bakes :root's --mf-line into itself and inherits down already
+	 * resolved, and the title band's light override would have no effect.
+	 * Declared on the pseudo-element, they pick up whatever --mf-line has
+	 * cascaded onto it. (The first draft of this file had them at :root, and
+	 * the title band's frame came out indigo-on-indigo, i.e. invisible.) */
+	--mf-bar:       linear-gradient(var(--mf-line), var(--mf-line));
+	--mf-cut-a:     linear-gradient(45deg, transparent calc(50% - 0.5px), var(--mf-line) calc(50% - 0.5px), var(--mf-line) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+	--mf-cut-b:     linear-gradient(135deg, transparent calc(50% - 0.5px), var(--mf-line) calc(50% - 0.5px), var(--mf-line) calc(50% + 0.5px), transparent calc(50% + 0.5px));
+	background:
+		/* outer ring: top, bottom, left, right, then the four cuts */
+		var(--mf-bar) var(--mf-fc) 0 / calc(100% - var(--mf-fc) * 2) 1px no-repeat,
+		var(--mf-bar) var(--mf-fc) 100% / calc(100% - var(--mf-fc) * 2) 1px no-repeat,
+		var(--mf-bar) 0 var(--mf-fc) / 1px calc(100% - var(--mf-fc) * 2) no-repeat,
+		var(--mf-bar) 100% var(--mf-fc) / 1px calc(100% - var(--mf-fc) * 2) no-repeat,
+		var(--mf-cut-b) 0 0 / var(--mf-fc) var(--mf-fc) no-repeat,
+		var(--mf-cut-a) 100% 0 / var(--mf-fc) var(--mf-fc) no-repeat,
+		var(--mf-cut-b) 100% 100% / var(--mf-fc) var(--mf-fc) no-repeat,
+		var(--mf-cut-a) 0 100% / var(--mf-fc) var(--mf-fc) no-repeat,
+		/* inner ring, --mf-fg in from each edge */
+		var(--mf-bar) calc(var(--mf-fg) + var(--mf-fi)) var(--mf-fg) / calc(100% - (var(--mf-fg) + var(--mf-fi)) * 2) 1px no-repeat,
+		var(--mf-bar) calc(var(--mf-fg) + var(--mf-fi)) calc(100% - var(--mf-fg)) / calc(100% - (var(--mf-fg) + var(--mf-fi)) * 2) 1px no-repeat,
+		var(--mf-bar) var(--mf-fg) calc(var(--mf-fg) + var(--mf-fi)) / 1px calc(100% - (var(--mf-fg) + var(--mf-fi)) * 2) no-repeat,
+		var(--mf-bar) calc(100% - var(--mf-fg)) calc(var(--mf-fg) + var(--mf-fi)) / 1px calc(100% - (var(--mf-fg) + var(--mf-fi)) * 2) no-repeat,
+		var(--mf-cut-b) var(--mf-fg) var(--mf-fg) / var(--mf-fi) var(--mf-fi) no-repeat,
+		var(--mf-cut-a) calc(100% - var(--mf-fg)) var(--mf-fg) / var(--mf-fi) var(--mf-fi) no-repeat,
+		var(--mf-cut-b) calc(100% - var(--mf-fg)) calc(100% - var(--mf-fg)) / var(--mf-fi) var(--mf-fi) no-repeat,
+		var(--mf-cut-a) var(--mf-fg) calc(100% - var(--mf-fg)) / var(--mf-fi) var(--mf-fi) no-repeat;
+	content:        '';
+}
+
+/* The page frame. Hung off .columnWrapper::before rather than .page::before
+ * because both of .page's pseudo-elements are already carrying art, and
+ * .columnWrapper is in normal flow so its own ::before is free — and, being
+ * absolutely positioned, it resolves against .page's padding box, i.e. the
+ * sheet, not against the 574px text column its host occupies. */
+.page .columnWrapper::before {
+	inset:   var(--mf-frame);
+	z-index: 0;
+	--mf-fc: 20px;
+	--mf-fg: 5px;
+	--mf-fi: 17px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * TYPE
+ * Headings are Overpass, uppercase, letterspaced, deep indigo. Body is
+ * Pagella. That split is the whole hierarchy: if it is sans and spaced out it
+ * is a label, if it is serif it is prose.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page h1,
+.page h2,
+.page h3,
+.page h4,
+.page h5,
+.page h6 {
+	margin:         0;
+	color:          var(--mf-head);
+	font-family:    var(--mf-sans);
+	font-weight:    500;
+	line-height:    1.2;
+	text-transform: uppercase;
+	break-after:    avoid;
+}
+.page h1 { font-size: 29px; letter-spacing: 0.075em; }
+.page h2 { font-size: 22px; letter-spacing: 0.105em; }
+
+/* A chapter head, with its hexagon badge hanging in the left margin. The
+ * counter is reset per .columnWrapper, which is per sheet — this renderer
+ * builds every page independently, so there is no document-wide numbering to
+ * borrow and a per-sheet count is the honest one. */
+.page .columnWrapper > h2 {
+	position:          relative;
+	margin-top:        30px;
+	padding-bottom:    10px;
+	background:
+		linear-gradient(var(--mf-rule), var(--mf-rule)) 0 100% / 100% 1px no-repeat,
+		linear-gradient(var(--mf-head), var(--mf-head)) 0 calc(100% - 4px) / 100% 1px no-repeat;
+	counter-increment: mf-chapter;
+}
+.page .columnWrapper > h2:first-child { margin-top: 0; }
+.page .columnWrapper > h2::before {
+	position:        absolute;
+	top:             -2px;
+	left:            -1.5cm;
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	width:           30px;
+	height:          34px;
+	background:      var(--mf-hex);
+	clip-path:       polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	color:           var(--mf-paper);
+	font-size:       13px;
+	letter-spacing:  0.03em;
+	content:         counter(mf-chapter, decimal-leading-zero);
+}
+
+/* A section. A small solid hexagon sits in the margin on its first line. */
+.page h3 {
+	position:       relative;
+	margin-top:     22px;
+	font-size:      16.5px;
+	letter-spacing: 0.095em;
+}
+.page h3::before {
+	position:   absolute;
+	top:        0.3em;
+	left:       -0.95cm;
+	width:      11px;
+	height:     13px;
+	background: var(--mf-violet);
+	clip-path:  polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	content:    '';
+}
+
+/* A spell name, and anything else at h4. The sparkle marks it as a rules
+ * object rather than a piece of the narrative. */
+.page h4 {
+	position:       relative;
+	margin-top:     20px;
+	padding-left:   23px;
+	font-size:      16px;
+	letter-spacing: 0.075em;
+}
+.page h4::before {
+	position:   absolute;
+	top:        0.12em;
+	left:       0;
+	width:      17px;
+	height:     17px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B3E8E' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 2.6l2.1 6.1 6.1 2.1-6.1 2.1-2.1 6.1-2.1-6.1L3.8 10.8l6.1-2.1z'/%3E%3C/svg%3E") center / contain no-repeat;
+	content:    '';
+}
+
+.page h5,
+.page h6 {
+	margin-top:     15px;
+	font-size:      13px;
+	letter-spacing: 0.115em;
+}
+
+.page p { margin: 0.6em 0 0; overflow-wrap: break-word; }
+.page h1 + p,
+.page h2 + p,
+.page h3 + p,
+.page h4 + p { margin-top: 0.45em; }
+.page strong { font-weight: 700; }
+.page em { font-style: italic; }
+.page sup { font-size: smaller; line-height: 0; vertical-align: super; }
+.page sub { font-size: smaller; line-height: 0; vertical-align: sub; }
+.page a { color: var(--mf-link); text-decoration: underline; text-underline-offset: 2px; }
+
+/* A rule is two lines here too, so it belongs to the same family as the
+ * frames: one indigo hairline with a lighter one 3px under it. */
+.page hr {
+	height:     4px;
+	margin:     0.9em 0;
+	background:
+		linear-gradient(var(--mf-head), var(--mf-head)) 0 0 / 100% 1px no-repeat,
+		linear-gradient(var(--mf-rule), var(--mf-rule)) 0 100% / 100% 1px no-repeat;
+	border:     0;
+}
+
+.page blockquote,
+.page .quote {
+	margin:      1.1em 0 0;
+	padding:     0 0 0 16px;
+	border-left: 2px solid var(--mf-violet);
+	color:       var(--mf-soft);
+	font-size:   17px;
+	font-style:  italic;
+	line-height: 1.45;
+}
+.page blockquote p:first-child { margin-top: 0; }
+
+/* ── Lists ───────────────────────────────────────────────────────────────────
+ * Bullets are small violet lozenges turned on their point; an ordered list
+ * gets the same hexagon badge as a chapter, two sizes down. Both markers are
+ * drawn, not glyphs, so neither depends on a font the theme does not vendor. */
+.page ul,
+.page ol { margin: 0.5em 0 0; padding-left: 1.35em; list-style: none; }
+.page ol { padding-left: 2.1em; counter-reset: mf-item; }
+.page li { position: relative; margin-top: 0.22em; }
+.page ul > li::before {
+	position:   absolute;
+	top:        0.52em;
+	left:       -1.05em;
+	width:      7px;
+	height:     7px;
+	background: var(--mf-violet);
+	transform:  rotate(45deg);
+	content:    '';
+}
+.page ol > li { counter-increment: mf-item; }
+.page ol > li::before {
+	position:        absolute;
+	top:             0.08em;
+	left:            -2.1em;
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	width:           19px;
+	height:          22px;
+	background:      var(--mf-hex);
+	clip-path:       polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	color:           var(--mf-paper);
+	font-family:     var(--mf-sans);
+	font-size:       10.5px;
+	line-height:     1;
+	content:         counter(mf-item, decimal-leading-zero);
+}
+.page img { max-width: 100%; }
+
+.page code,
+.page pre {
+	font-family: ui-monospace, 'Cascadia Mono', 'JetBrains Mono', monospace;
+	font-size:   0.88em;
+}
+.page code { padding: 1px 4px; background: var(--mf-fill); border-radius: 2px; }
+
+/* ── Definition lists ────────────────────────────────────────────────────────
+ * `**Range** :: 60 feet` is how this renderer writes every stat line in a
+ * spell and in a stat block, and it comes out as a dl/dt/dd. Tome never styles
+ * these, so they currently stack as unaligned blocks. */
+.page dl { margin: 0.5em 0 0; overflow: hidden; }
+.page dt {
+	float:        left;
+	clear:        left;
+	margin-right: 0.45em;
+	font-weight:  700;
+}
+.page dt > strong { font-weight: 700; }
+.page dd { margin: 0; }
+.page dl + dl { margin-top: 0; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * CALLOUTS AND THE STAT BLOCK
+ * Both are the same object: a chamfered fill on ::before, a chamfered double
+ * frame on ::after, and the content above both. z-index 0 on the box makes it
+ * a stacking context, which is what lets two z-index:-1 pseudo-elements sit
+ * above the box's own background and below its words.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page .note,
+.page .descriptive,
+.page .sidebar,
+.page .monster,
+.page .statblock {
+	position:     relative;
+	z-index:      0;
+	margin:       1.2em 0 0;
+	padding:      15px 20px 17px;
+	break-inside: avoid;
+}
+.page .note::before,
+.page .descriptive::before,
+.page .sidebar::before,
+.page .monster::before,
+.page .statblock::before {
+	position:  absolute;
+	inset:     0;
+	z-index:   -1;
+	clip-path: polygon(var(--mf-fc) 0%, calc(100% - var(--mf-fc)) 0%, 100% var(--mf-fc), 100% calc(100% - var(--mf-fc)), calc(100% - var(--mf-fc)) 100%, var(--mf-fc) 100%, 0% calc(100% - var(--mf-fc)), 0% var(--mf-fc));
+	content:   '';
+}
+.page .note::after,
+.page .descriptive::after,
+.page .sidebar::after,
+.page .monster::after,
+.page .statblock::after {
+	inset:   0;
+	z-index: -1;
+}
+
+/* A callout: violet-grey stock under a faint dot grid, which is the one
+ * texture on the page that is a grid rather than noise. */
+.page .note::before,
+.page .descriptive::before,
+.page .sidebar::before {
+	background:
+		radial-gradient(circle at 50% 50%, rgba(42, 32, 80, 0.14) 0.6px, transparent 0.7px) 0 0 / 10px 10px,
+		linear-gradient(var(--mf-fill), var(--mf-fill));
+}
+.page .note,
+.page .descriptive,
+.page .sidebar {
+	font-size:   15px;
+	line-height: 1.5;
+}
+.page .note > :first-child,
+.page .descriptive > :first-child,
+.page .sidebar > :first-child { margin-top: 0; }
+
+/* The callout's label carries the one line icon on the page besides the spell
+ * sparkle: an open book, drawn here as two paths in the Lucide idiom (24px
+ * box, 1.9px stroke, round caps and joins). It is a data-URI rather than an
+ * inline <svg> because a theme can only reach the markup through CSS — M5 put
+ * real inline SVG in the chrome, which is JSX this stylesheet never sees. */
+.page .note h5,
+.page .descriptive h5,
+.page .sidebar h5 {
+	position:     relative;
+	margin:       0 0 0.35em;
+	padding-left: 24px;
+	color:        var(--mf-head);
+}
+.page .note h5::before,
+.page .descriptive h5::before,
+.page .sidebar h5::before {
+	position:   absolute;
+	top:        -0.06em;
+	left:       0;
+	width:      17px;
+	height:     17px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232A2050' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 4.5h5.4A2.6 2.6 0 0 1 11 7.1v12.4a2 2 0 0 0-2-2H3z'/%3E%3Cpath d='M21 4.5h-5.4A2.6 2.6 0 0 0 13 7.1v12.4a2 2 0 0 1 2-2h6z'/%3E%3C/svg%3E") center / contain no-repeat;
+	content:    '';
+}
+
+/* The stat block: near-white card stock instead of the callout's violet-grey,
+ * so the two read as different objects at a glance without either gaining a
+ * shadow or a radius. */
+.page .monster::before,
+.page .statblock::before { background: var(--mf-card); }
+.page .monster > :first-child,
+.page .statblock > :first-child { margin-top: 0; }
+
+/* The creature's name, with a shield in the margin. */
+.page .monster h2,
+.page .monster h3,
+.page .statblock h2,
+.page .statblock h3 {
+	position:       relative;
+	margin:         0;
+	padding:        0 0 0 26px;
+	background:     none;
+	font-size:      19px;
+	letter-spacing: 0.075em;
+}
+.page .monster h2::before,
+.page .monster h3::before,
+.page .statblock h2::before,
+.page .statblock h3::before {
+	position:   absolute;
+	top:        0.08em;
+	left:       0;
+	width:      19px;
+	height:     19px;
+	background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232A2050' stroke-width='1.9' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 21.4s7.4-3.6 7.4-9.3V5.3L12 2.6 4.6 5.3v6.8c0 5.7 7.4 9.3 7.4 9.3z'/%3E%3C/svg%3E") center / contain no-repeat;
+	clip-path:  none;
+	content:    '';
+}
+
+.page .monster > p:first-of-type em,
+.page .statblock > p:first-of-type em {
+	color:      var(--mf-soft);
+	font-style: italic;
+}
+
+/* ── The six ability scores ──────────────────────────────────────────────────
+ * A grid rather than a table, so the six cells stay equal whatever is in them,
+ * with the labels in Overpass and the numbers in tabular figures. */
+.page .monster table,
+.page .statblock table {
+	display:               grid;
+	grid-template-columns: repeat(6, 1fr);
+	width:                 100%;
+	margin:                0.8em 0;
+	background:            none;
+	text-align:            center;
+}
+.page .monster table thead,
+.page .monster table tbody,
+.page .monster table tr,
+.page .statblock table thead,
+.page .statblock table tbody,
+.page .statblock table tr { display: contents; }
+.page .monster table th,
+.page .statblock table th {
+	padding:        7px 2px 4px;
+	background:     var(--mf-hex);
+	color:          var(--mf-paper);
+	font-family:    var(--mf-sans);
+	font-size:      11.5px;
+	font-weight:    500;
+	letter-spacing: 0.11em;
+	text-align:     center;
+	text-transform: uppercase;
+}
+.page .monster table td,
+.page .statblock table td {
+	padding:              6px 2px 5px;
+	border:               0;
+	border-bottom:        1px solid var(--mf-rule);
+	font-size:            14.5px;
+	font-variant-numeric: tabular-nums;
+	text-align:           center;
+}
+
+.page .monster hr,
+.page .statblock hr { margin: 0.6em 0; }
+
+/* ── Tables in the body ──────────────────────────────────────────────────────
+ * The head is a solid indigo band — the same fill as the hexagons, so the page
+ * has one dark and it is always a label. No zebra striping: the PHB's pastel
+ * banding is a trade-dress cue and hairlines print better anyway. */
+.page .columnWrapper > table,
+.page .classTable table {
+	width:           100%;
+	margin:          1.2em 0 0;
+	border-collapse: collapse;
+	font-size:       14.5px;
+	break-inside:    avoid;
+}
+.page .columnWrapper > table th,
+.page .classTable table th {
+	padding:        9px 11px 8px;
+	background:     var(--mf-hex);
+	color:          var(--mf-paper);
+	font-family:    var(--mf-sans);
+	font-size:      11.5px;
+	font-weight:    500;
+	letter-spacing: 0.115em;
+	text-transform: uppercase;
+}
+.page .columnWrapper > table td,
+.page .classTable table td {
+	padding:              7px 11px;
+	border-bottom:        1px solid var(--mf-rule);
+	font-variant-numeric: tabular-nums;
+}
+.page table th[align='center'], .page table td[align='center'] { text-align: center; }
+.page table th[align='right'],  .page table td[align='right']  { text-align: right; }
+.page table th[align='left'],   .page table td[align='left']   { text-align: left; }
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * TITLE PAGE
+ * One deep indigo band, chamfered, carrying the title in caps. Everything else
+ * on the sheet is quiet, so the four corners of landscape have the page to
+ * themselves.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page .titlePage {
+	display:        flex;
+	flex-direction: column;
+	box-sizing:     border-box;
+	height:         100%;
+	padding:        1.9cm 0 0.9cm;
+}
+.page .titlePage h1 {
+	position:       relative;
+	padding:        0.72cm 0.72cm 0.78cm;
+	background:     var(--mf-hex);
+	clip-path:      polygon(22px 0%, calc(100% - 22px) 0%, 100% 22px, 100% calc(100% - 22px), calc(100% - 22px) 100%, 22px 100%, 0% calc(100% - 22px), 0% 22px);
+	color:          var(--mf-paper);
+	font-size:      37px;
+	letter-spacing: 0.1em;
+	line-height:    1.18;
+	text-align:     center;
+}
+/* The same frame recipe as everything else, in a light ink, inset far enough
+ * that the chamfer of the band does not cut through it. */
+.page .titlePage h1::after {
+	inset:     6px;
+	--mf-fc:   16px;
+	--mf-fg:   5px;
+	--mf-fi:   13px;
+	--mf-line: rgba(242, 242, 239, 0.5);
+}
+.page .titlePage h2 {
+	margin:         0.75cm 0 0;
+	background:     none;
+	color:          var(--mf-soft);
+	font-family:    var(--mf-serif);
+	font-size:      18px;
+	font-style:     italic;
+	font-weight:    400;
+	letter-spacing: 0;
+	line-height:    1.42;
+	text-align:     center;
+	text-transform: none;
+}
+.page .titlePage > p {
+	max-width:    11.6cm;
+	margin-right: auto;
+	margin-left:  auto;
+	text-align:   center;
+}
+.page .titlePage > p:first-of-type {
+	margin-top:     0.42cm;
+	color:          var(--mf-head);
+	font-family:    var(--mf-sans);
+	font-size:      12.5px;
+	letter-spacing: 0.14em;
+	text-transform: uppercase;
+}
+.page .titlePage h3 {
+	margin-top:     auto;
+	padding-top:    12px;
+	font-size:      13px;
+	letter-spacing: 0.145em;
+	text-align:     center;
+}
+.page .titlePage h3::before {
+	top:        auto;
+	left:       50%;
+	width:      2.9cm;
+	height:     4px;
+	margin-top: -22px;
+	background:
+		linear-gradient(var(--mf-head), var(--mf-head)) 0 0 / 100% 1px no-repeat,
+		linear-gradient(var(--mf-rule), var(--mf-rule)) 0 100% / 100% 1px no-repeat;
+	clip-path:  none;
+	transform:  translateX(-50%);
+}
+.page .titlePage ul {
+	max-width:    10.4cm;
+	margin:       0.45cm auto 0;
+	padding-left: 0;
+	font-size:    15px;
+}
+.page .titlePage ul > li {
+	padding:    7px 0 7px 1.35em;
+	background: linear-gradient(var(--mf-rule), var(--mf-rule)) 0 100% / 100% 1px no-repeat;
+}
+.page .titlePage ul > li::before { top: 1.02em; left: 0.1em; }
+.page .titlePage > p:last-child {
+	margin-top:     0.65cm;
+	color:          var(--mf-soft);
+	font-family:    var(--mf-sans);
+	font-size:      11.5px;
+	letter-spacing: 0.1em;
+	text-transform: uppercase;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+ * PAGE FURNITURE
+ * The folio sits inside the frame and above the mountain range: the range is
+ * placed from y 964 and the folio's line box ends at about y 960.
+ * ════════════════════════════════════════════════════════════════════════════ */
+.page .footnote,
+.page .pageNumber {
+	position:    absolute;
+	bottom:      2.55cm;
+	color:       var(--mf-soft);
+	font-family: var(--mf-sans);
+	font-size:   11.5px;
+	line-height: 1.3;
+}
+.page .footnote {
+	left:           var(--mf-px);
+	letter-spacing: 0.12em;
+	text-transform: uppercase;
+}
+.page .pageNumber {
+	right:                2.4cm;
+	bottom:               2.35cm;
+	display:              flex;
+	align-items:          center;
+	justify-content:      center;
+	width:                26px;
+	height:               29px;
+	background:           var(--mf-hex);
+	clip-path:            polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%);
+	color:                var(--mf-paper);
+	font-size:            12px;
+	font-variant-numeric: tabular-nums;
+	letter-spacing:       0;
+}
+
+/* The spans arrive wrapped in a paragraph, which would otherwise hold open a
+ * line of empty flow at the foot of the page. */
+.page p:has(> .pageNumber),
+.page p:has(> .footnote) { margin: 0; line-height: 0; }
+
+/* ── Keeping a spell together ────────────────────────────────────────────────
+ * A spell has no wrapper element — it is an h4, an italic line, a dl and a
+ * paragraph as four siblings — so there is nothing to put `break-inside` on
+ * and a column or page break can land in the middle of one. */
+.page dl { break-inside: avoid; }
+.page h4 + p,
+.page h4 + p + dl { break-before: avoid; }
+.page h4 + p { break-after: avoid; }
