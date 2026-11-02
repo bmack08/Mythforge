@@ -43,9 +43,18 @@ const initializeModels = async (config = null) => {
 			StatBlock, MagicItem, NPC, Template, Version, StoryVersion, StoryChunk 
 		});
 	
-	// Sync all models after they're all defined
-	await sequelize.sync({ alter: false });
-	console.log('All models synchronized successfully.');
+	// Sync all models after they're all defined.
+	//
+	// On Postgres in production this is skipped: an unattended sync() against a
+	// live Neon database is how you lose a column. Schema changes run through
+	// `npm run db:setup` instead. DB_SYNC_ON_BOOT=true forces it back on, and
+	// SQLite dev/test keeps syncing exactly as before. See server/database.js.
+	if(database.shouldSyncOnBoot(config)) {
+		await sequelize.sync({ alter: false });
+		console.log('All models synchronized successfully.');
+	} else {
+		console.log('Skipping model sync at boot; set DB_SYNC_ON_BOOT=true to override.');
+	}
 	
 		models = {
 		// Legacy Homebrewery models
