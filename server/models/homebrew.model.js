@@ -71,6 +71,28 @@ class Homebrew extends Model {
 		}
 	}
 
+	// Look a brew up by primary key, tolerating an id that is not a number.
+	//
+	// homebrews.id is an INTEGER, but several routes accept "either an editId
+	// or an id" and fall back to a primary-key lookup after the editId lookup
+	// misses. SQLite will happily compare its INTEGER column against a nanoid
+	// like 'aB3dE6gH9jK2' and match nothing. Postgres rejects the comparison
+	// outright with `invalid input syntax for type integer`, which turns what
+	// should be a 404 into a 500 - including on /share, /source and /download.
+	//
+	// Screening the value first gives both dialects the answer SQLite always
+	// gave: no such row.
+	static async findByNumericPk(value, options = undefined) {
+		if (value === null || value === undefined) return null;
+		const candidate = String(value).trim();
+		// Ids come from an auto-increment sequence, so only unsigned integers
+		// can ever match.
+		if (!/^\d+$/.test(candidate)) return null;
+		const asNumber = Number(candidate);
+		if (!Number.isSafeInteger(asNumber)) return null;
+		return this.findByPk(asNumber, options);
+	}
+
 	// Static method to get brews by user
 	static async getByUser(username, allowAccess = false, fields = null, filter = {}) {
 		try {

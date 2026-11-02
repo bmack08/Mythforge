@@ -87,7 +87,7 @@ app.put('/api/update/:id', async (req, res) => {
 				// Find by editId first, then fallback to primary key
 				let brew = await Homebrew.findOne({ where: { editId: editOrPk } });
 				if (!brew) {
-					try { brew = await Homebrew.findByPk(editOrPk); } catch (_) { /* noop */ }
+					try { brew = await Homebrew.findByNumericPk(editOrPk); } catch (_) { /* noop */ }
 				}
 				if (!brew) {
 					return res.status(404).json({ error: 'Brew not found' });

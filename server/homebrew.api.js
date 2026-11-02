@@ -143,7 +143,7 @@ const api = {
 			// Try editId first, then fallback to primary key
 			let brew = await Homebrew.findOne({ where: { editId: brewId } });
 			if (!brew) {
-				try { brew = await Homebrew.findByPk(brewId); } catch (_) { /* noop */ }
+				try { brew = await Homebrew.findByNumericPk(brewId); } catch (_) { /* noop */ }
 			}
 			if (!brew) {
 				return res.status(404).json({ success: false, error: 'Brew not found' });
@@ -178,7 +178,7 @@ const api = {
 		const { Homebrew } = await getModels();
 		// brewId may be editId or pk id. Try editId first.
 		let brew = await Homebrew.findOne({ where: { editId: brewId } });
-		if (!brew) brew = await Homebrew.findByPk(brewId);
+		if (!brew) brew = await Homebrew.findByNumericPk(brewId);
 		if (!brew) return '';
 		// Ensure we have normalized text; do not persist here to keep it lightweight
 		const { json } = await api.normalizeAndMigrateBrewText(brew, { persist: false });
@@ -563,7 +563,7 @@ const api = {
 			if (!brew) {
 				// Fall back to primary key if brewId looks like a numeric id
 				try {
-					brew = await Homebrew.findByPk(brewId);
+					brew = await Homebrew.findByNumericPk(brewId);
 				} catch(_) {}
 			}
 			if (!brew) {
@@ -623,7 +623,7 @@ const api = {
 			let brew = await Homebrew.findOne({ where: { editId: brewId } });
 			let foundBy = 'editId';
 			if (!brew) {
-				try { brew = await Homebrew.findByPk(brewId); } catch(_) {}
+				try { brew = await Homebrew.findByNumericPk(brewId); } catch(_) {}
 				if (brew) foundBy = 'pk';
 			}
 			if (!brew) {
@@ -673,7 +673,7 @@ const api = {
 
 			// Post-delete verification
 			try {
-				const check = await Homebrew.findByPk(pkId);
+				const check = await Homebrew.findByNumericPk(pkId);
 				console.log(`[deleteBrew] Post-delete verification findByPk(${pkId}) =>`, check ? 'STILL EXISTS (unexpected)' : 'OK (gone)');
 			} catch(_) {}
 
@@ -1655,7 +1655,7 @@ ${requestText}`;
 
 			// Simple search for now - search in brew text
 			const { Homebrew } = await getModels();
-			const brew = await Homebrew.findByPk(brewId);
+			const brew = await Homebrew.findByNumericPk(brewId);
 			
 		if (!brew) {
 			return res.status(404).json({
@@ -1699,7 +1699,7 @@ ${requestText}`;
 		try {
 			const { brewId } = req.params;
 			const { Homebrew } = await getModels();
-			const brew = await Homebrew.findByPk(brewId);
+			const brew = await Homebrew.findByNumericPk(brewId);
 			
 			if (!brew) {
 				return res.status(404).json({ error: 'Brew not found' });
@@ -1806,7 +1806,7 @@ export const getBrew = (type = 'share', requireAuth = false) => {
 				brew = await Homebrew.findOne({ where: { shareId: id } });
 			}
 			if (!brew) {
-				brew = await Homebrew.findByPk(id);
+				brew = await Homebrew.findByNumericPk(id);
 			}
 			
 			if (!brew) {
