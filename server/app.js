@@ -29,6 +29,7 @@ import sanitizeFilename            from 'sanitize-filename';
 import asyncHandler                from 'express-async-handler';
 import templateFn                  from '../client/template.js';
 import { getModels } from './models/index.js';
+import { jsonContains, allOf } from './models/query-helpers.js';
 
 import { DEFAULT_BREW }              from './brewDefaults.js';
 import { splitTextStyleAndMetadata } from '../shared/helpers.js';
@@ -721,13 +722,11 @@ app.get('/account', asyncHandler(async (req, res, next)=>{
 		}
 
 		const { Homebrew } = getModels();
-		const { Op } = getModels().sequelize.Sequelize;
-		const query = { 
-			authors: {
-				[Op.like]: `%${req.account.username}%`
-			},
-			googleId: null
-		};
+		// authors is a JSON column, so the match is built per dialect.
+		const query = allOf(
+			jsonContains('authors', req.account.username),
+			{ googleId: null }
+		);
 		const mongoCount = await Homebrew.count({ where: query })
 			.catch((err)=>{
 				mongoCount = 0;

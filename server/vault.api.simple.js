@@ -1,23 +1,17 @@
 import express from 'express';
 import asyncHandler from 'express-async-handler';
 import { getModels } from './models/index.js';
+import { textContains, jsonContains, allOf } from './models/query-helpers.js';
 
 const router = express.Router();
 
 const buildSearchConditions = (query) => {
-	const { Op } = getModels().sequelize.Sequelize;
 	const conditions = { published: true };
 
 	if (query.title) {
-		conditions.title = {
-			[Op.like]: `%${query.title}%`
-		};
-	}
-
-	if (query.author) {
-		conditions.authors = {
-			[Op.like]: `%${query.author}%`
-		};
+		// Case-insensitive on both dialects: SQLite LIKE is already
+		// insensitive for ASCII, Postgres needs ILIKE.
+		conditions.title = textContains(query.title);
 	}
 
 	if (query.legacy === 'true' && query.v3 !== 'true') {
@@ -26,13 +20,15 @@ const buildSearchConditions = (query) => {
 		conditions.renderer = 'V3';
 	}
 
-	return conditions;
+	// authors is a JSON column, which Postgres will not LIKE-match without a
+	// cast, so that fragment has to be combined under Op.and rather than set
+	// as a property. See models/query-helpers.js.
+	return allOf(conditions, query.author ? jsonContains('authors', query.author) : null);
 };
 
 router.get('/api/vault', asyncHandler(async (req, res) => {
 	try {
 		const { Homebrew } = getModels();
-		const { Op } = getModels().sequelize.Sequelize;
 		
 		const conditions = buildSearchConditions(req.query);
 		const page = Math.max(1, parseInt(req.query.page) || 1);

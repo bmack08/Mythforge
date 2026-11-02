@@ -1,7 +1,24 @@
 import { DataTypes, Model } from 'sequelize';
 import { nanoid } from 'nanoid';
 import zlib from 'zlib';
-import database from '../database.js';
+import { jsonContains, allOf } from './query-helpers.js';
+
+// Coerce whatever the driver handed back for the textBin column into a Buffer.
+//
+// sqlite3 returns a BLOB as a Buffer and pg returns a BYTEA as a Buffer, so the
+// common path is a no-op. The other shapes show up when a row has been through
+// a JSON round-trip ({ type: 'Buffer', data: [...] }) or a driver returned a
+// typed array. Anything we do not recognise is passed through untouched so the
+// caller's existing error handling still sees it.
+const toBinaryBuffer = (value)=>{
+	if(value == null) return value;
+	if(Buffer.isBuffer(value)) return value;
+	if(value instanceof Uint8Array || Array.isArray(value)) return Buffer.from(value);
+	if(typeof value === 'object' && value.type === 'Buffer' && Array.isArray(value.data)) {
+		return Buffer.from(value.data);
+	}
+	return value;
+};
 
 class Homebrew extends Model {
 	// Static method to increase view count
@@ -34,10 +51,13 @@ class Homebrew extends Model {
 				throw new Error('Can not find brew');
 			}
 
-			// Uncompress zipped text field if it exists
-			if (brew.textBin && brew.textBin.length > 0) {
+			// Uncompress zipped text field if it exists. textBin is a BLOB on
+			// SQLite and a BYTEA on Postgres; both drivers hand it back as a
+			// Buffer, which zlib takes directly.
+			const compressed = toBinaryBuffer(brew.textBin);
+			if (compressed && compressed.length > 0) {
 				try {
-					const unzipped = zlib.inflateRawSync(brew.textBin);
+					const unzipped = zlib.inflateRawSync(compressed);
 					brew.text = unzipped.toString();
 				} catch (decompressError) {
 					console.warn('Failed to decompress textBin, using text field:', decompressError);
@@ -54,16 +74,15 @@ class Homebrew extends Model {
 	// Static method to get brews by user
 	static async getByUser(username, allowAccess = false, fields = null, filter = {}) {
 		try {
-			const whereClause = { 
-				authors: {
-					[database.getSequelize().Sequelize.Op.like]: `%${username}%`
-				},
-				...filter
-			};
-
-			if (!allowAccess) {
-				whereClause.published = true;
-			}
+			// authors is a JSON column, so the substring match has to be built
+			// per dialect - see query-helpers.js. The fragments are combined
+			// under Op.and because the Postgres form is a Sequelize.where()
+			// wrapper and cannot sit in a `{ authors: ... }` property.
+			const whereClause = allOf(
+				jsonContains('authors', username),
+				allowAccess ? null : { published: true },
+				filter
+			);
 
 			const options = { where: whereClause };
 			if (fields && Array.isArray(fields)) {
@@ -143,6 +162,8 @@ const initHomebrewModel = (sequelize) => {
 			allowNull: true
 		},
 		textBin: {
+			// BLOB on SQLite, BYTEA on Postgres. Both drivers read it back as a
+			// Buffer, which is what zlib.inflateRawSync/deflateRawSync want.
 			type: DataTypes.BLOB,
 			allowNull: true
 		},
@@ -229,9 +250,18 @@ const initHomebrewModel = (sequelize) => {
 				unique: true,
 				fields: ['editId']
 			},
-			{
+			// `authors` is a JSON column. SQLite stores JSON as TEXT, so a
+			// btree index over it is at least legal there, and it has always
+			// been declared. Postgres rejects it outright - the json type has
+			// no default operator class for btree - which fails the whole
+			// sync(), so the index is simply not declared on Postgres.
+			//
+			// Nothing is lost: the lookup it nominally backs is
+			// `authors LIKE '%name%'`, and no btree index can serve a pattern
+			// with a leading wildcard on either dialect.
+			...(sequelize.getDialect() === 'postgres' ? [] : [{
 				fields: ['authors']
-			},
+			}]),
 			{
 				fields: ['published']
 			},
