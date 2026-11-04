@@ -124,7 +124,7 @@ export default [
 	/************************* PHB ********************/
 
 	{
-		groupName : 'PHB',
+		groupName : 'Page style',
 		icon      : 'fas fa-book',
 		view      : 'text',
 		snippets  : [

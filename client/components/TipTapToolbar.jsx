@@ -327,7 +327,7 @@ export default function TipTapToolbar({ editor, showLineNumbers, onToggleLineNum
         {/* `swords`, not the AI `sparkles` the fa-dragon mapping gives: this
             group inserts content blocks, and every other dragon in the app
             marks an AI entry point. UNIT M5. */}
-        <ToolbarDropdown label="D&D Blocks" icon="swords">
+        <ToolbarDropdown label="Rules blocks" icon="swords">
           <button
             className="tiptap-toolbar__dropdown-item"
             onClick={() => chain().insertQuote().run()}

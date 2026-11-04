@@ -195,7 +195,7 @@ export default [
 
 	/************************* PHB CONTENT BLOCKS ********************/
 	{
-		groupName : 'PHB',
+		groupName : 'Page style',
 		icon      : 'fas fa-book',
 		view      : 'text',
 		snippets  : [

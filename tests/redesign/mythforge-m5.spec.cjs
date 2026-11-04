@@ -396,7 +396,7 @@ test.describe('house style', ()=>{
  * have measured the four triggers and declared victory.
  * ─────────────────────────────────────────────────────────────────────── */
 test.describe('editor toolbars', ()=>{
-	const GROUPS = ['Structure', 'Images', 'D&D Blocks', 'More'];
+	const GROUPS = ['Structure', 'Images', 'Rules blocks', 'More'];
 
 	test('every insert action in every toolbar dropdown has a drawn icon', async ({ page })=>{
 		await goto(page, ROUTES.find((r)=>r.name === 'editor'));
