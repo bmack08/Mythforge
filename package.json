@@ -176,7 +176,7 @@
     "romans": "^3.1.0",
     "sanitize-filename": "1.6.3",
     "sequelize": "^6.37.7",
-    "sqlite3": "^5.1.7",
+    "sqlite3": "^6.0.1",
     "superagent": "^10.2.1",
     "tiptap-markdown": "^0.9.0",
     "vitreum": "git+https://git@github.com/calculuschild/vitreum.git",
