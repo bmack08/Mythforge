@@ -106,7 +106,7 @@
     "@codemirror/view": "^6.38.2",
     "@dmsnell/diff-match-patch": "^1.1.0",
     "@fortawesome/fontawesome-free": "^7.1.0",
-    "@googleapis/drive": "^13.0.1",
+    "@googleapis/drive": "^27.0.0",
     "@sanity/diff-match-patch": "^3.2.0",
     "@tiptap/core": "^3.6.2",
     "@tiptap/extension-color": "^3.6.5",
